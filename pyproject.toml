@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "akuki"
+version = "0.1.0"
+description = "Akuki (悪機) -- a shy bot. v1: a terminal you can talk to him in."
+requires-python = ">=3.11"
+dependencies = ["anthropic>=0.40"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+# Explicit: the repo root also holds persona/, tests/ and backlog/, which
+# setuptools' automatic discovery refuses to guess between.
+[tool.setuptools]
+packages = ["akuki"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

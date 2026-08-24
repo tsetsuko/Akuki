@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "tenant": "akuki",
+  "capturedAtMs": 1787565596556,
+  "counts": {
+    "episodes": 2,
+    "semantic_nodes": 0,
+    "semantic_edges": 0,
+    "values": 0,
+    "traits": 0,
+    "goals": 0,
+    "open_questions": 1,
+    "growth_markers": 0,
+    "periods": 0,
+    "identity_events": 2,
+    "commitments": 0,
+    "entities": 2,
+    "social_profiles": 1,
+    "skills": 0
+  },
+  "openQuestionsByStatus": {
+    "resolved": 1
+  },
+  "openQuestionsBySource": {
+    "reflection": 1
+  },
+  "self": {
+    "values": [],
+    "traits": [],
+    "goals": [],
+    "openQuestions": [
+      {
+        "id": "oq_yaf3asds2wbnqvob",
+        "question": "Czy Zosia i ja mamy wspólną historię z wcześniejszych sesji, czy to nasze pierwsze spotkanie?",
+        "status": "resolved",
+        "urgency": 0.7,
+        "source": "reflection",
+        "rumination_ticks": 0,
+        "created_at": 1787564073461
+      }
+    ],
+    "growthMarkers": []
+  },
+  "social": {
+    "profiles": [
+      {
+        "entity_id": "ent_0t48oa22ch37ycrc",
+        "trust": 0.5,
+        "attachment": 0,
+        "interaction_count": 3,
+        "commitment_count": 0
+      }
+    ],
+    "creatorEntityId": null
+  },
+  "procedural": {
+    "skills": []
+  },
+  "affective": {
+    "mood": [
+      {
+        "session_id": "default",
+        "valence": 0.23402399092094603,
+        "arousal": 0.18749385525553955
+      }
+    ]
+  }
+}

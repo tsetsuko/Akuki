@@ -1,0 +1,22 @@
+# secrets
+.env
+
+# akuki's memory (local, not shared)
+.akuki/
+*.db
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+*.egg-info/
+
+# borg fork -- own git repo with `upstream` -> TKasperczyk/borg.
+# It CANNOT be merged into this repo without losing the ability to fetch and
+# merge Tomek's dev branch, so it lives here as a nested repository instead.
+borg/
+
+# Akuki's tenant: borg.db, lancedb, locks, snapshots, experiment copies.
+# Changes every turn and gets cp -r'd for M1's three-arm internalization test.
+data/
