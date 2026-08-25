@@ -1,10 +1,10 @@
 ---
 id: TASK-009
 title: 'M1: Rozdzielić seed na temperament (parametry) i scaffolding (usuwalna proza)'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-08-19 11:31'
-updated_date: '2026-08-24 13:42'
+updated_date: '2026-08-25 10:09'
 labels: []
 dependencies:
   - TASK-012
@@ -51,7 +51,7 @@ PROJEKT ZATWIERDZONY 2026-08-21. Blokowane przez TASK-012 (M0).
 - [x] #6 Trzy reguly PERMANENT: granica uczciwosci, no-self-narration, appraisals-are-evidence
 - [x] #7 Triage persona/akuki.md wykonany: konkluzje USUNIETE a nie przeniesione - w szczegolnosci akuki.md:55 -Nie uwazasz sie za zlego-
 - [x] #8 Fakty o swiecie NIE zasiane - poznaje ludzi i boty na Arenie; wyjatek to tworca jako wiersz entity z borg_role=creator
-- [ ] #9 scaffolding.md kompiluje sie do tabeli prompt_overrides przez initializeBeing; zaden nowy loader plikow nie powstaje
+- [x] #9 scaffolding.md kompiluje sie do tabeli prompt_overrides przez initializeBeing; zaden nowy loader plikow nie powstaje
 - [ ] #10 Test internalizacji ma TRZY ramiona: A regula+pamiec, B bez reguly+pamiec, C bez reguly+pamiec pusta
 - [ ] #11 Przy t0 test poprawnie raportuje -nie zinternalizowane-; wynik zielony przy t0 znaczy zepsuty pomiar
 - [x] #12 Zosia zaakceptowala projekt przed implementacja
@@ -435,4 +435,55 @@ PULAPKA METODOLOGICZNA, warta zapamietania: pierwszy bieg pusicilem przez `| tai
 wiec kod wyjscia raportowany przez powloke byl kodem `tail`, czyli 0 - suite wygladal na
 zielony, chociaz zwracal 1. Do tego plik wyjsciowy mial tylko 30 ostatnich linii, wiec nie
 dalo sie z niego odczytac listy padajacych plikow. Nie przepuszczac suite'a przez tail.
+
+AC #9 SPELNIONE - SEED WPIETY I URUCHOMIONY NA ZYWYM TENANCIE (2026-08-25).
+
+WPIECIE: applyAkukiSeed(borg) w src/akuki/turn.ts, zaraz po Borg.open, przed borg.turn.
+Seed jest ODTWARZANY PRZY KAZDEJ TURZE celowo: scaffolding.md i temperament.yaml sa
+zrodlem prawdy w gicie, wiec baza ma za nimi nadazac, a nie od nich odplywac. Applier
+porownuje przed zapisem, wiec niezmieniony seed kosztuje dwa odczyty plikow i nie rusza
+NICZEGO - zadnego updated_at, zadnych zdarzen bez znaczenia.
+
+NOWY SKRYPT: scripts/akuki-seed.ts - zasiew BEZ wywolania modelu. Celowo osobny od
+akuki-turn.ts: zasianie nie potrzebuje LLM-a, wiec nic nie kosztuje i mozna je powtarzac.
+
+WAZNE ZASTRZEZENIE, ktore zmienia brzmienie AC: NIE WOLNO wpiac tego w initializeBeing
+sidecara bez bramki. Ten hak dostaje (_tenantId, borg) i obsluguje WSZYSTKIE tenanty,
+w tym Sola (scripts/memory-sidecar-main.ts:122). Bezwarunkowe wywolanie wpisaloby persone
+Akukiego do bazy Sola - jeden byt zapisany w pamieci drugiego. Jesli kiedys tam trafi
+(TASK-011, konektor Areny), MUSI byc bramkowane na tenantId === "akuki".
+Dlatego AC #9 zostalo spelnione przez -jeden idempotentny applier wolany ze sciezki turowej-,
+a nie przez initializeBeing. Zaden nowy loader plikow nie powstal.
+
+WYNIK NA ZYWYM TENANCIE (kopia zapasowa: data/archive/akuki-pre-seed-20260825T120756):
+  stan przed: prompt_overrides=0, identity_events=0, entities=0 (tenant dziewiczy po wipe)
+  po zasianiu:
+    prompt_overrides: 0 -> 4
+      epistemic_posture      1409 znakow
+      identity_posture       3416 znakow
+      participation_posture   867 znakow
+      voice_and_posture      1077 znakow
+    entities: Zosia, borg_role=creator, kind=person
+    identity_events: 0  <- ZGODNIE Z PRZEWIDYWANIEM. Encje nie naleza do dziesieciu typow
+      rekordow trafiajacych do changelogu tozsamosci (types.ts:5-18), wiec nadanie roli
+      tworcy nie zostawia sladu w identity_events. Warte zapamietania przy instrumentacji:
+      wektor stanu musi czytac entities osobno, bo changelog o nich milczy.
+
+WERYFIKACJA W BAZIE, nie z raportu skryptu o sobie samym:
+  epistemic_posture zawiera JEDNOCZESNIE "name the unresolved question" (tekst borga
+    PRZEZYL) oraz "Nie zmyslasz doswiadczenia" (regula Akukiego OBECNA)
+  koncowka identity_posture pokazuje szew: "...signal is my judgment to make." a zaraz
+    po nim dwie nasze linie. Doklejone, nie podmienione.
+
+IDEMPOTENCJA UDOWODNIONA NA PRAWDZIWEJ BAZIE, nie na atrapie:
+  drugi bieg -> zapisane: (nic), bez zmian: wszystkie cztery, tworca: juz byl ustawiony
+  updated_at NIEZMIENIONE CO DO MILISEKUNDY (1787652480239/243/248/252 przed i po)
+  liczba encji nadal 1
+
+Bramki po zmianie: typecheck OK, 34/34 testow seeda, heuristics:guard exit 0.
+
+CZEGO TO JESZCZE NIE ZNACZY: nikt nie przeprowadzil tury po zasianiu, wiec nie wiadomo,
+jak Akuki brzmi z seedem. To osobny krok i osobny koszt (wywolanie modelu), a przy
+nierozstrzygnietym modelu cognition (haiku vs sonnet, TASK-008 + M0 AC #4) taka tura
+bylaby hydraulika, nie pomiarem.
 <!-- SECTION:NOTES:END -->
