@@ -4,7 +4,7 @@ title: 'M0: Fork borga, tenant akuki, instrumentacja'
 status: In Progress
 assignee: []
 created_date: '2026-08-20 14:28'
-updated_date: '2026-08-24 14:02'
+updated_date: '2026-08-25 11:13'
 labels: []
 dependencies: []
 priority: high
@@ -532,4 +532,44 @@ o autodestrukcji, ktorego nie bylo widac inaczej.
 pnpm-lock.yaml i pnpm-workspace.yaml dodane do .gitignore forka (pierwsza zmiana
 w SLEDZONYM pliku forka - jedyny dotad rozjazd z upstreamem poza nowymi plikami).
 Kandydat do wyslania Tomkowi: jego repo ma ten sam problem.
+
+ZMIANA MODELU COGNITION: sonnet-5 -> opus-5 (decyzja Zosi, 2026-08-25).
+AC #4 nalezy czytac: cognition -> claude-opus-5. Reszta rol bez zmian.
+
+STAN DOSTEPNOSCI, zmierzony a nie zalozony (2026-08-25):
+  claude-opus-5     0/6 prob  -> proxy_error "No tokens available in pool" ORAZ rate_limit_error
+  claude-sonnet-5   0/6 prob  -> to samo
+  claude-haiku-4-5-20251001  DZIALA
+  GET /v1/models    -> "Endpoint not supported by this proxy"
+Czyli zamiana sonneta na opusa NIE odblokowuje niczego dzis - pula proxy Tomka jest
+wysycona na obu tierach jednakowo.
+
+KOREKTA WCZESNIEJSZEJ NOTATKI: zapisalem wczesniej, ze sonnet-5 i opus-5 "zwracaja
+No tokens available in pool", co czytalo sie jak TRWALA niedostepnosc. Zosia slusznie
+zakwestionowala - ta sesja Claude Code chodzi na Opusie 5 przez to samo proxy. Ten sam
+request daje DWA rozne bledy zaleznie od naglowka i chwili:
+  authorization: Bearer  -> proxy_error "No tokens available in pool"
+  x-api-key              -> rate_limit_error "All pool tokens are ..."
+To warunek PRZEJSCIOWY (wysycenie dzielonej puli), nie sciana. Dla eksperymentu na
+miesiace dzielona wysycona pula jest jednak krucha podstawa - wlasny klucz Zosi
+(TASK-008) pozostaje rozwiazaniem solidnym, tylko nie jedynym.
+
+WYMOG, KTORY JEST WAZNIEJSZY OD WYBORU TIERU - PRZYPIETY IDENTYFIKATOR MODELU.
+Kazde porownanie W CZASIE w tym projekcie stoi na zalozeniu "model sie nie zmienil".
+"claude-haiku-4-5-20251001" ma DATE w nazwie. "claude-opus-5" i "claude-sonnet-5" nie -
+nazwa bez daty moze z czasem wskazywac na inny snapshot, a wtedy odczyt t0 vs odczyt za
+trzy miesiace zmierzy PODMIANE MODELU i nikt tego nie zauwazy.
+
+MITYGACJA, tania i wystarczajaca: API ODSYLA identyfikator modelu w odpowiedzi
+(zweryfikowane na haiku: pole "model" w odpowiedzi = claude-haiku-4-5-20251001).
+Wiec kazdy odczyt ma zapisywac response.model, a NIE to, o co poprosilismy. Cicha
+podmiana staje sie wtedy widoczna po fakcie, zamiast uniewazniac pomiar w tajemnicy.
+Struktura ArmOutcome (src/akuki/internalization/verdict.ts) ma juz pole model - ma byc
+wypelniane wartoscia ZWROCONA przez API.
+
+KOSZT, odnotowany raz: zasada projektu zakazuje SLABEGO modelu, nie zakazuje
+nie-maksymalnego. Sonnet 5 jej nie lamie. Roznica miedzy tierami jest wiec glownie
+w koszcie, a ten sie kumuluje: sam test trzyramienny to 18 tur NA JEDEN ODCZYT, plus
+ruch na Arenie przez miesiace. Decyzja Zosi i jej budzet. Odwrocenie jest darmowe,
+dopoki nie ma ani jednego odczytu.
 <!-- SECTION:NOTES:END -->
