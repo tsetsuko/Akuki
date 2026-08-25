@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-08-25 11:40'
-updated_date: '2026-08-25 11:40'
+updated_date: '2026-08-25 14:37'
 labels: []
 dependencies:
   - TASK-008
@@ -134,7 +134,7 @@ z jawnym komentarzem "tymczasowe" plus zadaniem w backlogu na jego usuniecie.
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [ ] #1 Rozstrzygniete z Tomkiem: czy jest przewidywalna pojemnosc na opus/sonnet (osobny token, dzienny limit) - odpowiedz zapisana w tym tasku
-- [ ] #2 Rozstrzygniete: czy da sie dostac Play Root Certificate Authority i od kogo
+- [x] #2 Rozstrzygniete: czy da sie dostac Play Root Certificate Authority i od kogo
 - [ ] #3 Model cognition wybrany, OSIAGALNY i zweryfikowany realnym wywolaniem, nie zalozeniem
 - [ ] #4 Kazdy odczyt zapisuje response.model zwrocony przez API, nie ten wyslany w zadaniu
 - [ ] #5 Jesli uzyty wariant tymczasowy z przypieciem posrednika: ma jawny komentarz -tymczasowe- i osobne zadanie na usuniecie
@@ -204,4 +204,54 @@ ARGUMENT, KTOREGO WARTO UZYC, JESLI KTORAS PROSBA UTKNIE:
 rotacja, albo wylaczenie weryfikacji TLS na stale w procesie chodzacym miesiacami. Korzen to
 jeden plik i wtedy wszystko dziala standardowo."
 To brzmi jak prosba inzynierska, a nie jak niewygoda.
+
+DROGA B ODBLOKOWANA (2026-08-25). Korzen znaleziony, TLS dziala, model odpowiada.
+
+ODPOWIEDZ TOMKA, ktora to rozstrzygnela: "ten cert mozesz uzyskac z dowolnego repo wlacznie
+z cortex". Mial racje, a moje ustalenie z M0 bylo NIEPELNE - sprawdzilem magazyn systemowy,
+Firefox NSS i plik .p12 Zosi, ale NIE PRZESZUKALEM JEJ WLASNYCH REPOZYTORIOW.
+
+KORZEN LEZY W: /home/zosia/projects/ai/efman-classifier/certs/play-root-ca.crt
+  subject = issuer = CN = Play Root Certificate Authority   <- samopodpisany, czyli korzen
+  notBefore Aug 24 2016, notAfter Aug 24 2036
+(w cortexie go nie ma; jest w efman-classifier)
+
+TEST ROZSTRZYGAJACY, przebieg warstwa po warstwie:
+  Node BEZ korzenia                    UNABLE_TO_GET_ISSUER_CERT_LOCALLY
+  Node Z korzeniem, bez klucza         HTTP 401     <- TLS PRZESZEDL, stanelo na autoryzacji
+  curl --cacert, bez -k, bez klucza    HTTP 401 w 0.078s
+  Node Z korzeniem + klucz, /v1/models 22 modele
+  Node Z korzeniem + klucz, chat       model=qwen3-235b-a22b-instruct-2507
+                                       tresc="Tak, dzialam." (po polsku)
+                                       usage={prompt:28, completion:7}
+
+Czyli: NODE_EXTRA_CA_CERTS=<ten plik> i weryfikacja dziala normalnie. Zero wlasnego kodu TLS,
+zero NODE_TLS_REJECT_UNAUTHORIZED=0, zero przypinania odciskow. Wszystkie warianty obejsciowe
+z tabeli wariantow SA JUZ NIEPOTRZEBNE.
+
+borg obsluguje ten model poprawnie: max-tokens.ts:17 dopasowuje wzorcem
+/^(?:[^/]+\/)?qwen3(?:[-._].+)?$/, wiec generative-apis/qwen3-235b-a22b-instruct-2507 dostaje
+16384 tokenow wyjscia zamiast cichego fallbacku 8192.
+
+PULAPKA PO DRODZE, warta zapamietania: miedzy jednym sprawdzeniem a drugim ZERWAL SIE VPN.
+Objaw wygladal jak problem z certyfikatem, ale nim nie byl:
+  bez korzenia:  UNABLE_TO_GET_ISSUER_CERT_LOCALLY   (blad certyfikatu)
+  z korzeniem:   UND_ERR_CONNECT_TIMEOUT             (blad sieci)
+ZMIANA WARSTWY BLEDU byla sygnalem, ze certyfikat juz dziala. Diagnoza: ip -brief link show
+nie pokazywalo ZADNEGO interfejsu tunelu, a ip route get 172.18.43.220 szlo przez domowy
+router (192.168.1.1 dev wlp2s0). Procesy FortiClienta zyly (fctsched, confighandler, firewall),
+ale procesu vpn nie bylo. Po podniesieniu tunelu: trasa przez ppp0, HTTP 401 w 78 ms.
+
+CO MOWI TOMEK O DRODZE A: Sonnet 5 powinien dzialac niezaleznie od modelu subskrypcji, czy przez
+proxy, czy bezposrednio przez claude.ai; poprosil o konkretne bledy. Wazny szczegol dla niego:
+OBA komunikaty pochodza z WARSTWY PROXY, nie od Anthropica - "proxy_error" to jego typ bledu,
+a GET /v1/models zwraca "Endpoint not supported by this proxy".
+
+JEGO ZASTRZEZENIE DO DROGI B: male okno kontekstowe ich modeli. Do sprawdzenia z liczbami -
+prefiks statyczny promptu Akukiego zmierzony na ~2000 tokenow po zasianiu seeda, a qwen3-235b
+ma wg notatek M0 250k wejscia. Warto dopytac, czy chodzi mu o wejscie czy o wyjscie.
+
+JEGO WSKAZOWKA: na kratosie mozna utworzyc WLASNY klucz i zaznaczyc aif app access.
+Dzis uzywany jest klucz z pass cortex/llm-api-key (prefiks ai_3). Wlasny klucz dla Akukiego
+odseparowalby jego zuzycie od Cortexa - warte zrobienia niezaleznie od wyboru drogi.
 <!-- SECTION:NOTES:END -->
