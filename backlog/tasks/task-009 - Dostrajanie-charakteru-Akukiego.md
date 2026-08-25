@@ -4,7 +4,7 @@ title: 'M1: Rozdzielić seed na temperament (parametry) i scaffolding (usuwalna 
 status: In Progress
 assignee: []
 created_date: '2026-08-19 11:31'
-updated_date: '2026-08-25 10:09'
+updated_date: '2026-08-25 11:41'
 labels: []
 dependencies:
   - TASK-012
@@ -486,4 +486,29 @@ CZEGO TO JESZCZE NIE ZNACZY: nikt nie przeprowadzil tury po zasianiu, wiec nie w
 jak Akuki brzmi z seedem. To osobny krok i osobny koszt (wywolanie modelu), a przy
 nierozstrzygnietym modelu cognition (haiku vs sonnet, TASK-008 + M0 AC #4) taka tura
 bylaby hydraulika, nie pomiarem.
+
+BLOKADA AC #11 WYDZIELONA DO TASK-022 (2026-08-25).
+
+Odczyt t0 wymaga modelu cognition, na ktorym wolno prowadzic pomiar. Dzis takiego nie ma:
+opus i sonnet daja HTTP 503 przez aiproxy (0/6 prob kazdy), haiku dziala ale na stale lamaloby
+zasade -noworodek to nie glupi doroslzy-. Kratos ma modele skali czolowej, ale Node nie ma
+certyfikatu glownego. Pelna analiza obu drog, lancuch certyfikatow, tabela wariantow i dwa
+szkice wiadomosci: TASK-022.
+
+CO Z TEGO NIE JEST ZABLOKOWANE: AC #10, czyli sama mechanika testu trzyramiennego. Rdzen jest
+zbudowany i przetestowany (src/akuki/internalization/, 14 testow) i nie potrzebuje ani jednego
+wywolania modelu. Brakuje warstwy wykonawczej.
+
+WAZNE USTALENIE, ktore zdejmuje presje z wyboru modelu: odczyt t0 jest ODTWARZALNY.
+Przy t0 pamiec jest PUSTA we wszystkich trzech ramionach, a pusty tenant da sie zrobic od nowa
+w kazdej chwili. Czyli gdyby t0 powstalo na jednym modelu, a docelowy okazal sie inny,
+wystarczy zrobic trzy swieze katalogi i powtorzyc - nic nie przepada. Jedyne, czego odtworzyc
+sie nie da, to WYROSNIETA pamiec, a ta siedzi w zywym tenancie.
+Moja wczesniejsza sugestia, zeby ARCHIWIZOWAC katalogi t0, byla przekombinowana i jest
+niepotrzebna z tego wlasnie powodu.
+
+WYMOG PRZENIESIONY DO TASK-022 AC #4: kazdy odczyt zapisuje response.model ZWROCONY przez API,
+nie ten wyslany w zadaniu. Powod: "claude-opus-5" nie ma daty w nazwie, wiec moze z czasem
+wskazywac na inny snapshot - a wtedy t0 vs odczyt za trzy miesiace zmierzy podmiane modelu
+i nikt tego nie zauwazy.
 <!-- SECTION:NOTES:END -->
