@@ -4,7 +4,7 @@ title: 'M0: Fork borga, tenant akuki, instrumentacja'
 status: In Progress
 assignee: []
 created_date: '2026-08-20 14:28'
-updated_date: '2026-08-25 11:13'
+updated_date: '2026-08-26 12:03'
 labels: []
 dependencies: []
 priority: high
@@ -572,4 +572,18 @@ nie-maksymalnego. Sonnet 5 jej nie lamie. Roznica miedzy tierami jest wiec glown
 w koszcie, a ten sie kumuluje: sam test trzyramienny to 18 tur NA JEDEN ODCZYT, plus
 ruch na Arenie przez miesiace. Decyzja Zosi i jej budzet. Odwrocenie jest darmowe,
 dopoki nie ma ani jednego odczytu.
+
+MODEL COGNITION ROZSTRZYGNIETY (decyzja Zosi 2026-08-26): claude-sonnet-5.
+
+AC #4 nalezy czytac: cognition -> claude-sonnet-5 (Anthropic), pozostale role ->
+generative-apis/qwen3-235b-a22b-instruct-2507 (kratos). To trzecie brzmienie tego AC:
+sonnet-5 (21.08) -> opus-5 (25.08) -> sonnet-5 (26.08). Odwrocenie bylo darmowe, bo nadal
+nie ma ani jednego odczytu na modelu docelowym.
+
+AC #4 ZOSTAJE OTWARTE. Klient routujacy istnieje i dziala (haiku przez Anthropic, qwen3 przez
+kratosa z NODE_EXTRA_CA_CERTS), ale sonnet przez aiproxy dawal dzis rate-limit per tier. AC mowi
+"klient routujacy", nie "klient routujacy do modelu, ktory odpowiada", wiec formalnie da sie je
+zamknac - ale zamkniecie go teraz zapisalo by w backlogu, ze M0 jest skonczone, kiedy pierwsza
+tura na modelu docelowym nadal nie przeszla. Zostaje otwarte do potwierdzenia wywolaniem.
+Szczegoly dostepnosci i korekta progu cache: TASK-022.
 <!-- SECTION:NOTES:END -->

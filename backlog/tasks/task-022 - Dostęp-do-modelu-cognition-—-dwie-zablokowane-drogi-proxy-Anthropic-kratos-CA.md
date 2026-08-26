@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-08-25 11:40'
-updated_date: '2026-08-26 08:13'
+updated_date: '2026-08-26 12:44'
 labels: []
 dependencies:
   - TASK-008
@@ -301,4 +301,117 @@ istniec magazyn poswiadczen, ktorego nie zobaczylem (np. keyring).
 
 URUCHOMIONY CZEKACZ: petla probujaca sonneta co 90 s, do 60 prob (~90 min), konczaca sie
 w momencie, gdy model odpowie.
+
+DECYZJA ZOSI (2026-08-26): model cognition = claude-sonnet-5.
+
+Wybor zamkniety. Pozostale role bez zmian (generative-apis/qwen3-235b-a22b-instruct-2507 na kratosie).
+AC #3 nadal otwarte, bo wymaga POTWIERDZENIA REALNYM WYWOLANIEM, a sonnet przez aiproxy dzisiaj
+zwracal "All pool tokens are currently rate-limited for sonnet models". Decyzja jest podjeta, dostepnosc
+nie jest jeszcze potwierdzona - to dwie rozne rzeczy i nie wolno ich zlaczyc.
+
+KOREKTA PROGU CACHE - moja wczesniejsza analiza byla BLEDNA i przemawiala przeciw tej decyzji.
+
+CO TWIERDZILEM: "prefiks cacheowalny ma 2006 tokenow, prog Opusa to 4096, wiec cache jest no-opem,
+czyli koszt nie przemawia dzis za Anthropikiem". Zrodlem tej liczby byl komentarz w borgu:
+  src/cognition/deliberation/finalizer.ts:369-370
+  "the static prefix is currently ~1,845 estimated tokens, below Opus's 4,096-token cache minimum"
+
+CO JEST PRAWDA: minimalna dlugosc prefiksu cacheowalnego jest ROZNA DLA ROZNYCH MODELI i NIE JEST
+monotoniczna miedzy generacjami:
+  Claude Opus 5                      512 tokenow
+  Claude Sonnet 5, Opus 4.8          1024
+  Opus 4.7                           2048
+  Opus 4.6, Opus 4.5, Haiku 4.5      4096
+Komentarz w borgu mowi "Opus's" bez wersji i pochodzi ze Sprintu 9.9, czyli z czasow Opusa 4.6/4.5.
+Dla NICH 4096 jest poprawne. Dla Sonneta 5 prog to 1024.
+
+KONSEKWENCJA, ktora odwraca wniosek:
+  prefiks PRZED seedem M1  1684 tokenow  >  1024  -> cache dzialal JUZ WTEDY
+  prefiks PO   seedzie M1  2006 tokenow  >  1024  -> dziala nadal, z wieksza rezerwa
+Czyli na Sonnecie 5 cache prefiksowy NIE JEST no-opem i nigdy nim nie byl. Marker ttl:"1h"
+(finalizer.ts:377) jest ZYWY. Argument kosztowy przemawia ZA Anthropikiem, nie neutralnie.
+
+TO WZMACNIA DECYZJE ZOSI Z INNEGO POWODU, NIZ PODAWALEM. Ekonomia cache'u: odczyt kosztuje ~0.1x
+ceny wejscia, zapis 1.25x przy TTL 5 minut i 2x przy TTL 1 godziny. Progi oplacalnosci to odpowiednio
+dwa i trzy odczyty tego samego prefiksu. Byt chodzacy miesiacami przekracza je natychmiast. Sciezka
+OpenAI-compatible (kratos) nie ma cache W OGOLE - flattenSystem w src/llm/openai-compatible.ts:98-107
+wyrzuca cache_control przy sklejaniu blokow system, z komentarzem, ze nie ma odpowiednika w OpenAI.
+
+CZEGO NADAL NIE WIEM I CO TRZEBA ZMIERZYC, NIE ZALOZYC: czy aiproxy Tomka przepuszcza cache_control
+do Anthropica i czy odsyla usage.cache_read_input_tokens. Proxy jest w tej sciezce, wiec sam fakt,
+ze borg wysyla marker, nie dowodzi, ze cache powstaje. To jest dokladnie AC #1 z TASK-013.
+PRZEPOWIEDNIA DO SPRAWDZENIA: na claude-sonnet-5 przy dwoch turach pod rzad drugi odczyt pokaze
+cache_read_input_tokens > 0, w okolicy 2000. Zero znaczy albo proxy gubi marker, albo cos unieważnia
+prefiks miedzy turami.
+
+LEKCJA METODOLOGICZNA, ta sama co przy puli proxy dwa dni temu: wzialem komentarz w kodzie za dane
+o swiecie. Komentarz mowil prawde o modelu, ktory byl aktualny, kiedy go pisano, i nie mial powodu
+sie zaktualizowac. Liczby o cudzym API nalezy sprawdzac u zrodla, a nie czytac z komentarza we
+wlasnym repo - nawet gdy komentarz jest dobrze napisany i wyglada na swiezy.
+
+SPRAWDZENIE PONOWNE 2026-08-26, po decyzji o sonnecie. NADAL NIE DZIALA.
+
+  claude-sonnet-5             3/3 prob -> rate_limit_error "All pool tokens are currently
+                                        rate-limited for sonnet models."
+  claude-haiku-4-5-20251001   HTTP 200, tresc "dziala"
+Ten sam token i endpoint w obu przypadkach, wiec autoryzacja i siec sa sprawne - blokada jest
+na tierze sonneta.
+
+KOREKTA MOJEJ WCZESNIEJSZEJ OBSERWACJI NR 2 - wzorzec komunikatow NIE JEST stabilny.
+Zapisalem: "pierwsze zapytanie po przerwie -> No tokens available in pool, kazde kolejne ->
+szczegolowy per-tier. Powtorzone w czterech seriach z rzedu."
+Dzis pierwsza proba po ponad godzinie ciszy od razu dala wariant PER-TIER, i trzy nastepne tez.
+Czyli "cztery serie z rzedu" wystarczylo, zebym uznal wzorzec za regule, a piata seria go lamie.
+Do TASK-023 pasuje to jeden do jednego: cztery zgodne obserwacje to nie dowod wzorca, jesli
+nie ma zadnej proby falsyfikacji. Ta sama arytmetyka, ktora kaze robic powtorzenia w odczycie
+trzyramiennym, obowiazuje przy czytaniu bledow proxy.
+
+UBOCZNY POMIAR, WARTOSCIOWY DLA TASK-013 AC #1: odpowiedz haiku PRZESZLA przez proxy z pelnym
+obiektem usage, zawierajacym cache_creation_input_tokens ORAZ cache_read_input_tokens (oba 0 przy
+13 tokenach wejscia, czyli zgodnie z oczekiwaniem). Czyli aiproxy NIE obcina usage i licznik
+cache'u do nas dociera. To polowa AC #1: wiemy, ze zobaczymy wynik. Nadal NIE wiemy, czy proxy
+przepuszcza cache_control W ZADANIU - to sprawdzalne bez sonneta, prefiksem >= 4096 tokenow
+na haiku (jego prog to 4096), dwa razy pod rzad.
+
+NARZEDZIE: akuki/diag_model.py - diagnostyka dostepu do modelu cognition (2026-08-26).
+
+  python -m akuki.diag_model                      jednorazowo
+  python -m akuki.diag_model --watch 90            czekacz, jedna linia na probe
+  python -m akuki.diag_model --watch 90 --proby 60 czekacz z limitem
+  python -m akuki.diag_model --model X --kontrola Y
+
+POWOD, DLA KTOREGO TO NIE JEST CURL W PETLI: w tym tygodniu "sonnet nie dziala" znaczylo TRZY
+rozne rzeczy na trzech warstwach - brak korzenia CA (UNABLE_TO_GET_ISSUER_CERT_LOCALLY), zerwany
+tunel (UND_ERR_CONNECT_TIMEOUT) i wysycona pula (rate_limit_error). Skrypt nie odpowiada
+"dziala / nie dziala", tylko nazywa WARSTWE: config / dns / trasa / siec / tls / autoryzacja /
+limit / aplikacja / ok.
+
+MODEL KONTROLNY JEST CZESCIA POMIARU, nie ozdoba: bez niego nie da sie odroznic "zablokowany tier
+sonneta" od "zablokowane wszystko". Skrypt wola kontrole TYLKO wtedy, gdy model docelowy padl.
+
+KODY WYJSCIA (zeby dalo sie tego uzyc w petli i w CI):
+  0 model docelowy odpowiedzial
+  1 docelowy zablokowany, kontrolny odpowiada -> limit tieru, nie awaria
+  2 nic nie odpowiada -> siec albo autoryzacja
+  3 brak konfiguracji
+
+WYPISUJE model ZWROCONY przez API, nie zadany (AC #4), i oznacza rozbieznosc. Wypisuje tez
+usage z licznikami cache'u - TAKZE dla modelu kontrolnego, bo dopoki sonnet stoi, kontrola jest
+jedynym miejscem, gdzie widac, czy proxy te liczniki odsyla.
+LOG: dopisuje JSONL do data/diag/cognition-probe.jsonl. Pytanie brzmi "KIEDY wrocilo", a bez
+logu odpowiedz ginie razem z terminalem.
+NIE DOTYKA TENANTA: samo zapytanie HTTP, zaden borg, zaden zapis do pamieci. Koszt to
+kilkadziesiat tokenow wyjscia na probe.
+
+ZWERYFIKOWANY BIEGIEM, nie tylko typecheckiem: tryb jednorazowy -> kod 1, tryb --watch --proby 2
+-> kod 1, log JSONL zapisany. Token wykryty jako sha256 7c8545eb, czyli ten sam, ktory jest
+udokumentowany w tym zadaniu.
+
+NOWA OBSERWACJA Z BIEGU - KOD HTTP SIE ZMIENIL:
+  25.08 zapisalem dla sonneta i opusa: HTTP 503
+  26.08 skrypt raportuje:              HTTP 429, error.type=rate_limit_error
+429 jest kodem WLASCIWYM dla limitu (503 znaczy "usluga niedostepna"), wiec to wyglada na skutek
+poprawki Tomka. Warte podania mu wprost, bo prosil o konkretne bledy.
+Czas odpowiedzi na 429 waha sie od 604 ms do 3825 ms w tej samej serii. Odnotowane jako
+OBSERWACJA, bez wyjasnienia - z zewnatrz nie widac, czemu raz szybciej, raz wolniej.
 <!-- SECTION:NOTES:END -->

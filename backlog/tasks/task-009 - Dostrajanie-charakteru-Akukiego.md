@@ -4,7 +4,7 @@ title: 'M1: Rozdzielić seed na temperament (parametry) i scaffolding (usuwalna 
 status: In Progress
 assignee: []
 created_date: '2026-08-19 11:31'
-updated_date: '2026-08-25 11:41'
+updated_date: '2026-08-26 12:03'
 labels: []
 dependencies:
   - TASK-012
@@ -511,4 +511,32 @@ WYMOG PRZENIESIONY DO TASK-022 AC #4: kazdy odczyt zapisuje response.model ZWROC
 nie ten wyslany w zadaniu. Powod: "claude-opus-5" nie ma daty w nazwie, wiec moze z czasem
 wskazywac na inny snapshot - a wtedy t0 vs odczyt za trzy miesiace zmierzy podmiane modelu
 i nikt tego nie zauwazy.
+
+KOREKTA WNIOSKU O CACHE Z AC #14 (2026-08-26). Pomiar byl dobry, PROG byl zly.
+
+Zapisalem: "prog cache Opusa: 4096 -> NADAL PONIZEJ" i "M1 przesuwa prefiks z 41% do 49% progu;
+marker ttl:1h pozostaje no-opem". Liczba 4096 pochodzila z komentarza finalizer.ts:369-370, ktory
+mowi "Opus's 4,096-token cache minimum" bez podania wersji Opusa i pochodzi ze Sprintu 9.9.
+
+Minimalny prefiks cacheowalny jest ROZNY DLA MODELU: Opus 5 - 512, Sonnet 5 i Opus 4.8 - 1024,
+Opus 4.7 - 2048, Opus 4.6 / 4.5 / Haiku 4.5 - 4096. Wartosc 4096 jest poprawna dla Opusa 4.6/4.5,
+czyli dla modelu aktualnego w chwili pisania komentarza. Dla wybranego Sonneta 5 prog to 1024.
+
+WIEC ODCZYTY Z AC #14 CZYTA SIE ODWROTNIE:
+  przed seedem  1684 tokenow  =  164% progu Sonneta 5
+  po   seedzie  2006 tokenow  =  196% progu
+Cache prefiksowy jest AKTYWNY w obu stanach. Prawdziwy wniosek nie jest "M1 nie wlacza cache'u",
+a "cache byl juz wlaczony przed M1, a M1 poszerzyl zapas nad progiem o 322 tokeny". Pytanie
+"czy proza przekroczy prog" bylo zle postawione od poczatku - prefiks byl nad progiem juz
+na golym borgu.
+
+CO Z TEGO ZOSTAJE PRAWDA I JEST NADAL WAZNE: rozklad przyrostu na bloki. Z 454 dodanych tokenow
+tylko 322 wpadaja w region cacheowalny, bo participation_posture (+132) jest POZA
+cacheable_static_prefix (prompt-surface-registry.ts:70-141). To znaleziska nie rusza - dotyczy
+tego, GDZIE lezy tresc, nie tego, jaki jest prog.
+
+AC #14 mozna teraz zamknac jako zmierzone, ale z odwrotna konkluzja niz zapisana. Weryfikacja
+koncowa nalezy do TASK-013 AC #1: cache_read_input_tokens > 0 przy powtarzanych turach na
+Sonnecie 5. Dopoki tego nie widzimy, wiemy tylko, ze prefiks jest wystarczajaco dlugi - nie, ze
+proxy Tomka przepuszcza cache_control i odsyla licznik.
 <!-- SECTION:NOTES:END -->
