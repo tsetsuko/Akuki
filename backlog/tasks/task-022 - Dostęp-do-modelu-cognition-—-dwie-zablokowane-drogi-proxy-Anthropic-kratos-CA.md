@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-08-25 11:40'
-updated_date: '2026-08-25 14:37'
+updated_date: '2026-08-26 08:13'
 labels: []
 dependencies:
   - TASK-008
@@ -254,4 +254,51 @@ ma wg notatek M0 250k wejscia. Warto dopytac, czy chodzi mu o wejscie czy o wyjs
 JEGO WSKAZOWKA: na kratosie mozna utworzyc WLASNY klucz i zaznaczyc aif app access.
 Dzis uzywany jest klucz z pass cortex/llm-api-key (prefiks ai_3). Wlasny klucz dla Akukiego
 odseparowalby jego zuzycie od Cortexa - warte zrobienia niezaleznie od wyboru drogi.
+
+KOREKTA MOJEGO WNIOSKU O PRZYCZYNIE (2026-08-26). Bylem w bledzie.
+
+CO NAPISALEM 2026-08-25, jawnie oznaczajac jako wnioskowanie a nie pomiar:
+  "limity subskrypcji Claude sa per tier (...) najprawdopodobniejszym konsumentem tej pojemnosci
+  sa dlugie sesje Claude Code na Opusie, czyli praca nad tym wlasnie projektem"
+
+CO MOWI TOMEK PO ZAJRZENIU W LOGI:
+  przyczyna byla po stronie ANTHROPICA - Overloaded. Proxy probowalo przejsc przez wszystkie
+  tokeny w puli, kazdy zwracal blad, wiec kazdy zostal oznaczony jako Cooldown, i dlatego
+  zwracalo "No tokens available in pool".
+
+Czyli: pomiary byly poprawne, WYJASNIENIE nie. Nie chodzilo o zjadanie puli przez sesje CLI,
+tylko o kaskade z gory. Lekcja: przy pomiarze z zewnatrz widac SKUTEK, a przyczyne widac
+w logach po stronie uslugi - i wniosek o przyczynie nalezalo zostawic jako pytanie do Tomka,
+a nie jako najprawdopodobniejsza hipoteze.
+
+STAN PO POPRAWCE TOMKA - SPRAWDZONY 2026-08-26 09:21 i 10:12, NADAL NIE DZIALA:
+  claude-sonnet-5  "All pool tokens are currently rate-limited for sonnet models.
+                    Please try again later or switch models."
+  claude-opus-5    "All pool tokens are currently rate-limited for opus models. ..."
+  claude-haiku-4-5-20251001  DZIALA
+
+TRZY NOWE OBSERWACJE, ktorych 25.08 nie mialem:
+
+1. PELNY KOMUNIKAT MOWI "for <tier> models" - proxy trzyma stan limitu PER TIER, a sonnet jest
+   zablokowany tak samo jak opus. Wczesniej widzialem tylko uciety wariant.
+
+2. DWA KOMUNIKATY UKLADAJA SIE WE WZORZEC, nie losowo:
+   pierwsze zapytanie po przerwie -> "No tokens available in pool"
+   kazde kolejne                  -> szczegolowy per-tier
+   Powtorzone w czterech seriach z rzedu.
+
+3. NAGLOWKI NIE ROBIA ROZNICY. Sprawdzone: x-api-key, authorization: Bearer,
+   +anthropic-beta: oauth-2025-04-20, +User-Agent: claude-cli/..., oraz oba naraz.
+   Wszystkie daja identyczny wynik, wiec to nie jest kwestia routingu po naglowku.
+
+ASYMETRIA DO WYJASNIENIA PRZEZ TOMKA (obserwacja, NIE hipoteza - nie powtarzam bledu):
+  sesja Claude Code jest OPUSEM 5 i dziala w tej chwili
+  ten sam token (sha256 7c8545eb), ten sam ANTHROPIC_BASE_URL
+  ~/.claude/settings.json nie ma zadnego nadpisania env, nie znalazlem pliku poswiadczen
+  a surowe API na tym samym tokenie dostaje "all pool tokens rate-limited for opus"
+Czego NIE WIEM: czy sesja na pewno idzie przez to proxy. Nie znalazlem nadpisania, ale moze
+istniec magazyn poswiadczen, ktorego nie zobaczylem (np. keyring).
+
+URUCHOMIONY CZEKACZ: petla probujaca sonneta co 90 s, do 60 prob (~90 min), konczaca sie
+w momencie, gdy model odpowie.
 <!-- SECTION:NOTES:END -->
