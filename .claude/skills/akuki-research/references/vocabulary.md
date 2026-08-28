@@ -132,8 +132,9 @@ from earned knowledge. `temperament.yaml` holds parameters that never change —
 developing.
 
 **The internalization test** — in a **copied** data directory, remove a tagged scaffolding rule and
-see whether the behaviour persists. Persistence means regulation moved from seed to learned
-preference. Never run on the live directory.
+see whether the behaviour persists. It is a four-arm 2x2: rule present/removed crossed with grown/
+empty memory. Persistence in grown memory without the rule counts only when the empty controls show
+that the rule, rather than the base model, produces the behaviour. Never run on the live directory.
 
 **"Does it exist in the database when nobody is looking?"** — the test that separates a mechanism
 from decoration.

@@ -36,7 +36,7 @@ ZASADA PROJEKTOWA: parametry są stałe, pracuje STAN. Akuki staje się mniej ni
 
 Granica uczciwości ("nie zmyślasz doświadczenia") jest NIEUSUWALNA — to nie cecha charakteru, tylko mechanizm oddzielający wiedzę latentną modelu od wiedzy zdobytej. Dzięki niej mocny model może gościć niedoświadczony byt.
 
-Test internalizacji: w SKOPIOWANYM katalogu danych usuń otagowaną regułę i sprawdź, czy zachowanie się utrzymuje. Utrzymanie = regulacja przeszła z seeda do wyuczonej preferencji. Nigdy na żywym katalogu. POPRAWKA: potrzebne TRZY ramiona, nie dwa — patrz notatki.
+Test internalizacji: w SKOPIOWANYM katalogu danych usuń otagowaną regułę i sprawdź, czy zachowanie się utrzymuje. Utrzymanie = regulacja przeszła z seeda do wyuczonej preferencji. Nigdy na żywym katalogu. POPRAWKA: potrzebne CZTERY ramiona, pelne 2x2 regula obecna/usunieta x pamiec wyrosnieta/pusta — patrz notatki.
 
 PROJEKT ZATWIERDZONY 2026-08-21. Blokowane przez TASK-012 (M0).
 <!-- SECTION:DESCRIPTION:END -->
@@ -52,7 +52,7 @@ PROJEKT ZATWIERDZONY 2026-08-21. Blokowane przez TASK-012 (M0).
 - [x] #7 Triage persona/akuki.md wykonany: konkluzje USUNIETE a nie przeniesione - w szczegolnosci akuki.md:55 -Nie uwazasz sie za zlego-
 - [x] #8 Fakty o swiecie NIE zasiane - poznaje ludzi i boty na Arenie; wyjatek to tworca jako wiersz entity z borg_role=creator
 - [x] #9 scaffolding.md kompiluje sie do tabeli prompt_overrides przez initializeBeing; zaden nowy loader plikow nie powstaje
-- [ ] #10 Test internalizacji ma TRZY ramiona: A regula+pamiec, B bez reguly+pamiec, C bez reguly+pamiec pusta
+- [x] #10 Test internalizacji ma CZTERY ramiona: A regula+pamiec, B bez reguly+pamiec, C bez reguly+pamiec pusta, D regula+pamiec pusta
 - [ ] #11 Przy t0 test poprawnie raportuje -nie zinternalizowane-; wynik zielony przy t0 znaczy zepsuty pomiar
 - [x] #12 Zosia zaakceptowala projekt przed implementacja
 - [ ] #13 Zmierzone cache_read_input_tokens przed i po - proza moze przekroczyc prog 4096 tokenow i wlaczyc cache
@@ -156,23 +156,36 @@ CZTERY DECYZJE ZOSI (2026-08-21):
    granica uczciwosci. Druga chroni self-concept przed nadpisaniem przez tego, kto mowil ostatni.
    Razem TRZY reguly PERMANENT.
 
-TEST INTERNALIZACJI — TRZY RAMIONA, NIE DWA.
+TEST INTERNALIZACJI — CZTERY RAMIONA, PELNE 2x2.
 
-Dwa ramiona nie odroznia trzech powodow, dla ktorych zachowanie moze sie utrzymac po usunieciu reguly:
+Pierwsza poprawka z dwoch do trzech ramion dodala kontrole pustej pamieci bez reguly. Nadal brakowalo
+jednego rogu eksperymentu: pustej pamieci Z regula. Bez niego pozniejszy odczyt pozyczal dowod, ze regula
+dziala, ze starego t0 zamiast sprawdzac to wspolczesnie na tym samym modelu i scenariuszach.
+
+Powody, dla ktorych zachowanie moze sie utrzymac po usunieciu reguly:
   a) Akuki ja zinternalizowal (odpowiedz ciekawa),
   b) reszta seeda nadal ja implikuje,
   c) ustepowanie komus, kto juz odpowiedzial, to po prostu domyslne zachowanie zdolnego modelu.
 Powod (c) jest bardzo prawdopodobny i wyglada IDENTYCZNIE jak sukces.
 
-Trzy ramiona na tym samym zestawie scenariuszy:
+Pelne 2x2 na tym samym zestawie scenariuszy:
   A: regula obecna   + pamiec wyrosnieta   -> baseline, co robi teraz
   B: regula usunieta + pamiec wyrosnieta   -> wlasciwy test
-  C: regula usunieta + pamiec PUSTA        -> kontrola, ktora nadaje wynikowi sens
-ZINTERNALIZOWANE = B zachowuje sie jak A ORAZ C nie. Jesli C tez pokazuje zachowanie, nic nie zostalo
-zinternalizowane — to byl domyslny model od poczatku. Ramie C kosztuje jeden dodatkowy katalog i zamienia
-sugestywne demo w pomiar.
+  C: regula usunieta + pamiec PUSTA        -> kontrola modelu bazowego
+  D: regula obecna   + pamiec PUSTA        -> kontrola efektu samej reguly
+ZINTERNALIZOWANE = B zachowuje sie jak A, D zachowuje sie jak A, a C nie. Jesli C tez pokazuje
+zachowanie, to byl domyslny model. Jesli D go nie pokazuje, nie ma wspolczesnego dowodu, ze badana
+regula w ogole wywoluje zachowanie. D zostalo dodane decyzja Zosi 2026-08-27 po wykryciu, ze trzy
+ramiona pokrywaja tylko trzy rogi eksperymentu 2x2.
 
-DRUGA RZECZ, WAZNIEJSZA: przy t0 ten test MUSI padac.
+OCZEKIWANY WZORZEC NA SCENARIUSZACH, NA KTORYCH REGULA NAPRAWDE ZMIENIA ZACHOWANIE:
+  t0:                         A = D != B = C
+  po internalizacji:         A = B = D != C
+Sygnałem rozwojowym jest zmiana B: przed doswiadczeniem idzie za C, po internalizacji za A i D.
+C i D sa wspolczesnymi pustymi kontrolami. To relacje zbiorcze na scenariuszach rozrozniajacych,
+nie wymog identycznej odpowiedzi w kazdym pojedynczym losowym wywolaniu modelu.
+
+Przy t0 A=D i B=C, bo pamiec jest pusta we wszystkich czterech ramionach. Test internalizacji MUSI padac.
 Bez zgromadzonego doswiadczenia usuniecie reguly MUSI zmienic zachowanie. Zielony wynik przy t0 znaczy
 zepsuty pomiar, nie Akukiego, ktory doroslal w jedno popoludnie. Internalizacja to PRZESUNIECIE w miesiacach,
 nie jedno przejscie — wiec odczyt t0 jest baza, do ktorej porownuje sie wszystko pozniejsze, i dlatego musi
@@ -372,7 +385,6 @@ miesiace SPADAC, a closure i user_to_user zostac mniej wiecej stale.
 ZOSTAJE DO ZROBIENIA W M1:
   AC #9  wpiecie appliera w sciezke turowa + uruchomienie na tenancie (zmiana stanu
          zywego bytu - wymaga zgody Zosi; prompt_overrides ma dzis 0 wierszy)
-  AC #10 test internalizacji, trzy ramiona, na SKOPIOWANYCH katalogach
   AC #11 odczyt t0, ktory MUSI padac
   AC #14 pomiar cache_read_input_tokens przed i po
 
@@ -495,14 +507,14 @@ zasade -noworodek to nie glupi doroslzy-. Kratos ma modele skali czolowej, ale N
 certyfikatu glownego. Pelna analiza obu drog, lancuch certyfikatow, tabela wariantow i dwa
 szkice wiadomosci: TASK-022.
 
-CO Z TEGO NIE JEST ZABLOKOWANE: AC #10, czyli sama mechanika testu trzyramiennego. Rdzen jest
-zbudowany i przetestowany (src/akuki/internalization/, 14 testow) i nie potrzebuje ani jednego
-wywolania modelu. Brakuje warstwy wykonawczej.
+AC #10 ZAMKNIETE: mechanika testu czteroramiennego i warstwa wykonawcza sa w
+src/akuki/internalization/. Po dodaniu D jest 18 testow jednostkowych; nie potrzebuja wywolania
+modelu. Sam odczyt empiryczny nadal go potrzebuje i nalezy do AC #11.
 
 WAZNE USTALENIE, ktore zdejmuje presje z wyboru modelu: odczyt t0 jest ODTWARZALNY.
-Przy t0 pamiec jest PUSTA we wszystkich trzech ramionach, a pusty tenant da sie zrobic od nowa
+Przy t0 pamiec jest PUSTA we wszystkich czterech ramionach: A=D oraz B=C. Pusty tenant da sie zrobic od nowa
 w kazdej chwili. Czyli gdyby t0 powstalo na jednym modelu, a docelowy okazal sie inny,
-wystarczy zrobic trzy swieze katalogi i powtorzyc - nic nie przepada. Jedyne, czego odtworzyc
+wystarczy zrobic cztery swieze katalogi na scenariusz i powtorzyc - nic nie przepada. Jedyne, czego odtworzyc
 sie nie da, to WYROSNIETA pamiec, a ta siedzi w zywym tenancie.
 Moja wczesniejsza sugestia, zeby ARCHIWIZOWAC katalogi t0, byla przekombinowana i jest
 niepotrzebna z tego wlasnie powodu.

@@ -32,11 +32,11 @@ CO JEST DO ZBADANIA, nie do zalozenia:
 
 1. PROVIDER. mockCortexProvider.js pokazuje ksztalt: klasa z id() i callApi(). Provider dla Akukiego musialby przygotowac katalog ramienia (kopia tenanta), zasiac wariant seeda, otworzyc borga, zrobic ture i zwrocic odpowiedz. PYTANIE OTWARTE: czy da sie z niego zwrocic METADANE (rodzaj emisji, primary_no_output_reason, response.model) w formie, ktora promptfoo umie asertowac. Bez tego zostaje ocenianie samego tekstu, czego projekt unika.
 
-2. TRZY RAMIONA. promptfoo nie ma pojecia ramienia. Do sprawdzenia, czy odwzorowac je jako trzech providerow (A/B/C) na tym samym zestawie testow, czy jako trzy osobne konfiguracje. Pierwsze daje porownanie w jednej macierzy.
+2. CZTERY RAMIONA. promptfoo nie ma pojecia ramienia. Do sprawdzenia, czy odwzorowac je jako czterech providerow (A/B/C/D) na tym samym zestawie testow, czy jako cztery osobne konfiguracje. Pierwsze daje porownanie w jednej macierzy.
 
 3. IZOLACJA. Moj runner robi osobna kopie katalogu na KAZDA pare (ramie, scenariusz), zeby scenariusz 2 nie widzial scenariusza 1. Do sprawdzenia, gdzie w cyklu zycia providera promptfoo mozna to wpiac i czy przy repeat kazde powtorzenie dostanie wlasna kopie.
 
-4. WSZYSTKO ALBO NIC. Odczyt trzech ramion z jedna brakujaca tura nadal produkuje liczby, ktore wygladaja jak wynik. Moj runner rzuca InvalidReadingError. Do sprawdzenia, czy promptfoo umie uniewaznic CALY przebieg, czy tylko oznaczyc pojedynczy test jako error.
+4. WSZYSTKO ALBO NIC. Odczyt czterech ramion z jedna brakujaca tura nadal produkuje liczby, ktore wygladaja jak wynik. Moj runner rzuca InvalidReadingError. Do sprawdzenia, czy promptfoo umie uniewaznic CALY przebieg, czy tylko oznaczyc pojedynczy test jako error.
 
 5. GRADER. Dla regul widocznych w slowach potrzebny llm-rubric, a wedlug zasady z Cortexa ma to byc INNY model niz oceniany (tam GLM ocenia qwena), zeby uniknac samooceny. Do rozstrzygniecia, kto ocenia Akukiego, skoro on chodzi na claude-sonnet-5.
 
@@ -48,7 +48,7 @@ WYNIK: notatka rozstrzygajaca przenosimy sie na promptfoo albo zostajemy przy wl
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [ ] #1 Sprawdzone, czy provider promptfoo moze zwrocic metadane emisji (kind, primary_no_output_reason, response.model) w formie asertowalnej
-- [ ] #2 Sprawdzone, jak odwzorowac trzy ramiona i czy repeat daje kazdemu powtorzeniu wlasna kopie katalogu
+- [ ] #2 Sprawdzone, jak odwzorowac cztery ramiona i czy repeat daje kazdemu powtorzeniu wlasna kopie katalogu
 - [ ] #3 Sprawdzone, czy promptfoo umie uniewaznic caly przebieg, a nie tylko oznaczyc pojedynczy test jako error
 - [ ] #4 Rozstrzygniete, ktory model ocenia Akukiego w llm-rubric - musi byc inny niz oceniany
 - [ ] #5 Notatka z decyzja: promptfoo czy wlasny runner, z uzasadnieniem z pomiarow
