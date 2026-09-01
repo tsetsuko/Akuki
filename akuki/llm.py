@@ -12,7 +12,7 @@ import os
 
 import anthropic
 
-DEFAULT_MODEL = "claude-opus-5"
+DEFAULT_MODEL = "claude-opus-4-8"
 
 
 class LlmError(RuntimeError):

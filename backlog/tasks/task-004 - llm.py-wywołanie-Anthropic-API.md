@@ -12,7 +12,7 @@ ordinal: 4000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-claude-opus-5, max_tokens 1024, effort low, bez streamingu. Błędy API łapane od najbardziej szczegółowego.
+claude-opus-4-8, max_tokens 1024, effort low, bez streamingu. Błędy API łapane od najbardziej szczegółowego.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
