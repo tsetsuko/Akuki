@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-08-25 11:40'
-updated_date: '2026-09-01 12:24'
+updated_date: '2026-09-04 09:23'
 labels: []
 dependencies:
   - TASK-008
@@ -462,3 +462,23 @@ requestu) ustalona osobno przez Zosie; ten pomiar jej nie dotyczy.
 Otwarte ACs (#1 typ firmowego dostepu, #5 osobny limit, #7 jawne budzety) to decyzje
 Tomka/admina, nie kod.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: claude
+created: 2026-09-04 09:23
+---
+ZAMKNIĘTE JAKO NIEAKTUALNE 2026-09-04 — częściowo zrobione, reszta bezprzedmiotowa. Zadanie postawiło pytanie „dwie zablokowane drogi do modelu cognition: proxy Anthropic albo kratos CA”. Odpowiedź zapadła: droga A wygrała, droga B jest porzucona decyzją z 2026-09-02, nie rozwiązana.
+
+Stan kryteriów w chwili zamknięcia:
+- #2, #3, #4, #6 spełnione realnym wywołaniem (pomiar 2026-09-01: claude-opus-4-8 przez aiproxy, 16 wywołań, exit 0, response.model zgodny na każdym).
+- #1 (przewidywalna pojemność na opus/sonnet od Tomka) — nie zamknięte, ale to decyzja Tomka/administratora o limitach, która żyje już w TASK-013 AC #4 i #5. Nie potrzebuje osobnego zadania o „dwóch zablokowanych drogach”.
+- #5 (wariant tymczasowy z przypięciem pośrednika ma mieć komentarz „tymczasowe” i osobne zadanie na usunięcie) — bezprzedmiotowe, bo nie użyto wariantu tymczasowego; aiproxy jest zatwierdzoną drogą produkcyjną, nie obejściem.
+- #7 (odblokowanie TASK-009 AC #11) — technicznie odblokowane; sam odczyt t0 został wydzielony do TASK-030.
+
+Droga B (qwen3 przez Kratosa) jest zamknięta także w kodzie: borg/src/akuki/smoke-config.ts:17-19 trzyma FORBIDDEN_KRATOS_HOSTS, a smoke-config.ts:103 odrzuca te hosty w trybie AKUKI_ANTHROPIC_ONLY=1. Pomiary certyfikatu i łańcucha TLS z tego zadania zostają w treści jako zapis, nie jako praca do dokończenia.
+
+Siostrzane zadanie infrastrukturalne TASK-025 zamknięte tego samego dnia z tego samego powodu.
+---
+<!-- COMMENTS:END -->

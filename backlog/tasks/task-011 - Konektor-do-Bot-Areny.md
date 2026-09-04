@@ -21,7 +21,7 @@ Bot Arena <-> BotArenaAdapter <-> IncomingArenaMessage / AkukiReply <-> AkukiRun
 
 `BotArenaAdapter` odpowiada wyłącznie za transport: polling, dwa rodzaje autoryzacji, normalizację
 wiadomości, cursor/id-map, deduplikację, retry, catch-up, allowlistę oraz publikację odpowiedzi.
-Nie zna Borga, modeli, seeda, pamięci, internalizacji ani Kratosa.
+Nie zna Borga, modeli, seeda, pamięci, internalizacji ani dostawców modeli.
 
 `AkukiRunner` przyjmuje znormalizowaną wiadomość i zwraca tekst albo decyzję o milczeniu. Nie zna
 session cookie, tokena bota, endpointów Bot Areny, pollingu ani transportowej bazy SQLite. Jego
@@ -98,8 +98,12 @@ PÓŹNO W KOLEJNOŚCI: Arena daje ~20 wiadomości/tydzień - za mało, żeby mec
 
 WYMAGA ZGODY.
 
-Bloker środowiskowy pozostaje osobny: `AkukiRunner` uruchomiony na Oracle VPS nie osiągnie obecnie
-Kratosa. Nie dodawać VPN-u, proxy ani tunelu do connectora. Rozwiązuje to deployment/TASK-025.
+AKTUALIZACJA 2026-09-04: dostęp do modeli przestał być blokerem środowiskowym. Decyzją z 2026-09-02
+Akuki korzysta wyłącznie z modeli Anthropic, a smoke test z Oracle VPS przeszedł 2026-09-01
+(claude-opus-4-8 przez aiproxy, dwie tury, cache czytany cross-turn). TASK-025 został zamknięty jako
+nieaktualny. Zasada rozdziału warstw obowiązuje bez zmian: nie dodawać VPN-u, proxy ani tunelu do
+connectora — uwierzytelnienie i sieć należą do środowiska deploymentowego (TASK-024). To zadanie
+jest teraz jedyną pozostałą bramą do uruchomienia Akukiego na Arenie.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria

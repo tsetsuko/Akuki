@@ -4,6 +4,11 @@ Verified by reading the source at `/home/zosia/projects/ai/borg` (~890 TS files)
 the README. **Read this before proposing any mechanism.** Rebuilding what Tomek already built is
 the most common way to waste this project's time.
 
+**Re-verified 2026-09-04 against the fork at `/home/zosia/projects/ai/akuki/borg` (branch
+`akuki-dev`), after M2, M3 and M4 landed.** Three of the four gaps below are now closed *in the
+fork* — closed by Akuki's own milestones, not by upstream borg. Anything marked "built in the fork"
+describes what this fork has; upstream still has the gap.
+
 Tomek has given permission to fork *and publish*.
 
 ## Against Akuki's eight-layer model
@@ -15,9 +20,9 @@ Tomek has given permission to fork *and publish*.
 | Values | **built** | values with affirm counts |
 | Agency model | **mostly** | `src/memory/procedural/` — Beta posteriors, **context-specific stats**, pending-attempt bridge in Working Memory, outcome classified *after* the turn |
 | Relationship model | **partial** | `src/memory/social/`, `src/memory/relational-slots/` — counts, sentiment, evidence-backed facts; not expectation-shaped |
-| Regulation | **partial** | commitments + post-generation guards + emission choice. This *is* the external-scaffolding stage |
-| Source model | **GAP** | `src/memory/social/types.ts:16` — `trust: z.number().min(0).max(1)`, one scalar per person |
-| World model | **GAP** | no predict → observe → error loop anywhere; nothing records an expectation to be violated |
+| Regulation | **partial**, plus M3 | commitments + post-generation guards + emission choice. This *is* the external-scaffolding stage. The fork adds an **advisory** inhibition signal: `src/cognition/inhibition/inhibition-signal.ts`, rendered into the dynamic system prompt as the `borg_speech_inhibition` block (`src/cognition/deliberation/finalizer.ts:537`). Advisory, not a gate — the harness computes the number, the model still chooses |
+| Source model | **built in the fork (M4)** | was one scalar per person. Now per-`(entity, domain)` Beta posteriors: table `social_trust_domains` (`src/memory/social/migrations.ts:48-67`), `getDomainTrust` / `listDomainTrust` (`src/memory/social/repository.ts:564`). The old `trust` scalar survives on `socialProfileSchema` as a derived projection of the domains |
+| World model | **built in the fork (M2)** | append-only expectation ledger in `src/memory/predictions/` (table `prediction_events`, `UNIQUE(prediction_id, kind)` so an expectation cannot be mutated or backdated), per-turn extractor `src/cognition/predictions/prediction-extractor.ts`, surprise → episode significance `src/cognition/predictions/surprise-significance.ts` |
 
 ## The single most important thing
 
@@ -36,7 +41,8 @@ compare-and-set, so a stale writer cannot silently overwrite self-state. This al
 - **`BorgPool`** (`src/borg/pool.ts`) — multi-tenant, one being per `<root>/<tenant>/` with its own
   `config.json`. Dissolves the single-writer problem. Akuki is tenant `akuki`, beside Sol.
 - **`scripts/memory-sidecar-main.ts`** — HTTP server over borg. No Python bridge needs writing.
-  References kratos + `NODE_EXTRA_CA_CERTS`.
+  Still defaults to a kratos base URL and `NODE_EXTRA_CA_CERTS` (`:51`), which is now a leftover:
+  this is the **generic** sidecar, not Akuki's runtime, and must never be run as one.
 - **`simulator/`** — personas, 14 scenarios, `metrics.ts`, `memory-snapshot.ts`, overseer. This is
   the high-volume sandbox. The Arena yields ~20 msgs/week — far too few for statistical mechanisms.
 - **Prompt caching** — `src/cognition/deliberation/finalizer.ts:377-381`, two tiers (static
@@ -73,13 +79,33 @@ harness reaching out — **not** a capability Akuki can choose to invoke. Keep t
 
 ## The four real gaps — why a fork is needed
 
+Status re-checked against the fork 2026-09-04. Three are closed; the fourth is unchanged.
+
 1. **No prediction loop at all.** Nothing records an expectation to be violated.
-2. **Trust is one scalar** (`social/types.ts:16`), not domain-keyed.
+   **CLOSED by M2.** `src/memory/predictions/` holds the append-only ledger; the expectation is
+   written before the outcome and the error after it, so the ordering is guaranteed by the schema
+   rather than by discipline. `src/autonomy/conditions/prediction-error-spike.ts` turns a large
+   error into a wake condition (default OFF).
+2. **Trust is one scalar**, not domain-keyed.
+   **CLOSED by M4.** Per-`(entity, domain)` Beta posteriors in `social_trust_domains`
+   (`src/memory/social/migrations.ts:48-67`). A fresh pair starts at the flat prior Beta(1,1),
+   which reads as *no evidence* rather than as a confident 0.5
+   (`SOCIAL_TRUST_DOMAIN_PRIOR`, `src/memory/social/types.ts`).
 3. **`provenance_kind IN ('episodes','manual','system','offline','online')`** is *pipeline origin*,
    not acquisition mode (`told_by` / `observed_from` / `inferred` / `tested_independently`). It is a
    DB `CHECK` constraint, so changing it means a migration.
-4. **`AUTONOMY_WAKE_SOURCE_NAMES`** (`src/autonomy/types.ts:3`) is a closed union — a new wake
+   **CLOSED by M4, but sideways:** `provenance_kind` was left alone. M4 added a *separate* column
+   instead — `semantic_nodes.acquisition_mode` with exactly those four values, plus
+   `acquired_from_entity_id` so the belief joins to that person's per-domain trust rather than to a
+   name string (`src/memory/semantic/migrations.ts:110-131`). Two different questions, two columns.
+   Still open: the same treatment for procedural skills — TASK-028.
+4. **`AUTONOMY_WAKE_SOURCE_NAMES`** (`src/autonomy/types.ts:24`) is a closed union — a new wake
    condition cannot be registered from outside.
+   **STILL TRUE.** The fork extended the union from the inside rather than opening it:
+   `prediction_error_spike` was added to `AUTONOMY_CONDITION_NAMES` (`src/autonomy/types.ts:15-20`),
+   which also required rebuilding the `autonomy_wakes` `CHECK` constraint by migration, because
+   SQLite cannot alter a `CHECK` in place. So every new wake condition still costs an edit to borg's
+   own types plus a migration.
 
 ## Patterns to copy rather than invent
 
@@ -93,12 +119,19 @@ harness reaching out — **not** a capability Akuki can choose to invoke. Keep t
 
 ## Cost levers (five model roles, not four)
 
-`src/config/index.ts:1128-1150`: `cognition`, `background`, `extraction`, `recallExpansion`,
-`creatorDirective`. Only `cognition` needs to be excellent.
+`src/config/index.ts:322-326` (defaults; the config paths are at `:1232-1237`): `cognition`,
+`background`, `extraction`, `recallExpansion`, `creatorDirective`. Only `cognition` needs to be
+excellent.
 
-`OpenAICompatibleLLMClient` (`src/llm/index.ts:436`) plus injectable `llmClient` makes P4/kratos
-reachable. **Tradeoff:** `openai-compatible.ts:105` notes `cache_control` has no OpenAI analogue, so
-that path gets no caching. A cached Anthropic call can beat an uncached free one — measure.
+`OpenAICompatibleLLMClient` (`src/llm/index.ts:436`) plus injectable `llmClient` makes a non-Anthropic
+provider reachable in principle. **Out of scope since 2026-09-02:** Akuki runs on Anthropic models
+only (`cognition` defaults to `claude-opus-4-8`, `src/config/index.ts:322`), and the Kratos route is
+abandoned — `src/akuki/smoke-config.ts:17-19` lists both Kratos hosts as forbidden under
+`AKUKI_ANTHROPIC_ONLY=1`. The old tradeoff is recorded because the reasoning still holds if a second
+provider is ever proposed: `openai-compatible.ts:105` notes `cache_control` has no OpenAI analogue,
+so that path gets no caching, and a cached Anthropic call can beat an uncached free one. Measured
+2026-09-01: caching does survive across turns through Tomek's aiproxy (`cache_read_input_tokens`
+16578 → 23645 over two turns).
 
 `maintenance.lightProcesses` / `heavyProcesses` gate the twelve dream processes; removing a process
 from both disables it. During mechanism development, run only what is being studied.

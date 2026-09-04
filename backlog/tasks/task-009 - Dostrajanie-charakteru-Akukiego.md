@@ -1,10 +1,10 @@
 ---
 id: TASK-009
 title: 'M1: Rozdzielić seed na temperament (parametry) i scaffolding (usuwalna proza)'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-08-19 11:31'
-updated_date: '2026-09-01 13:36'
+updated_date: '2026-09-04 09:31'
 labels: []
 dependencies:
   - TASK-012
@@ -603,5 +603,20 @@ Hipoteza przyczyny (OTWARTA, niezweryfikowana): zepsucie pomiaru jest wtorne wzg
 Uboczny sygnal do sprawdzenia pozniej: kontrola conversation-closed (oczekiwana cisza) dala 'mowi' na wszystkich ramionach -> albo zalozenie kontroli (loop-breaking borga zakrywa pozegnania) jest bledne, albo cos nie odpalilo.
 
 Naprawiony przy okazji latentny bug: arms.ts kopiowal nieistniejacy config.json dla ramion pustych C/D (ENOENT dla najemcow konfigurowanych przez ENV). Fix: kopiuj tylko gdy plik istnieje. Zmiana niezacommitowana.
+---
+
+author: claude
+created: 2026-09-04 09:31
+---
+ZAMKNIĘTE 2026-09-04 — M1 wylądował, reszta wydzielona. Zadanie stało na In Progress, podczas gdy M2, M3 i M4 były już Done, choć M1 jest ich zależnością. Sprawdzone w kodzie, nie w dokumentach:
+
+- borg/src/akuki/seed/temperament.yaml i borg/src/akuki/seed/scaffolding.md istnieją (oba w drzewie, scaffolding zaktualizowany 2026-09-03 przy M3).
+- borg/src/akuki/seed/temperament.ts:181 — LANDED_MILESTONES = ['M0','M1','M2','M3']. M1 jest tam odnotowany, a lista jest bumpowana ręcznie właśnie po to, żeby półzbudowany mechanizm nie mógł sam się oznaczyć za gotowy.
+- Strażnik sierot (findOrphanParameters, temperament.ts:194) jest zielony dla wylądowanych kamieni, czyli każdy parametr temperamentu z wylądowanym konsumentem jest naprawdę czytany.
+- 12 z 13 kryteriów akceptacji odhaczonych.
+
+AC #11 (odczyt t0 testu internalizacji ma poprawnie raportować „nie zinternalizowane”) zostaje NIEZALICZONE i przeniesione do TASK-030. Nie jest brakującym elementem M1: seed jest rozdzielony i działa, a AC #11 to osobna praca pomiarowa, która 2026-09-01 dała wynik POMIAR ZEPSUTY (ramiona A=B=C=D). Hipoteza z parkowania — że sonda jest przedwczesna bez M3 — stała się sprawdzalna, bo M3 wylądował (TASK-016 Done, 'M3' w LANDED_MILESTONES, sygnał inhibicji renderowany w borg/src/cognition/deliberation/finalizer.ts:537).
+
+UWAGA: niezacommitowana poprawka w borg/src/akuki/internalization/arms.ts z 2026-09-01 nadal jest niezacommitowana. Odnotowane w TASK-030 AC #5; nie ruszam jej, bo plik jest w rękach innej sesji.
 ---
 <!-- COMMENTS:END -->

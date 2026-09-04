@@ -4,7 +4,7 @@ title: 'Weryfikacja kosztów: cache, role modeli, dream cycle'
 status: In Progress
 assignee: []
 created_date: '2026-08-20 14:28'
-updated_date: '2026-09-01 12:24'
+updated_date: '2026-09-04 10:36'
 labels: []
 dependencies: []
 priority: high
@@ -20,7 +20,7 @@ Budżet tokenów jest wspólny z zespołem, więc to twardy warunek, nie ozdoba.
 
 2. TANIE MODELE NA ROLE WOLUMENOWE. Pięć niezależnych ról (src/config/index.ts:1128-1150): cognition, background, extraction, recallExpansion, creatorDirective. Tylko cognition musi być doskonałe. extraction i recallExpansion chodzą bez przerwy i są mechaniczne.
 
-3. ŚCIEŻKA NIE-ANTHROPIC. borg eksportuje OpenAICompatibleLLMClient (src/llm/index.ts:436), llmClient jest wstrzykiwalny -> P4/kratos osiągalne (sidecar już wspomina kratos + NODE_EXTRA_CA_CERTS). UWAGA: openai-compatible.ts:105 mówi, że cache_control nie ma odpowiednika w OpenAI, więc ta ścieżka NIE MA cache. Cachowane wywołanie Anthropic może być tańsze niż niecachowane darmowe. Mierzyć, nie zgadywać.
+3. ŚCIEŻKA NIE-ANTHROPIC. NIEAKTUALNE od 2026-09-02: Akuki działa wyłącznie na modelach Anthropic, droga przez Kratosa jest porzucona (borg/src/akuki/smoke-config.ts:17-19 odrzuca oba hosty kratosa w trybie AKUKI_ANTHROPIC_ONLY=1). Punkt zostaje jako zapis rozumowania na wypadek, gdyby kiedyś wrócił drugi dostawca. borg eksportuje OpenAICompatibleLLMClient (src/llm/index.ts:436), llmClient jest wstrzykiwalny -> P4/kratos osiągalne (sidecar już wspomina kratos + NODE_EXTRA_CA_CERTS). UWAGA: openai-compatible.ts:105 mówi, że cache_control nie ma odpowiednika w OpenAI, więc ta ścieżka NIE MA cache. Cachowane wywołanie Anthropic może być tańsze niż niecachowane darmowe. Mierzyć, nie zgadywać.
 
 4. DREAM CYCLE to cichy koszt - dwanaście procesów offline, każdy woła LLM. maintenance.lightProcesses / heavyProcesses je bramkują; usunięcie z obu wyłącza. Na czas rozwoju mechanizmów włączone tylko to, co badane.
 
@@ -91,7 +91,7 @@ zatrzymania procesu.
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 cache_read_input_tokens niezerowe przy powtarzanych turach
-- [ ] #2 Role wolumenowe zmierzone: Anthropic z cache vs P4 bez cache
+- [ ] #2 Zmierzone zuzycie tokenow per rola na Anthropicu: input, output, cache-read i cache-creation osobno dla cognition, background, extraction, recallExpansion i creatorDirective
 - [ ] #3 Wyłączone procesy dream, które nie są badane
 - [ ] #4 Typ firmowego dostępu, właściciel limitu i wpływ na innych członków potwierdzone przez administratora
 - [ ] #5 Akuki ma osobny mierzalny limit albo udokumentowany bezpieczny udział w limicie
@@ -150,3 +150,43 @@ UWAGA na AC #6: tura i cache zmierzone, ale MAINTENANCE wciaz nie - AC #6 NIE za
 AC #2 (Anthropic z cache vs P4 bez cache) tez otwarte; pod decyzja Anthropic-only
 porownanie z kratosem moze byc bezprzedmiotowe.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: claude
+created: 2026-09-04 09:32
+---
+CO NAPRAWDĘ JEST ZROBIONE, stan na 2026-09-04 — żeby „In Progress” niosło informację. Status zostaje In Progress: część pomiarowa ruszyła, część organizacyjna nie.
+
+ZROBIONE:
+- AC #1 zamknięte pomiarem na VPS-ie 2026-09-01. Dwie identyczne w formie tury pod rząd, ta sama sesja i data-dir /var/lib/akuki/data/akuki-smoke, claude-opus-4-8 przez aiproxy. Tura 1: cache_read 16578, cache_creation 27818. Tura 2: cache_read 23645, cache_creation 8537. Spadek creation o 69% przy wzroście read o 43% wyklucza budowanie cache od zera w turze 2, czyli wpis przeżył między turami i proxy nie gubi cache_control.
+- AC #8 zamknięte: Tomek zatwierdził krótkotrwały eksperyment Anthropic-only i przyjął ryzyko szybszego wyczerpania limitów.
+- Punkt 1 opisu („cache już jest, nie zepsuć go”) potwierdzony w działaniu, nie tylko w kodzie.
+
+NIEZROBIONE I DLACZEGO:
+- AC #3 (wyłączone procesy dream, których nie badamy) — nie ruszone. Maintenance nadal domyślnie włączony, lightBudget i heavyBudget nadal null.
+- AC #6 (canary zmierzył turę, maintenance i cache przed 24/7) — tura i cache zmierzone, MAINTENANCE nie. AC zostaje otwarte.
+- AC #4, #5, #7, #9, #10 — to decyzje Tomka i administratora o typie dostępu, właścicielu limitu, jawnych budżetach i warunkach przerwania testu. Nie zależą od kodu i nikt ich jeszcze nie podjął.
+
+AC #2 STAŁO SIĘ BEZPRZEDMIOTOWE. Brzmi „role wolumenowe zmierzone: Anthropic z cache vs P4 bez cache”. Decyzją z 2026-09-02 droga przez Kratosa jest porzucona, więc nie ma czego porównywać — nie ma drugiej strony pomiaru. Zmierzona jest tylko strona Anthropic. Nie odhaczam tego boksa, bo pomiar porównawczy nie został wykonany; do decyzji Zosi, czy AC #2 skreślić, czy przepisać na „zmierzone zużycie per rola na Anthropicu”.
+
+TASK-022 i TASK-025, do których ten task się odwoływał przez wariant kratosowy, zostały 2026-09-04 zamknięte jako nieaktualne i zarchiwizowane.
+---
+
+author: claude
+created: 2026-09-04 10:36
+---
+AC #2 PRZEPISANE 2026-09-04 (decyzja Zosi). Stare brzmienie: „Role wolumenowe zmierzone: Anthropic z cache vs P4 bez cache”. Nowe: „Zmierzone zużycie tokenów per rola na Anthropicu: input, output, cache-read i cache-creation osobno dla cognition, background, extraction, recallExpansion i creatorDirective”.
+
+Powód: porównanie z P4 nie ma już drugiej strony. Droga przez Kratosa została porzucona 2026-09-02, więc „P4 bez cache” nie jest czymś, co da się zmierzyć. Numer kryterium zachowany celowo — notatki implementacyjne w tym zadaniu odwołują się do „AC #2” i „AC #6” po numerze.
+
+Co pozostaje do zrobienia w nowym brzmieniu: rozbicie usage na role. Dotychczasowe pomiary podają sumy na turę (16 wywołań, input 45962, output 1786, cache_creation 44133, cache_read 7067 — smoke 2026-09-01), a nie rozłożenie na pięć slotów. Rozbicie jest tym, co pokaże, czy extraction i recallExpansion — role chodzące bez przerwy — faktycznie dominują koszt.
+
+CZEGO BRAKUJE W INSTRUMENTACJI, sprawdzone w kodzie: TokenUsageSink widzi każde wywołanie, ale aggregateAkukiTokenUsage (borg/src/akuki/token-usage.ts:34-51) grupuje wyłącznie po `model`. W trybie Anthropic-only wszystkie pięć ról może wskazywać ten sam identyfikator modelu — tak było w smoke teście, gdzie wszystko szło na claude-opus-4-8 — i wtedy byModel zwija je do jednego kubła. Per-rola nie da się wtedy odczytać.
+
+TokenUsageEvent (borg/src/llm/index.ts:413-423) niesie oprócz modelu pole `budget`, ale to etykieta MIEJSCA WYWOŁANIA, nie slotu modelu: wartości to np. "offline-reflector", "review-resolver", "belief-reviser". Reflector chodzi na roli background, więc budget i rola to dwie różne osie i jednej nie da się wprost przeliczyć na drugą.
+
+Czyli zamknięcie AC #2 wymaga najpierw rozstrzygnięcia, czy atrybucja ma iść po roli (trzeba wtedy przenieść nazwę slotu do zdarzenia usage), czy po `budget` (wtedy AC trzeba przeformułować na etykiety miejsc wywołania). To nie jest sam pomiar — to najpierw mała zmiana w instrumentacji.
+---
+<!-- COMMENTS:END -->

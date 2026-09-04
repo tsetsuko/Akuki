@@ -185,3 +185,49 @@ and it is the only honest way to get temperament parameters that were *selected*
 Out of scope for reasons of cost and time, not merit. It would multiply model spend by the
 population size and require a fitness measure for "development" that the project does not yet have
 — the M0 instrumentation is the prerequisite, not an optional extra.
+
+---
+
+## 4. Perceived agency — the contingency threshold behind "...oh. I can."
+
+**Parked 2026-09-04 as a consequence of parking M5, not as a decision of its own.** Moved here from
+`README.md`, which listed contingency alongside prediction, surprise, secure base and domain-keyed
+trust as a mechanism already doing work. It is not one yet, and the README now says so.
+
+### What exists and what does not
+
+Two different things wear the word *contingency*, and the README was conflating them.
+
+**Contingency learning exists.** borg's `src/memory/procedural/` keeps Beta posteriors with
+context-specific statistics — "when I do X in situation S, Y tends to happen." A Beta posterior is
+a curve over how reliable something is, not a single number, so it can distinguish *unknown* (wide,
+flat) from *unreliable* (narrow, low). The outcome is classified after the turn, not predicted
+before it. That machinery is Tomek's and it is already running.
+
+**Perceived agency does not.** Akuki's `temperament.yaml` carries two parameters for it —
+`agency.contingency_floor` and `agency.contingency_confidence` — read together as
+*P(true rate > floor) > confidence*, i.e. "at least this much of my belief curve lies above this
+much effectiveness." Their consumer in `TEMPERAMENT_CONSUMERS`
+(`borg/src/akuki/seed/temperament.ts:174-175`) is **M5**, and M5 is parked. So no code reads them:
+nothing turns a crossed threshold into Akuki *noticing* that he can do something.
+
+Two parameters rather than one is deliberate. "Confidence above 0.8" names no quantity on a curve;
+a floor plus a probability mass does. A vague parameter here would make the mechanism untestable,
+which is why it was corrected during M1 (2026-08-21).
+
+### Why it is parked rather than broken
+
+The threshold is what produces the moment M5 was built around — the action space widening because
+competence was earned. Without M5 there is nowhere for a crossed threshold to show up, so wiring a
+reader now would be a number computed for no consumer. The orphan guard in `temperament.test.ts`
+tolerates it precisely because M5 is not in `LANDED_MILESTONES`.
+
+### When to revisit
+
+Together with M5 (entry 2), and not before. If M5 stays parked but the smallest honest version of
+it is built — gating autonomous outbound only — that gate is the natural first consumer of these
+two parameters.
+
+Related and *not* parked: `differentiation.imitation_retention_threshold` has consumer M4, M4 has
+landed, and nothing reads it. That one is a genuine defect rather than a parked design — TASK-031.
+

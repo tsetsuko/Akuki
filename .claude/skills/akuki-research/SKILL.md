@@ -154,15 +154,16 @@ evidence-gated action menu without reading that reference first.
 ## References
 
 - `references/borg-inventory.md` — what borg already provides, verified against source, and the
-  four real gaps. **Read before proposing any mechanism.**
+  four real gaps — three of which M2, M3 and M4 have since closed *in the fork* (re-verified
+  2026-09-04). **Read before proposing any mechanism.**
 - `references/research-grounding.md` — the developmental-psychology map: what each finding claims,
   its computational analogue, and where the research is explicitly not ready.
 - `references/vocabulary.md` — every term that needs defining on first use, with the definition to
   use.
 - `references/future-development.md` — designs deliberately **not** built for generation 1
-  (artificial developmental pressure, the evidence-expanded action space, the evolutionary layer),
-  each with the reason it was parked and the condition for revisiting. Read before proposing any of
-  them again.
+  (artificial developmental pressure, the evidence-expanded action space, the evolutionary layer,
+  the perceived-agency contingency threshold), each with the reason it was parked and the condition
+  for revisiting. Read before proposing any of them again.
 - `references/znane-wady.md` — standing instructions already given once, and the recurring
   mistakes they came from. **Read before writing any message the user will send** (Tomek, IT — the
   structure is fixed and must not be restyled) and before stating a cause, a third-party API
