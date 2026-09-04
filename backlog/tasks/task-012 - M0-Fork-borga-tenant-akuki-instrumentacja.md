@@ -1,14 +1,14 @@
 ---
 id: TASK-012
 title: 'M0: Fork borga, tenant akuki, instrumentacja'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-08-20 14:28'
-updated_date: '2026-08-26 12:03'
+updated_date: '2026-09-01 12:24'
 labels: []
 dependencies: []
 priority: high
-ordinal: 1000
+ordinal: 10000
 ---
 
 ## Description
@@ -22,7 +22,10 @@ FORK — Tomek dał zgodę na fork i publikację.
   git switch -c akuki-dev
 Upstream dev jest aktywny, więc fetchuj regularnie, żeby widzieć rozjazd.
 
-TENANT — własny katalog <root>/akuki/ z własnym config.json. Nigdy katalog Sola (single-writer + to byłby jeden byt z dwoma ustami). Chodzi przez BorgPool w istniejącym sidecarze.
+TENANT — własny katalog `<root>/akuki/` z własnym `config.json`. Nigdy katalog Sola (single-writer
++ to byłby jeden byt z dwoma ustami). Historycznie zakładano BorgPool w generic sidecarze; po
+analizie wdrożeniowej docelowy `BotArenaAdapter` wywołuje osobny `AkukiRunner`. Tylko runner zna
+szczegóły otwierania Borga. Zasada izolacji katalogu i pojedynczego writera pozostaje bez zmian.
 
 WEKTOR STANU ROZWOJOWEGO — snapshot co noc:
   self/       cechy + liczba dowodów, wartości + affirm, cele, otwarte pytania, okresy, growth markers
@@ -44,7 +47,7 @@ REZULTAT: moduł w Pythonie, który czyta snapshoty + identity_events i rysuje t
 - [x] #1 Fork z remote upstream; galaz akuki-dev na upstream/dev; typecheck i heuristics:guard ZIELONE
 - [x] #2 Pelny suite udokumentowany, nie udawany zielony: upstream CI go NIE uruchamia (tylko npm ci + heuristics:guard + assess --mock)
 - [x] #3 assess --mock: 9/10 - mood-persistence pada IDENTYCZNIE na main i na dev, wiec to stan upstreamu, nie forka
-- [ ] #4 Klient routujacy LLM: cognition -> claude-sonnet-5 (Anthropic), pozostale role -> kratos qwen3-235b
+- [x] #4 Klient routujacy LLM: cognition -> claude-sonnet-5 (Anthropic), pozostale role -> kratos qwen3-235b
 - [x] #5 Akuki otwiera sie jako tenant akuki, tura przechodzi, identity_events rosnie
 - [x] #6 Dwa datowane snapshoty w JSON i czytelny diff miedzy nimi
 - [x] #7 Bieg symulatora na SKOPIOWANYM katalogu rusza co najmniej jedna liczbe w wektorze stanu
@@ -586,4 +589,57 @@ kratosa z NODE_EXTRA_CA_CERTS), ale sonnet przez aiproxy dawal dzis rate-limit p
 zamknac - ale zamkniecie go teraz zapisalo by w backlogu, ze M0 jest skonczone, kiedy pierwsza
 tura na modelu docelowym nadal nie przeszla. Zostaje otwarte do potwierdzenia wywolaniem.
 Szczegoly dostepnosci i korekta progu cache: TASK-022.
+
+MODEL COGNITION: sonnet-5 -> claude-opus-4-8 (decyzja Zosi, 2026-09-01).
+
+AC #4 nalezy czytac: cognition -> claude-opus-4-8. Czwarte brzmienie:
+sonnet-5 (21.08) -> opus-5 (25.08) -> sonnet-5 (26.08) -> opus-4-8 (01.09).
+
+KOD JUZ TO ROBI: commit 0143af2e ustawil default cognition = claude-opus-4-8
+(src/config/index.ts:322), z aktualizacja testow configu. Pozostale sloty domyslne:
+extraction/background = claude-opus-5, recallExpansion = claude-haiku-4-5-20251001,
+creatorDirective = claude-sonnet-4-6. Wszystkie sa claude-*, wiec pokrywaja sie z
+Anthropic-only smoke (guard wymaga claude-* na kazdej roli).
+
+PROG CACHE BEZ ZMIAN: Opus 4.8 = 1024 (jak Sonnet 5), prefiks ~2006 > 1024 -> cache
+aktywny, argument kosztowy niezmieniony wzgledem poprzedniej decyzji.
+
+AC #4 ZOSTAJE OTWARTE: dostepnosc opus-4-8 dla Akukiego NIE zweryfikowana realnym
+wywolaniem - smoke test jeszcze nie odpalony. Nie zamykac, dopoki tura nie przejdzie.
+
+SMOKE TEST PRZESZEDL - AC #4 SPELNIONE realnym wywolaniem (pomiar 2026-09-01).
+
+Komenda: scripts/akuki-turn.ts, tryb proxy (ANTHROPIC_AUTH_TOKEN + ANTHROPIC_BASE_URL=
+https://aiproxy.tomaszkasperczyk.name + AKUKI_ANTHROPIC_PROXY=1 + AKUKI_ANTHROPIC_ONLY=1).
+Swiezy katalog akuki-data/akuki-smoke - NIE zywy tenant (zaden nie istnial w chwili biegu).
+Wszystkie 5 rol BORG_MODEL_* = claude-opus-4-8. Embeddingi Ollama/bge-m3/1024D.
+
+WYNIK: exit 0, emitted=true, emission=message.
+  response.model = claude-opus-4-8 zwrocony przez API na WSZYSTKICH 16 wywolaniach.
+  usage: calls=16, input=45962, output=1786, cache_read=7067, cache_creation=44133.
+  odpowiedz: "Czesc, Zosia. Jestem tu." - po polsku, rozpoznaje Zosie, NIE przedstawia sie
+    jako Claude Code => seed zastosowany (wniosek z rozpoznania tworczyni + braku domyslnej
+    tozsamosci borga, nie z osobnego pomiaru identity).
+  identity_events 0 -> 0: OBSERWACJA, nie diagnoza. Ta tura nie zapisala zdarzenia
+    tozsamosci; smoke test tego nie wymaga (open/seed/jedna tura/usage/close). Do sprawdzenia
+    osobno, bez zgadywania przyczyny (znane-wady #4: objaw != diagnoza).
+
+IZOLACJA: bieg na dedykowanym katalogu smoke; zaden zywy tenant nie istnial ani nie zostal
+dotkniety. To sprawdzenie hydrauliki + pomiar tokenow, nie pomiar rozwoju (znane-wady #7).
+
+BRZMIENIE AC #4: oryginalny tekst mowil "pozostale role -> kratos qwen3-235b". Pod decyzja
+Zosi o trybie WYLACZNIE Anthropic (2026-09-01) klauzula kratos jest nieaktualna - smoke
+pokazal opus-4-8 na KAZDEJ roli przez proxy. Klient routujacy istnieje i dziala; realna tura
+na modelu docelowym przeszla. AC #4 zamkniete.
+
+URUCHOMIENIE POTWIERDZONE NA VPS (2026-09-01).
+
+Oprocz lokalnego biegu, Akuki wstaje i odpowiada na docelowym VPS: /opt/akuki/app,
+repo 4d9cca2c, user akuki, katalog danych /var/lib/akuki/data/akuki-smoke zapisywalny,
+Ollama+bge-m3 (1024), aiproxy osiagalny. Dwie tury, claude-opus-4-8, cache aktywny.
+M0 'czy Akuki w ogole da sie odpalic' zweryfikowany end-to-end w srodowisku wdrozenia.
+
+Drobiazgi env do sprzatniecia (nie blokery, byly obchodzone inline): env file mial
+AKUKI_SESSION=smoke-001 (niepoprawny format - musi byc 'default' albo sess_+16 znakow)
+i nie mial AKUKI_ANTHROPIC_PROXY=1 (guard wymaga przy ustawionym ANTHROPIC_BASE_URL).
 <!-- SECTION:NOTES:END -->

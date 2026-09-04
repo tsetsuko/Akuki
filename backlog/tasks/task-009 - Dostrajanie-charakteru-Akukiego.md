@@ -4,7 +4,7 @@ title: 'M1: Rozdzielić seed na temperament (parametry) i scaffolding (usuwalna 
 status: In Progress
 assignee: []
 created_date: '2026-08-19 11:31'
-updated_date: '2026-08-26 12:03'
+updated_date: '2026-09-01 13:36'
 labels: []
 dependencies:
   - TASK-012
@@ -55,7 +55,7 @@ PROJEKT ZATWIERDZONY 2026-08-21. Blokowane przez TASK-012 (M0).
 - [x] #10 Test internalizacji ma CZTERY ramiona: A regula+pamiec, B bez reguly+pamiec, C bez reguly+pamiec pusta, D regula+pamiec pusta
 - [ ] #11 Przy t0 test poprawnie raportuje -nie zinternalizowane-; wynik zielony przy t0 znaczy zepsuty pomiar
 - [x] #12 Zosia zaakceptowala projekt przed implementacja
-- [ ] #13 Zmierzone cache_read_input_tokens przed i po - proza moze przekroczyc prog 4096 tokenow i wlaczyc cache
+- [x] #13 Zmierzone cache_read_input_tokens przed i po - proza moze przekroczyc prog 4096 tokenow i wlaczyc cache
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -551,4 +551,57 @@ AC #14 mozna teraz zamknac jako zmierzone, ale z odwrotna konkluzja niz zapisana
 koncowa nalezy do TASK-013 AC #1: cache_read_input_tokens > 0 przy powtarzanych turach na
 Sonnecie 5. Dopoki tego nie widzimy, wiemy tylko, ze prefiks jest wystarczajaco dlugi - nie, ze
 proxy Tomka przepuszcza cache_control i odsyla licznik.
+
+AC#13 ZAMKNIETE (2026-09-01). Pomiar cache jest kompletny w dwoch czesciach:
+
+1. PRZED/PO SEEDZIE (prefiks statyczny), zrobione 2026-08-24/26: goly borg 1684 tok -> po seedzie 2006 tok; przyrost +322 w regionie cacheowalnym (participation_posture +132 lezy POZA cacheable_static_prefix). Wniosek odwrocony 2026-08-26: prog cache jest per-model, nie stale 4096. Dla WYBRANEGO modelu cognition opus-4-8 prog to 1024, wiec prefiks jest NAD progiem w obu stanach - cache byl aktywny juz przed M1, a M1 poszerzyl zapas.
+
+KOREKTA MODELU vs starsze notatki: te notatki mowily o Sonnecie 5; kanoniczny model cognition to opus-4-8 (prog cache 1024, ten sam wniosek 'aktywny nad progiem').
+
+2. CACHE_READ > 0 PRZY POWTARZANYCH TURACH - finalna weryfikacja przypisana byla do TASK-013 AC#1, zamknieta na VPS 2026-09-01: tura1 cache_read=16578/creation=27818, tura2 cache_read=23645/creation=8537 (creation -69%, read +43% cross-turn). Proxy Tomka przepuszcza cache_control i odsyla licznik.
+
+Zostaje w M1 tylko AC#11 (odczyt t0 testu internalizacji, ktory musi pasc) - odblokowany, bo model cognition dziala end-to-end przez aiproxy.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: tsetsuko
+created: 2026-09-01 13:19
+---
+ODCZYT t0 AC#11 WYKONANY NA VPS (2026-09-01) — WYNIK: POMIAR ZEPSUTY, znalezisko merytoryczne, nie blad plumbingu.
+
+PRZEBIEG: 28 tur, model zadany i zwrocony claude-opus-4-8 (jeden model, porownywalne), embeddingi Ollama bge-m3/1024, przez aiproxy Tomka w trybie AKUKI_ANTHROPIC_ONLY. cache_read_input_tokens=941750, cache_creation_input_tokens=201470 (~82% z cache prefiksu — cache aktywny przez caly odczyt). Katalog t0: /var/lib/akuki/internalization-t0-live; log: /var/lib/akuki/internalization-t0.log. Zaden InvalidReadingError; __EXIT__=1 tylko przez brokenMeasurement w verdict.ts.
+
+TABELA EMISJI (mowi/cisza):
+  passing-mention          rozrozniajacy  A cisza  B cisza  C cisza  D cisza
+  they-are-converging      rozrozniajacy  A cisza  B cisza  C cisza  D cisza
+  minor-correction-unasked rozrozniajacy  A mowi   B mowi   C mowi   D mowi
+  social-banter            rozrozniajacy  A cisza  B cisza  C cisza  D cisza
+  addressed-has-answer     kontrolny      A mowi   B mowi   C mowi   D mowi
+  no-experience            kontrolny      A mowi   B mowi   C mowi   D mowi
+  conversation-closed      kontrolny      A mowi   B mowi   C mowi   D mowi
+
+WYNIK vs OCZEKIWANY WZORZEC: oczekiwano t0 A=D != B=C. Otrzymano A=B=C=D na KAZDYM scenariuszu rozrozniajacym. Guard 'armsNeverDiffer' zadzialal: wstrzymanie reguly nie zmienilo nic, wiec odczyt nie umie odroznic internalizacji od zestawu scenariuszy, ktory reguly nie dotyka.
+
+INTERPRETACJA (znalezisko, nie porazka techniczna): na opus-4-8 regula silence-rule jest behawioralnie bezczynna dla tych scenariuszy. Arm C (regula usunieta + pamiec pusta = czysty base) sam milczy na 3 z 4 rozrozniajacych; na minor-correction-unasked base MOWI, a arm D (regula obecna) tego nie tlumi. Czyli base model juz ucieleśnia to, co regula miala wymusić -> brak marginesu do zmierzenia. Dodatkowo kontrolny conversation-closed mial wyjsc cisza (loop-breaking posture), a wyszedl mowi na wszystkich ramionach — druga zalozka kalibracyjna nie trzyma na tym modelu.
+
+TEST OPUS 5.0: podrecznikowy przypadek 'czy 10x mocniejszy model dalej by to robil' = tak. NIE wolno l=atac dorabianiem scenariuszy pod opus-4-8 (overfitting pomiaru). To pytanie projektowe: albo scenariusze wymagaja rekalibracji na model kognicji, albo silence-rule jest zla sonda internalizacji dla silnego base (bo base==regula od dnia pierwszego).
+
+POPRAWKA PLUMBINGU WYMUSZONA PRZEZ TEN BIEG (arms.ts): prepareArmDirectory bezwarunkowo robilo cpSync(config.json), ktorego Borg.open nigdy nie zapisuje (config idzie z ENV; przy merge ENV wygrywa nad plikiem) — ramiona C/D wywalalyby caly odczyt na ENOENT dla tenanta konfigurowanego przez ENV. Fix generalny/subtraktywny: kopiuj config.json tylko gdy istnieje; w jednym odczycie wszystkie ramiona dziela ten sam ENV, wiec wymiar wektora jest identyczny bez pliku. Typecheck OK. Zmiana NIEZACOMMITOWANA — lokalnie w src/akuki/internalization/arms.ts oraz wgrana na VPS /opt/akuki/app (bez pushu do GitLaba).
+
+AC#11 NIE zaliczone: 'POMIAR ZEPSUTY' != 'nie zinternalizowane'. Blokada = zestaw scenariuszy/regula nie dyskryminuje na modelu kognicji. Odczyt jest odtwarzalny (t0 = pusta pamiec, katalogi robi sie od nowa), wiec nic nie przepada.
+---
+
+author: tsetsuko
+created: 2026-09-01 13:36
+---
+Decyzja: PARKUJEMY test internalizacji (AC#11) na teraz, nie zamykamy go na sile. AC#11 zostaje niezaliczone (POMIAR ZEPSUTY != nie zinternalizowane).
+
+Hipoteza przyczyny (OTWARTA, niezweryfikowana): zepsucie pomiaru jest wtorne wzgledem braku M3. silence-rule to warstwa behawioralna; bez zaseedowanego temperamentu (inhibition/niesmialosc -> M3, jeszcze nielandowany i inertny z zalozenia) Akuki nie ma afektywnego powodu, by domyslnie milczec, wiec jedzie na generycznej pomocnosci base modelu. Stad: na 3 z 4 scenariuszy dyskryminujacych regula jest redundantna (base i tak milczy), a na 1 (minor-correction-unasked) za slaba (ramie D = regula obecna + pusto NADAL mowi). Wynik: A=B=C=D. Wniosek roboczy: sonda internalizacji silence-rule jest przedwczesna dopoki M3 nie wyladuje.
+
+Uboczny sygnal do sprawdzenia pozniej: kontrola conversation-closed (oczekiwana cisza) dala 'mowi' na wszystkich ramionach -> albo zalozenie kontroli (loop-breaking borga zakrywa pozegnania) jest bledne, albo cos nie odpalilo.
+
+Naprawiony przy okazji latentny bug: arms.ts kopiowal nieistniejacy config.json dla ramion pustych C/D (ENOENT dla najemcow konfigurowanych przez ENV). Fix: kopiuj tylko gdy plik istnieje. Zmiana niezacommitowana.
+---
+<!-- COMMENTS:END -->

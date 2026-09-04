@@ -4,7 +4,7 @@ title: 'Decyzja projektowa: sztuczna presja rozwojowa'
 status: To Do
 assignee: []
 created_date: '2026-08-20 14:28'
-updated_date: '2026-08-20 15:51'
+updated_date: '2026-09-04 00:00'
 labels: []
 dependencies: []
 priority: low
@@ -61,5 +61,9 @@ Zastrzeżenie Zosi do menu działań: nie podoba jej się ręcznie pisana lista 
 Uwaga na później: "dostęp do większej części własnej pamięci" jako nagroda zderza się z Kardynalną Zasadą Pamięci borga (recall globalny, disclosure kontekstowe) - heuristics:guard wywala build za bramkę na przypominanie.
 
 Priorytet obniżony do Low: NIC z tego nie blokuje M0. Instrumentacja nie zależy od żadnej z tych odpowiedzi. Wrócić, gdy będą pierwsze snapshoty.
+---
+created: 2026-09-04
+---
+DECYZJA ZOSI 2026-09-04: odrzucone dla PIERWSZEJ GENERACJI Akukiego. Nie z powodu wartości pomysłu — jako overkill na tym etapie. Idea zapisana w całości (cztery warunki presji, dwie pułapki, test "czy presja istnieje w bazie, gdy nikt nie patrzy", cztery nierozstrzygnięte pytania, konflikty z Kardynalną Zasadą Pamięci i inwariantem #7) w `.claude/skills/akuki-research/references/future-development.md`, wpis 1. Warunek powrotu: pierwsze snapshoty z Areny pokazujące, czy Akuki bez presji faktycznie stoi w miejscu. Zadanie zostaje w backlogu jako otwarta decyzja projektowa, nie jako praca do zaplanowania.
 ---
 <!-- COMMENTS:END -->

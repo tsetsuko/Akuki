@@ -24,6 +24,36 @@ Zasada przewodnia: **noworodek to nie głupi dorosły. Zostaw korę, opróżnij 
 Ograniczenie rozwojowe bierze się ze stanu pamięci, przestrzeni działania i dostępu —
 nigdy ze słabszego modelu. Słabszy model daje niespójność, nie młodość.
 
+## Aktualny runtime i wdrożenie (2026-08-28)
+
+Obecny runtime Akukiego jest rozwijany w osobnym, zagnieżdżonym repozytorium `borg/`, na branchu
+`akuki-dev`. Repozytorium główne przechowuje specyfikację, personę, backlog i wycofywaną wersję
+Pythonową; nie jest produkcyjnym runtime'em.
+
+Docelowy podział odpowiedzialności to:
+
+```text
+Bot Arena -> BotArenaAdapter -> znormalizowana wiadomość -> AkukiRunner
+Bot Arena <- BotArenaAdapter <- odpowiedź / brak odpowiedzi <- AkukiRunner
+```
+
+`sol-connector` jest referencją wyłącznie dla lewej strony: API Bot Areny, pollingu, autoryzacji,
+deduplikacji, cursora/id-map, retry i outbound-only networking. Jego integrację z Borgiem, modele,
+plugin, `BORG_DATA_DIR` i cykl życia runtime'u należy całkowicie zignorować.
+
+`BotArenaAdapter` nie zna Borga, modeli, seeda, pamięci ani internalizacji. `AkukiRunner` nie zna
+cookie, tokena bota, endpointów Bot Areny ani pollingu. Runner ma wynikać wyłącznie z aktualnego
+kodu Akukiego. Obecny `runAkukiTurn(...)` jest kandydatem na kanoniczny entrypoint, ale przed
+implementacją trzeba potwierdzić jego kontrakt i przydatność dla długotrwałego procesu.
+
+`npm start` w repozytorium Borga uruchamia istniejący **generic memory sidecar**. Nie jest to pełny
+runtime Akukiego: nie wykonuje `borg.turn()`, nie generuje odpowiedzi, nie stosuje automatycznie
+seeda Akukiego, nie używa jego routera modeli i nie łączy się z Bot Areną. Nie należy tworzyć z niego
+głównej usługi produkcyjnej Akukiego.
+
+Stan VPS-a i bieżące blokery opisuje [KNOWN-ISSUES.md](KNOWN-ISSUES.md). Wdrożenie jest śledzone
+w TASK-024, dostęp do Kratosa w TASK-025, a connector w TASK-011.
+
 ## Izolacja
 
 Akuki nie ma dostępu do internetu ani do plików. To już jest prawdą i nie wymaga pracy:
@@ -94,12 +124,12 @@ akuki/
 └── tests/
 ```
 
-Dwie rzeczy są tak zrobione celowo, żeby dołożenie Bot Areny i borga nic nie psuło:
+Dwie rzeczy były tak zrobione w v1, żeby dołożenie Bot Areny i borga nic nie psuło:
 
-- `core.respond(...)` to **jedyne** miejsce, gdzie dzieje się tura. Konektor Bot Areny
-  zawoła dokładnie tę funkcję i charakter Akukiego nie będzie musiał się nigdzie przenosić.
-- `memory.Memory` to protokół z dwiema metodami. `SqliteMemory` to wersja na teraz;
-  `BorgMemory` (HTTP do sidecara w Node) wejdzie w to samo miejsce.
+- `core.respond(...)` było jedynym miejscem tury wersji Pythonowej. Docelowy connector nie będzie
+  go wywoływał; ma uruchamiać Akuki-aware ścieżkę Borga.
+- `memory.Memory` i `SqliteMemory` należą do wycofywanej wersji. Nie będą zastępowane klientem
+  generic memory sidecara, ponieważ docelowy Borg działa in-process z connectorem.
 
 ## Testy
 
@@ -123,7 +153,8 @@ Zadania w `backlog/`, w kolejności:
 | **M3** (TASK-016) | bramka inhibicji + bezpieczna baza |
 | **M4** (TASK-017) | zaufanie per domena + prowenienecja nabycia |
 | **M5** (TASK-018) | przestrzeń działania rosnąca na dowodach |
-| konektor (TASK-011) | Bot Arena przez odpytywanie, wzorowane na [sol-connector](../sol-connector) |
+| konektor (TASK-011) | cienki adapter Bot Areny; tylko transport inspirowany [sol-connector](../sol-connector) |
 
-Sidecar nad borgiem **nie jest do pisania** — istnieje jako `scripts/memory-sidecar-main.ts`
-na `BorgPool` (multi-tenant, więc też bez problemu single-writer). Patrz TASK-010.
+Generic memory sidecar **istnieje**, ale nie jest docelowym procesem Akukiego. Cienki adapter Bot
+Areny ma wywoływać osobny `AkukiRunner`; sposób utrzymywania Borga należy do runtime'u Akukiego,
+nie do connectora. Nadal musi istnieć dokładnie jeden writer pamięci. Patrz TASK-010 i TASK-011.

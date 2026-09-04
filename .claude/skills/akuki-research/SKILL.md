@@ -136,17 +136,20 @@ Milestones live in the backlog. Order and reasoning:
 | **M2** | prediction → surprise loop. Weighted highest early; everything downstream consumes it |
 | **M3** | inhibition gate (**not** secure base — see above) |
 | **M4** | domain-keyed trust + acquisition provenance. Substrate for differentiation-vs-mimicry |
-| **M5** | evidence-triggered action space — the release valve for pressure |
+| **M5** | evidence-triggered action space — the release valve for pressure. **Parked for generation 1** (2026-09-04), see `references/future-development.md` |
 
 **Instrumentation before mechanisms** is deliberate: a capable model behaves sensibly whether or
 not the machinery works, so every mechanism needs a measurement that does not depend on reading
 Akuki's replies.
 
-**Open design decisions** (parked, low priority, genuinely undecided — do not treat as settled):
-which need is the primary pressure source, what the release valve is, whether an evolutionary layer
-(many Akukis with varied temperament, selected on development) is in scope, and whether pressure is
-fixed or tracks competence. Leanings are recorded in `doubts, questions.md` with confidence levels.
-None of them block M0.
+**Artificial developmental pressure (TASK-014) and M5 are parked for generation 1** — Zosia's
+decision of 2026-09-04. Neither is rejected on merit; both are written up in full, with their
+parking reasons and revisit conditions, in `references/future-development.md`. Generation 1 is
+M0–M4 running on the Arena and producing snapshots. The four questions under TASK-014 (which need
+is the primary pressure source, what the release valve is, whether an evolutionary layer is in
+scope, whether pressure is fixed or tracks competence) stay genuinely undecided; leanings with
+confidence levels are in `doubts, questions.md`. Do not propose pressure machinery or an
+evidence-gated action menu without reading that reference first.
 
 ## References
 
@@ -156,6 +159,10 @@ None of them block M0.
   its computational analogue, and where the research is explicitly not ready.
 - `references/vocabulary.md` — every term that needs defining on first use, with the definition to
   use.
+- `references/future-development.md` — designs deliberately **not** built for generation 1
+  (artificial developmental pressure, the evidence-expanded action space, the evolutionary layer),
+  each with the reason it was parked and the condition for revisiting. Read before proposing any of
+  them again.
 - `references/znane-wady.md` — standing instructions already given once, and the recurring
   mistakes they came from. **Read before writing any message the user will send** (Tomek, IT — the
   structure is fixed and must not be restyled) and before stating a cause, a third-party API

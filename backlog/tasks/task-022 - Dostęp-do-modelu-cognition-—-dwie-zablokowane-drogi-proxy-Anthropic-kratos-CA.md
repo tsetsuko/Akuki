@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-08-25 11:40'
-updated_date: '2026-08-26 12:44'
+updated_date: '2026-09-01 12:24'
 labels: []
 dependencies:
   - TASK-008
@@ -135,10 +135,10 @@ z jawnym komentarzem "tymczasowe" plus zadaniem w backlogu na jego usuniecie.
 <!-- AC:BEGIN -->
 - [ ] #1 Rozstrzygniete z Tomkiem: czy jest przewidywalna pojemnosc na opus/sonnet (osobny token, dzienny limit) - odpowiedz zapisana w tym tasku
 - [x] #2 Rozstrzygniete: czy da sie dostac Play Root Certificate Authority i od kogo
-- [ ] #3 Model cognition wybrany, OSIAGALNY i zweryfikowany realnym wywolaniem, nie zalozeniem
-- [ ] #4 Kazdy odczyt zapisuje response.model zwrocony przez API, nie ten wyslany w zadaniu
+- [x] #3 Model cognition wybrany, OSIAGALNY i zweryfikowany realnym wywolaniem, nie zalozeniem
+- [x] #4 Kazdy odczyt zapisuje response.model zwrocony przez API, nie ten wyslany w zadaniu
 - [ ] #5 Jesli uzyty wariant tymczasowy z przypieciem posrednika: ma jawny komentarz -tymczasowe- i osobne zadanie na usuniecie
-- [ ] #6 TASK-012 AC #4 zamkniete
+- [x] #6 TASK-012 AC #4 zamkniete
 - [ ] #7 TASK-009 AC #11 odblokowane - odczyt t0 mozliwy na modelu docelowym
 <!-- AC:END -->
 
@@ -414,4 +414,51 @@ NOWA OBSERWACJA Z BIEGU - KOD HTTP SIE ZMIENIL:
 poprawki Tomka. Warte podania mu wprost, bo prosil o konkretne bledy.
 Czas odpowiedzi na 429 waha sie od 604 ms do 3825 ms w tej samej serii. Odnotowane jako
 OBSERWACJA, bez wyjasnienia - z zewnatrz nie widac, czemu raz szybciej, raz wolniej.
+
+DECYZJA ZOSI (2026-09-01): model cognition = claude-opus-4-8, nie sonnet-5.
+
+Lancuch wyboru: sonnet-5 (21.08) -> opus-5 (25.08) -> sonnet-5 (26.08) -> opus-4-8 (01.09).
+Kod default juz zmieniony (commit 0143af2e: src/config/index.ts:322 cognition=claude-opus-4-8).
+Prog cache Opus 4.8 = 1024 (jak Sonnet 5), wiec korekta progu z 26.08 obowiazuje bez zmian.
+
+BEZ WNIOSKU O PRZYCZYNIE wczesniejszych porazek sonneta przez aiproxy: smoke test NIE byl
+uruchomiony, wiec nie ma pomiaru. Zgodnie ze znane-wady #2 nie dopisuje wyjasnienia
+("formatowanie requestu" ani "wysycona pula") - zostaje otwarte do potwierdzenia realnym
+wywolaniem na modelu docelowym. AC #3 nadal wymaga tego potwierdzenia.
+
+AC #3, #4, #6 SPELNIONE realnym wywolaniem (pomiar 2026-09-01, smoke test).
+
+claude-opus-4-8 przez aiproxy: DZIALA. 16 wywolan, exit 0, response.model=claude-opus-4-8
+na kazdym (AC #3: model wybrany, osiagalny, ZWERYFIKOWANY realnym wywolaniem; AC #4: odczyt
+zapisuje model zwrocony przez API, nie zadany). Pelne usage i kontekst w TASK-012.
+
+CACHE PRZEZ AIPROXY POTWIERDZONY POMIAREM (dotyczy TASK-013 AC #1): cache_read_input_tokens
+=7067 i cache_creation_input_tokens=44133, oba > 0. Czyli proxy PRZEPUSZCZA cache_control do
+Anthropica I ODSYLA liczniki cache. Wczesniejsza przepowiednia (cache aktywny na Anthropicu,
+prog opus-4-8 = 1024 < prefiks) potwierdzona na modelu docelowym.
+
+AC #6: TASK-012 AC #4 zamkniete -> spelnione.
+
+CO ZOSTAJE OTWARTE:
+- AC #1 (przewidywalna pojemnosc od Tomka): opus-4-8 dzis odpowiedzial, ale jeden udany call
+  to NIE gwarancja pojemnosci na miesiace. Nadal do rozstrzygniecia z Tomkiem.
+- AC #7 (odblokowanie t0 w TASK-009 AC #11): technicznie odczyt na modelu docelowym jest
+  teraz mozliwy - zostawiam ocene domkniecia TASK-009.
+- BEZ WNIOSKU O WCZESNIEJSZE PORAZKI: ten smoke testowal opus-4-8, nie sonnet-5/opus-5.
+  Nie mowi nic o przyczynie rate-limitow z 25-26.08. Ta przyczyna zostaje otwarta (znane-wady #2).
+
+POTWIERDZENIE NA DOCELOWYM VPS (2026-09-01).
+
+Smoke przeszedl nie tylko lokalnie, ale na produkcyjnej lokalizacji: /opt/akuki/app
+(repo na 4d9cca2c, to samo co lokalne HEAD, drzewo czyste), user akuki,
+Ollama+bge-m3 (1024) na localhost, aiproxy osiagalny Z VPS-a.
+Dwie tury, wszystkie wywolania claude-opus-4-8, response.model zgodny.
+Czyli 'claude-opus-4-8 osiagalny przez aiproxy' potwierdzone z faktycznego srodowiska
+wdrozenia, nie tylko z maszyny Zosi.
+
+BEZ WNIOSKU O PRZYCZYNE wczesniejszych porazek sonnet/opus-5 - przyczyna (formatowanie
+requestu) ustalona osobno przez Zosie; ten pomiar jej nie dotyczy.
+
+Otwarte ACs (#1 typ firmowego dostepu, #5 osobny limit, #7 jawne budzety) to decyzje
+Tomka/admina, nie kod.
 <!-- SECTION:NOTES:END -->
