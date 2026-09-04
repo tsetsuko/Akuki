@@ -228,6 +228,17 @@ Together with M5 (entry 2), and not before. If M5 stays parked but the smallest 
 it is built — gating autonomous outbound only — that gate is the natural first consumer of these
 two parameters.
 
-Related and *not* parked: `differentiation.imitation_retention_threshold` has consumer M4, M4 has
-landed, and nothing reads it. That one is a genuine defect rather than a parked design — TASK-031.
+Related, and settled differently: `differentiation.imitation_retention_threshold` carried consumer
+M4, M4 landed, and nothing read it. That was a genuine defect rather than a parked design, and
+TASK-031 closed it — but *not* by parking it here. The consumer vocabulary was widened to accept one
+backlog task where no milestone owns the reader, and the key now names TASK-032 (the retention
+reader, blocked by TASK-028). It stays a live backlog item precisely because this file's rule says a
+parked idea is not one.
+
+Worth carrying forward from that analysis: retention is computed from the outcome of Akuki's **own**
+experiment with a copied behaviour, so its substrate is the procedural band, not the semantic one —
+and the procedural band has Beta posteriors but no acquisition provenance (TASK-028) and no
+retain/reject step at all. Its parameter will therefore be a *pair* of numbers, a floor plus a
+confidence mass, exactly like `agency.contingency_floor` / `contingency_confidence`. The single 0.6
+in the seed is a placeholder whose shape is already known to be wrong, and the YAML comment says so.
 

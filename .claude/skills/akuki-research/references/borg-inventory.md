@@ -98,7 +98,13 @@ Status re-checked against the fork 2026-09-04. Three are closed; the fourth is u
    instead — `semantic_nodes.acquisition_mode` with exactly those four values, plus
    `acquired_from_entity_id` so the belief joins to that person's per-domain trust rather than to a
    name string (`src/memory/semantic/migrations.ts:110-131`). Two different questions, two columns.
-   Still open: the same treatment for procedural skills — TASK-028.
+   Still open: the same treatment for procedural skills — TASK-028. Verified 2026-09-04 while closing
+   TASK-031: the procedural band keeps Beta posteriors with context-specific statistics
+   (`src/memory/procedural/selector.ts:32`) but carries **no acquisition provenance** and **no
+   retain/reject step whatsoever** — grepping `src/memory/procedural/` for
+   `retire|prune|abandon|threshold` returns nothing. Skills are selected by Thompson sampling and
+   never retired by a threshold. So "did this copied behaviour work for me?" has a measure, and
+   "was it copied?" and "does it stay?" have neither.
 4. **`AUTONOMY_WAKE_SOURCE_NAMES`** (`src/autonomy/types.ts:24`) is a closed union — a new wake
    condition cannot be registered from outside.
    **STILL TRUE.** The fork extended the union from the inside rather than opening it:

@@ -61,6 +61,39 @@ process wrote it), **not** acquisition mode (was he told it, or did he test it).
 on an **exact prefix**: change one byte early and everything after it is re-read at full price. So
 new content goes at the **end**. Verify with `cache_read_input_tokens`.
 
+**Reader / consumer** — a **reader** is code that actually reads a parameter and behaves differently
+for it: a branch, arithmetic, a rendered line. Its opposite is a **declaration** (an entry in
+`temperament.yaml`, a zod field, a row in the consumer map). *Systems analogy: a global in C that
+links fine and no function ever reads — delete it and the program is identical.* A **consumer** is
+the same thing in planned form: `TEMPERAMENT_CONSUMERS` records who is *supposed* to read a key. A
+consumer is a promise, a reader is a fact, and the orphan guard compares them.
+
+**Orphan guard** — `temperament.test.ts:93`. Fails the build when a parameter's consumer has landed
+and no file under `src/` contains its full `group.leaf` accessor. Matching on the full accessor
+rather than the bare leaf is load-bearing: `figure` matches `figures` and `gain` matches `again`, and
+the guard was once green while checking nothing. Since TASK-031 a consumer may be a milestone **or**
+one backlog task, because a wrong label is worse than a coarse one.
+
+**Memory band** — one directory under `src/memory/` = one kind of memory with its own tables and its
+own migration numbering: `episodic`, `semantic`, `procedural`, `social`, `identity`, `predictions`.
+"Band-local migration, no id shift" means adding one to `semantic` does not renumber `social`.
+
+**`CHECK` constraint** — a condition written into a table definition; the database refuses a
+violating row. SQLite **cannot alter one in place**, so widening an enumerated column costs a
+table rebuild by migration.
+
+**Per-turn extractor** — after a turn, a separate LLM call reads what happened and returns
+*structure* via a forced tool call (e.g. `EmitDomainTrustEvidence` → `{domain, positive}[]`). The
+sanctioned division: the model does semantics, the harness does bookkeeping and Beta arithmetic. An
+extractor never judges or rewrites Akuki's own reply — that would be output policing.
+
+**Advisory signal vs gate** — settled at M3. A gate computes a number and withholds the action; an
+advisory signal computes the same number, renders it into the prompt, and leaves the choice to the
+model. Advisory is the shape to copy.
+
+**Disclosure label** — the per-row "who may be told" annotation on every memory shown to the model.
+A separate axis from recall; a build guard fails on a model-facing row without one.
+
 **Cardinal Memory Rule** — borg doctrine: *recall is global to the being; disclosure is contextual to
 the audience.* The being remembers everything it knows and chooses what to say. A build guard fails
 if a recall gate is added.

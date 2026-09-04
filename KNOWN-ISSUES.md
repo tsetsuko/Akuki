@@ -100,11 +100,15 @@ zbiera: `Cannot find package '@hono/node-server'`. Brak zależności, nie kod �
 w `borg/node_modules/` nie ma katalogu `@hono`, a `borg/demo/server/` nie ma własnego
 `node_modules`.
 
-**2. Czerwony celowo.** `src/akuki/seed/temperament.test.ts` > „fails for a parameter whose
-milestone has landed and which nothing reads". To nie awaria, tylko znalezisko: po dopisaniu `M4`
-do `LANDED_MILESTONES` strażnik sierot pokazał, że
-`differentiation.imitation_retention_threshold` nie ma w kodzie żadnego czytelnika. Śledzenie:
-TASK-031. **Nie wyciszać go usunięciem `M4` z listy.**
+**2. ROZSTRZYGNIĘTE 2026-09-04 — było czerwone celowo.**
+`src/akuki/seed/temperament.test.ts` > „fails for a parameter whose milestone has landed and which
+nothing reads". Nie była to awaria, tylko znalezisko: po dopisaniu `M4` do `LANDED_MILESTONES`
+strażnik sierot pokazał, że `differentiation.imitation_retention_threshold` nie ma w kodzie żadnego
+czytelnika. Zamknięte przez TASK-031: słownik konsumenta obejmuje teraz kamień milowy **albo** jedno
+zadanie z backlogu, a ten klucz wskazuje TASK-032 (czytelnik retencji imitacji, blokowany przez
+TASK-028) — bo M4 zbudowało tylko górną połowę tego, czego próg potrzebuje. `M4` **zostało**
+w `LANDED_MILESTONES`, strażnik bez wyjątków i bez osłabienia, dwa nowe testy pokazują wariant
+zadaniowy i cicho, i czerwono. `npx vitest run src/akuki` → 77/77, typecheck 0.
 
 **3. Timeouty 15 s pod równoległym obciążeniem.** Przechodzą uruchomione osobno przy load average
 1,4–2,3:
