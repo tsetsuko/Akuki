@@ -20,3 +20,9 @@ borg/
 # Akuki's tenant: borg.db, lancedb, locks, snapshots, experiment copies.
 # Changes every turn and gets cp -r'd for M1's three-arm internalization test.
 data/
+
+# akuki-connector: installed dependencies and build output. The borg dependency is
+# a file: link to the nested fork, so node_modules/borg is a symlink into an
+# ignored directory and must never be committed.
+connector/node_modules/
+connector/dist/
