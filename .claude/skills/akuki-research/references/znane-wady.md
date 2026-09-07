@@ -146,3 +146,30 @@ nikt nie potwierdził. Trzeba było wymazać tenant i zacząć od nowa.
 
 **Reguła.** Tury na żywym tenancie prowadzi ona. Ja uruchamiam wyłącznie biegi na **kopiach**
 katalogu, i mówię wprost, że to sprawdzenie hydrauliki, a nie pomiar.
+
+---
+
+## 8. Pomiar bez dowodu, że wejścia doszły do mierzonego procesu
+
+**Co się stało.** Sprawdzałem, jaką konfigurację embeddingów rozwiązuje borg, i wypisałem wynik:
+`dataDir: /home/zosia/.borg`, model `text-embedding-qwen3-embedding-8b`, wymiar 4096, endpoint
+`localhost:1234`. Przedstawiłem to jako przyczynę awarii u Zosi. Był to pomiar **domyślnej**
+konfiguracji borga, bo `set -a; . ../connector/.env; set +a` nie wniosło ani jednej zmiennej —
+plik został wcześniej nadpisany szablonem. Zmierzyłem coś prawdziwego o czymś innym.
+
+Ten sam błąd powtórzyłem chwilę później, gdy zdiagnozowałem brak `BORG_EMBEDDING_API_KEY` jako
+przyczynę. Tę hipotezę zdążyłem sprawdzić i odrzucić — bez klucza embeddingi działają, bo Ollama go
+ignoruje — ale byłem o jedno zdanie od opublikowania jej jako ustalenia.
+
+**Reguła.** Przed odczytaniem wyniku wypisz wejścia i sprawdź, że są niepuste. Jedna linia
+`echo "VAR=[$VAR]"` przed pomiarem oddziela „zmierzyłem twoją konfigurację" od „zmierzyłem
+domyślną". Bez tego pomiar jest poprawny i nie na temat, a to gorsze niż brak pomiaru, bo brzmi jak
+odpowiedź.
+
+Wersja ogólniejsza tej samej zasady, obok reguły 5 o filtrach: **filtr psuje wyjście pomiaru,
+brakujące wejście psuje jego temat.** Sprawdzać oba końce.
+
+**Gdy przyczyny nie da się ustalić, mówić to wprost.** Konfiguracji tamtego przebiegu u Zosi nie
+odtworzyłem, bo plik już nie istniał. Właściwą odpowiedzią było „nie ustalę przyczyny, oto co jest
+teraz sprawdzone", nie najlepsza dostępna hipoteza. To ta sama lekcja co reguła 2, tylko o własnym
+pomiarze zamiast o cudzej usłudze.

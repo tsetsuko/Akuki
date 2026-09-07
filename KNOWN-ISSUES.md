@@ -1,22 +1,42 @@
 # Znane wady i blokery
 
-Stan na 2026-09-04. Ten dokument opisuje potwierdzone problemy obecnego wdrożenia; nie jest zgodą
+Stan na 2026-09-04 (aktualizacja po dostarczeniu connectora). Ten dokument opisuje potwierdzone problemy obecnego wdrożenia; nie jest zgodą
 na wdrażanie obejść. Problemy rozwiązane albo unieważnione decyzją są przeniesione na koniec, do
 sekcji historycznej — nie kasujemy ich, bo powód zamknięcia jest sam w sobie informacją.
 
 ## Blokery produkcyjne
 
-### Brakuje connectora Bot Areny dla Akukiego
+### Connector Bot Areny nie opublikował jeszcze ani jednej wiadomości na prawdziwej Arenie
 
-Akuki-aware runtime istnieje w forku Borga, ale nie ma jeszcze cienkiego adaptera, który odpytuje
-Bot Arenę, przekazuje znormalizowane wiadomości do `AkukiRunner` i publikuje odpowiedzi. Tomek
-wyraził zgodę na użycie `sol-connector` jako inspiracji dla integracji z Bot Areną. Zgoda nie
-obejmuje borgowej części Sola ani mechanicznego kopiowania dużych fragmentów kodu.
+Stan na 2026-09-07. Connector mieszka w pakiecie `connector/` obok forka, nie w forku — do
+2026-09-07 był w `borg/src/akuki/arena/` z launcherem `borg/scripts/akuki-arena.ts` i skryptami
+`npm run akuki:arena*`; te ścieżki i skrypty **już nie istnieją**. Uruchamia się go przez
+`npm start` albo `npm run dry-run` w pakiecie, albo jako plugin w serwerze demo borga. Kryteria
+odbiorcze TASK-011 są spełnione po stronie kodu: 107 testów w pakiecie, typecheck zero błędów
+w pakiecie i w forku, `npm run heuristics:guard` zielony.
 
-Od 2026-09-02 to jest jedyna pozostała brama do uruchomienia Akukiego na Arenie: dostęp do modeli
-przestał być blokerem, brakuje kodu connectora.
+CO ZOSTAŁO SPRAWDZONE NA ŻYWO 2026-09-07:
 
-Śledzenie: TASK-011.
+- Dry-run z VPS-a przeciw prawdziwej Bot Arenie przeszedł. Poświadczenia działają, id bota
+  potwierdzone przez `GET /api/bots`, okno wiadomości zakotwiczone na najnowszym końcu. Baza stanu
+  po trzech przebiegach: zero wierszy.
+- Akuki wykonywał prawdziwe tury lokalnie, na kopii tenanta, przeciw udawanej Arenie
+  (`connector/src/fake-arena/`) hostowany w serwerze demo borga.
+
+CO NADAL NIESPRAWDZONE:
+
+- **Publikacja na prawdziwą Arenę.** Dry-run niczego nie wysyła, a wszystkie tury poszły na
+  udawaną Arenę. Ani jedna wiadomość Akukiego nie trafiła na `a.jadsoft.pl`.
+- **Zachowanie po `kill -9`** między zapisem odpowiedzi a jej publikacją (AC #10 w TASK-024). Ma
+  pokrycie w testach jednostkowych, nigdy nie wykonane na żywym procesie. To jedyna awaria z tej
+  listy, która jest publiczna: zdublowana wypowiedź zostaje w wątku i podwójnie w jego pamięci.
+- **Cache cross-turn na tej ścieżce** i zużycie tokenów z włączonym maintenance.
+
+Kolejność wdrożenia jest zapisana w TASK-024, komentarz 8.
+
+Śledzenie: TASK-011 (kod, zostaje In Progress do pierwszej publikacji na żywo), TASK-024
+(wdrożenie), TASK-033 (wzmianki, reply-to i rodzaj autora nie docierają do tury), TASK-034
+(panel M2/M3/M4).
 
 ### VPS nie jest jeszcze gotową usługą
 
@@ -26,8 +46,9 @@ poprawnie. Smoke test przeszedł tam 2026-09-01: dwie tury z `/opt/akuki/app` ja
 localhoście, cache czytany między turami (`cache_read_input_tokens` 16578 → 23645). Dodatkowo
 odczyt t0 testu internalizacji, 28 tur, w `/var/lib/akuki/internalization-t0-live`.
 
-Nadal nie ma usługi systemd, produkcyjnego data root, connectora ani stale działającego procesu.
-Udany smoke test na katalogu `akuki-smoke` nie jest usługą i nie migruje żywego tenanta.
+Nadal nie ma usługi systemd, produkcyjnego data root ani stale działającego procesu. Connector już
+jest (patrz wyżej), więc Etap 8 w TASK-024 nie jest już zablokowany. Udany smoke test na katalogu
+`akuki-smoke` nie jest usługą i nie migruje żywego tenanta.
 
 Śledzenie: TASK-024.
 
@@ -38,7 +59,8 @@ Udany smoke test na katalogu `akuki-smoke` nie jest usługą i nie migruje żywe
 `npm start` w Borgu uruchamia generic memory sidecar. Sidecar udostępnia `recall`, `remember` i
 `append-turn`, ale nie generuje odpowiedzi. Nie stosuje automatycznie seeda Akukiego, nie używa
 Akuki-aware routera modeli i nie komunikuje się z Bot Areną. Nie uruchamiać go jako głównego
-runtime'u Akukiego.
+runtime'u Akukiego. Właściwym poleceniem jest `npm start` w pakiecie `connector/`, albo
+uruchomienie konektora jako pluginu w serwerze demo (`EXTRA_CONNECTOR_MODULE`).
 
 Sidecar i właściwy Akuki-aware runtime nie mogą równocześnie pisać do tego samego katalogu tenanta.
 
@@ -64,12 +86,66 @@ domyślnie używa `generative-apis/qwen3-embedding-8b`/4096
 (`borg/scripts/memory-sidecar-main.ts:53-54`) — to inna konfiguracja i nie wolno jej wpuścić na
 katalog Akukiego.
 
-### Nieustalone miejsce i topologia produkcyjnego runtime'u
+### Miejsce runtime'u ustalone, jednostki systemd nadal nie ma
 
-`sol-connector` nie jest referencją dla runtime'u Akukiego ani dowodem, że Akuki powinien otwierać
-Borga tak samo jak Sol. Repozytorium nie zawiera service unitu ani manifestów deploymentowych. Nie
-wiadomo jeszcze, czy `AkukiRunner` powinien utrzymywać długowieczną instancję Borga. Connector nie
-może zawierać logiki dostępu do dostawców modeli — to własność środowiska deploymentowego.
+Topologia procesu przestała być otwarta 2026-09-04: jeden długowieczny proces, jedna instancja
+Borga otwarta na cały czas życia usługi, schedulery maintenance i autonomy startowane przez
+`connector/src/service.ts` (do 2026-09-07 `borg/src/akuki/arena/service.ts`, przed wyprowadzeniem
+konektora do własnego pakietu). Powodem nie jest wygoda — `Borg.open()` buduje scheduler maintenance,
+ale go nie startuje, robi to wyłącznie runtime (`borg/src/config/index.ts:684`,
+`borg/scripts/daemon.ts:263`). Otwieranie Borga na każdą turę, jak robi `runAkukiTurn`, oznaczałoby,
+że konsolidator, reflektor i dream cycle nigdy nie ruszą.
+
+Nadal brakuje service unitu i manifestów deploymentowych; repozytorium ich nie zawiera. Connector nie
+zawiera logiki dostępu do dostawców modeli i nie może jej zawierać — to własność środowiska
+deploymentowego.
+
+`sol-connector` nie jest referencją dla runtime'u Akukiego. Z jego warstwy transportowej wzięte
+zostały wyłącznie nazwy endpointów, kształty odpowiedzi API, wzorzec defensywnego parsowania,
+timeout 20 000 ms, self-skip, pominięcie wiadomości niefinalnych i idea postępu jako zbiór
+przetworzonych plus przycinana podłoga. Borgowa część Sola nie została użyta.
+
+### Pułapki uruchomienia konektora w serwerze demo — 2026-09-07
+
+Cztery rzeczy, z których każda zabrała realny czas jednego dnia. Wszystkie mają cichy albo mylący
+objaw, dlatego są tutaj, a nie tylko w README pakietu.
+
+**`npm install` pada i NIE zostawia `node_modules`.** npm 10.9.8 wywala się na grafie peer
+dependencies vitest z `Cannot read properties of null (reading 'edgesOut')`. Nie jest to problem
+z linkiem `file:` do forka. Dotyczy pakietu `connector`, a także `demo/server` i `demo/web`.
+Objaw jest mylący: pierwsze, co widać, to `vite` niemogący rozwiązać `@vitejs/plugin-react`, co
+wygląda na brakującą zależność, a jest nieudaną instalacją. Lekarstwo: `--legacy-peer-deps`.
+Pakiet `connector` przypina to w swoim `.npmrc`; `demo/server` i `demo/web` swojego nie mają, więc
+tam flagę trzeba podać z ręki.
+
+**Ścieżki względne w konfiguracji rozwijają się względem `borg/demo/server`.** `npm run dev:server`
+schodzi przez `npm --prefix demo/server`, więc to jest katalog roboczy serwera.
+`EXTRA_CONNECTOR_MODULE=../connector/src/plugin.ts` staje się `borg/demo/connector/...` i pada na
+`ERR_MODULE_NOT_FOUND`. Ta sama pułapka ciszej: względne `AKUKI_ARENA_STATE_DB` kładzie bazę stanu
+adaptera w drzewie roboczym borga i daje **inny plik** niż ten, którego użyłby `npm start` — dwie
+bazy stanu dla jednego przebiegu. W tej ścieżce wszystkie ścieżki muszą być bezwzględne.
+
+**Serwer demo czyta `BORG_DATA_DIR`, nie `AKUKI_DATA_DIR`.** Drugą zmienną czyta konektor, gdy sam
+otwiera Borga. Ustawienie tylko `AKUKI_DATA_DIR` i uruchomienie przez plugin zostawia serwer
+otwierający swój domyślny katalog: byt zdrowy, pusty i obcy, na stronie obiecującej pamięć Akukiego.
+Obie muszą wskazywać ten sam katalog.
+
+**Powtórne `cp .env.example .env` cofa całą konfigurację.** Szablon nadpisuje wypełniony plik
+i wszystko jest zakomentowane, więc proces startuje na domyślnych wartościach borga — w tym na
+embeddingach `text-embedding-qwen3-embedding-8b`/4096 pod `http://localhost:1234/v1`, gdzie nic nie
+słucha. Objawem jest `EmbeddingError: Failed to generate embeddings ... "Connection error."`, które
+nie podaje hosta. Od 2026-09-07 konektor wypisuje przy starcie linię `as resolved here: tenant=...
+embeddings=... model=... dims=...`, właśnie żeby ten objaw dał się zdiagnozować w jednej linii.
+
+### Serwer demo nasłuchuje na wszystkich interfejsach
+
+`demo/server/src/index.ts:157-160` woła `serve({ fetch, port })` bez `hostname`, a
+`@hono/node-server` bez niego przyjmuje połączenia na każdym interfejsie — na VPS-ie także na
+adresie publicznym. Jedyną warstwą między światem a interfejsem Akukiego, czyli jego pamięcią,
+stroną `/mind` i możliwością pisania do niego, byłaby wtedy reguła NSG w OCI.
+
+Lokalnie nie ma to znaczenia. Przed uruchomieniem GUI na VPS-ie nasłuch trzeba przypiąć jawnie do
+loopbacka albo do adresu tailscale'owego i dopiero na to nakładać dostęp.
 
 ## Jakość i zależności
 

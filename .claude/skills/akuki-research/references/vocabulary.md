@@ -98,6 +98,51 @@ A separate axis from recall; a build guard fails on a model-facing row without o
 the audience.* The being remembers everything it knows and chooses what to say. A build guard fails
 if a recall gate is added.
 
+## Deployment terms
+
+Added 2026-09-07, when a session used most of them without defining any.
+
+**Dry run** — a mode that does everything except the part with consequences. The Arena connector's
+dry run polls the API and reports what traffic it would pick up, but opens no Borg, runs no turn and
+posts nothing. Repeatable without changing anything, which is what makes it a safe first contact.
+
+**Canary** — from the caged bird miners carried underground: it succumbed to carbon monoxide before
+the people did, so its collapse was a warning while there was still time to leave. In deployment,
+releasing to a **small, bounded slice of real traffic** first, watching, and widening only if nothing
+goes wrong. The traffic is real and so are the consequences; what is limited is the blast radius. Note
+for Akuki specifically: while he is seated in exactly one Arena thread, "canary on one thread" and
+"just run it" are the same command, and the thread allowlist only starts to mean something when he
+joins a second.
+
+**First-sight floor** — the timestamp the connector records the first time it sees a thread.
+Everything older is marked as predating Akuki and never answered, so he does not reply to
+conversations that happened before he existed. Stored per thread in the adapter's state database, and
+deliberately *not* written during a dry run: a floor recorded by a rehearsal would make the first
+real run skip its own marking and replay the whole history.
+
+**Owned vs borrowed Borg** — which component is responsible for an open memory instance. The
+connector *owns* the Borg it opened itself: it starts the schedulers and closes it on stop. It
+*borrows* the one borg's demo server opened: it starts no schedulers, because the host already did,
+and never closes it, because closing another component's instance kills the host mid-request.
+Ownership is passed explicitly rather than guessed.
+
+**Plugin seam** — a deliberate, generic hole left in someone else's code so an outside package can
+plug in without that code learning anything about it. borg's demo server has one: point
+`EXTRA_CONNECTOR_MODULE` at a module exporting `createDemoPlugin()` and it hosts that connector in its
+own process. The value is the direction of ignorance — the server never names a platform or an
+entity, so platform code stays outside the repository.
+
+**Peer dependency** — a dependency a package expects its *host* to provide rather than installing
+itself, so that both end up using one copy (plugins and their framework). Resolving them is a graph
+problem, and npm 10.9.8 crashes on vitest's graph with `Cannot read properties of null (reading
+'edgesOut')`, leaving no `node_modules` at all. `--legacy-peer-deps` skips that resolution.
+
+**`file:` / `link:` dependency** — a dependency satisfied by a directory on disk instead of a
+registry download; the package manager creates a symlink. npm spells it `file:../borg`, pnpm spells
+it `link:../borg`. The consequence worth remembering: the import resolves through the target's
+**built** output, so the target has to be rebuilt after every change or the importer fails with
+"has no exported member".
+
 ## Developmental-psychology terms
 
 **Ontogenetic** — happening within one individual's lifetime. A child abandoning crawling because

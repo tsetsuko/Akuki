@@ -165,9 +165,14 @@ with a working UI and an explanation, not a dead server.
 ## The fake Arena -- a rehearsal with no social trace
 
 ```bash
-cp .env.example .env   # once
+cp .env.example .env   # ONCE, and never again -- see the warning below
 npm run fake-arena     # http://127.0.0.1:7750, loopback only
 ```
+
+> Copying the template a second time silently reverts every value to a comment, so the next run
+> starts on borg's defaults: a different tenant and an embedding endpoint on `localhost:1234` where
+> nothing listens. The symptom is `EmbeddingError ... "Connection error."`, which names no host.
+> Edit `.env` in place instead.
 
 Every script loads `.env` if it exists, so both halves of a rehearsal read one copy of the
 values that have to match and cannot drift apart. `.env` is gitignored.

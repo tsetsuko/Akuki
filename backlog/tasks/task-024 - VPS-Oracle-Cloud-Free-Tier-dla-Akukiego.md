@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-08-27'
-updated_date: '2026-09-04 10:13'
+updated_date: '2026-09-07 14:24'
 labels: []
 dependencies:
   - TASK-011
@@ -87,10 +87,10 @@ niepotrzebnych zasobow i reczne sprawdzenie estymaty przed kliknieciem Create.
 - [ ] #1 Konto OCI Free Tier zalozone; region domowy i rzeczywiste limity z konsoli zapisane z data
 - [ ] #2 MFA oraz alerty budzetowe wlaczone; brak upgrade do Pay As You Go
 - [ ] #3 A1 ARM64 VM utworzona jako Always Free z estymowanym kosztem 0
-- [ ] #4 NSG i firewall wpuszczaja tylko SSH od Zosi/Bastiona; brak publicznych portow aplikacji
+- [x] #4 NSG i firewall wpuszczaja tylko SSH od Zosi/Bastiona; brak publicznych portow aplikacji
 - [ ] #5 Node >=22.18, npm ci, typecheck, build i LanceDB ARM64 smoke test przechodza
 - [x] #6 Provider embeddingów, model i wymiar zatwierdzone; zgodność z migrowanym corpusem potwierdzona
-- [ ] #7 Sekrety poza repo, plik 0600; modele i CA skonfigurowane bez wklejania sekretow do historii
+- [ ] #7 Sekrety poza repo, plik 0640 root:akuki; modele skonfigurowane bez wklejania sekretow do historii
 - [ ] #8 Migracja tenanta przeprowadzona przez zatrzymanie writera, kopie, sumy kontrolne i atomowe podstawienie
 - [ ] #9 Backup poza VPS odtworzony probnie; procedura awaryjna zapisana
 - [ ] #10 Po TASK-011 jeden proces konektora przezywa restart i nie dubluje ani nie gubi wiadomosci
@@ -138,6 +138,159 @@ Druga połowa kryterium — zgodność z migrowanym korpusem — sprawdzona, nie
 Ostrzeżenie zostaje w mocy i jest zapisane w KNOWN-ISSUES.md: generic memory sidecar nadal domyślnie używa generative-apis/qwen3-embedding-8b/4096 (borg/scripts/memory-sidecar-main.ts:53-54). Innego modelu ani wymiaru nie wolno wpuścić na katalog Akukiego bez migracji i re-embeddingu.
 
 Etap 6 punkt 5 tutoriala już wcześniej poprawiony (claude-opus-4-8 zamiast claude-sonnet-5).
+---
+
+author: claude
+created: 2026-09-04 14:39
+---
+ETAP 8 ODBLOKOWANY 2026-09-04. TASK-011 dostarczył connector: `borg/src/akuki/arena/` plus launcher `borg/scripts/akuki-arena.ts`, ze skryptami `npm run akuki:arena` i `npm run akuki:arena:dry-run`. Zależność tego zadania od TASK-011 jest spełniona po stronie kodu; TASK-011 zostaje In Progress do pierwszego przebiegu na żywo, który jest właśnie tutaj.
+
+TOPOLOGIA PROCESU JEST TERAZ USTALONA, co zamyka lukę z opisu tego zadania. Jeden proces, jedna długowieczna instancja Borga, jedna jednostka systemd. Powodem nie jest wygoda: `Borg.open()` nie startuje schedulera maintenance, robi to wyłącznie runtime (`borg/src/config/index.ts:684`), więc bez długowiecznego procesu dream cycle nigdy nie ruszy. Generic memory sidecar nie może działać równolegle — dwa writery na jednym tenancie rozdwajają pamięć, a sidecar domyślnie używa innego modelu embeddingów.
+
+ZMIENNE ŚRODOWISKOWE DO DOPISANIA w `/etc/akuki/akuki.env`, obok istniejącego bloku Anthropic-only i `BORG_EMBEDDING_*`:
+
+    AKUKI_ARENA_API_BASE            baza URL Bot Areny
+    AKUKI_ARENA_BOT_TOKEN           Bearer bota, tylko zapisy
+    AKUKI_ARENA_SESSION_COOKIE      ciasteczko ba_session, tylko odczyty
+    AKUKI_ARENA_BOT_ID              id bota Akukiego, do self-skipu
+    AKUKI_ARENA_STATE_DB            ścieżka bazy stanu adaptera
+    AKUKI_ARENA_POLL_INTERVAL_MS    opcjonalne, domyślnie 4000
+    AKUKI_ARENA_THREAD_ALLOWLIST    opcjonalne, pusta = wszystkie wątki, w których bot siedzi
+    AKUKI_ARENA_CATCH_UP_BACKLOG    opcjonalne, domyślnie 0
+
+`AKUKI_ARENA_STATE_DB` NIE może wskazywać wewnątrz katalogu tenanta. Tenant ma dokładnie jednego writera i wrzucanie tam drugiej bazy myli migrację i backup. Wszystkie cztery pierwsze zmienne są wymagane — ich brak daje `ArenaConfigError` przy starcie, bez cichego defaultu.
+
+KOLEJNOŚĆ PIERWSZEGO URUCHOMIENIA, do wykonania przez Zosię:
+
+1. `npm run akuki:arena:dry-run` — nie otwiera Borga, nie uruchamia tury, nic nie zapisuje i nic nie publikuje. Potwierdza poświadczenia i pokazuje, jaki ruch zostałby podjęty. Bezpieczny pierwszy kontakt z prawdziwą Areną.
+2. Jeden wątek testowy: `AKUKI_ARENA_THREAD_ALLOWLIST` ustawiona na jedno id, `AKUKI_ARENA_CATCH_UP_BACKLOG=0`, maintenance i autonomy wyłączone — punkt 1 zatwierdzonego planu canary w TASK-013.
+3. Dopiero potem maintenance i autonomy z jawnymi budżetami (decyzja Zosi 2026-09-04, wysokość budżetów czeka na akceptację, propozycja: `BORG_MAINTENANCE_LIGHT_BUDGET=60000`, `BORG_MAINTENANCE_HEAVY_BUDGET=200000` zamiast domyślnego `null`).
+
+TEST RESTARTU do wykonania na żywo (AC #10): `kill -9` procesu między zapisem stanu `reply_ready` a POST-em. Oczekiwany wynik to dokładnie jeden post na Arenie i zero nowych zdarzeń tożsamościowych, bo adapter publikuje zapisany tekst i nie powtarza tury. To zachowanie ma pokrycie w testach jednostkowych, ale nie zostało sprawdzone na żywym procesie.
+
+Czego to NIE zmienia: nadal brak jednostki systemd, produkcyjnego data root, migracji żywego tenanta (AC #8, #11) i backupu poza VPS z próbnym odtworzeniem (AC #9).
+---
+
+author: claude
+created: 2026-09-07 10:20
+---
+AC #4 ZAMKNIĘTE 2026-09-07. Dostęp SSH do VPS-a przeniesiony z allowlisty IP w NSG na sieć Tailscale.
+
+POWÓD ZMIANY: Zosia łączy się z laptopa, który ma internet z hotspotu telefonu służbowego. Adres publiczny operatora zmienia się (zaobserwowano 46.113.8.171 -> 46.112.4.85), więc reguła NSG na pojedynczy adres wymagała ręcznej aktualizacji po każdej zmianie. Dodatkowo zwolniony adres trafia do innego abonenta tego samego operatora, a stara reguła dalej go przepuszcza — allowlist per-IP nie był tu realną granicą bezpieczeństwa.
+
+STAN PO ZMIANIE, zweryfikowany pomiarem:
+- Tailscale działa na VPS-ie (akuki-vcn, 100.124.237.35), laptopie (zosia-latitude-7490, 100.73.191.40) i telefonie (oppo-a6-pro-5g, 100.69.4.80), połączenie laptop-serwer bezpośrednie (direct 129.159.24.178:41641).
+- Świeże logowanie `ssh -i ~/.ssh/akuki_oci ubuntu@100.124.237.35` przechodzi i zwraca hostname akuki-vcn.
+- Wszystkie reguły ingress dla portu 22 usunięte z NSG, łącznie ze starymi wpisami dla domowego wifi. Próba `ssh ubuntu@129.159.24.178` kończy się "Connection timed out" — port jest filtrowany, nie tylko zamknięty.
+- Instance Console Connection utworzone i sprawdzone jako droga awaryjna niezależna od sieci i NSG.
+- Brak publicznych portów aplikacji; ta zmiana dotyczyła wyłącznie portu 22.
+
+USTALENIE DO ZAPAMIĘTANIA: adres tailscale'owy serwera (100.124.237.35) mieści się liczbowo w firmowej podsieci P4 100.124.0.0/16, obsługiwanej przez FortiClient. Kolizji nie ma — Tailscale trzyma trasy w osobnej tablicy routingu 52 (reguła `5270: from all lookup 52`, wcześniejsza od głównej) i wpisuje tam wyłącznie trasy /32 do konkretnych hostów, nie cały blok 100.64.0.0/10. Gdyby po włączeniu Tailscale hosty firmowe przestały odpowiadać, pierwsze sprawdzenie to `ip route get <adres firmowy>`.
+
+PUŁAPKA NARZĘDZIOWA: Instance Console Connection w OCI przyjmuje wyłącznie klucze RSA. Klucz ed25519 (akuki_oci) jest odrzucany komunikatem `invalid ssh public key type "ssh-ed25519"`. Dla konsoli wygenerowano osobny klucz RSA 4096 `~/.ssh/akuki_oci_console`; klucz akuki_oci pozostaje bez zmian do normalnego logowania.
+
+Procedura i uzasadnienie spisane w vps-ssh-dostep.md w katalogu głównym repozytorium.
+---
+
+author: claude
+created: 2026-09-07 11:49
+---
+ETAP 8 PUNKT 1 WYKONANY 2026-09-07. Dry-run konektora Bot Areny przeszedł z VPS-a. Nic nie zostało opublikowane, nie uruchomiono tury i nie otwarto Borga.
+
+STAN, KTÓRY TRZEBA BYŁO NAJPIERW NAPRAWIĆ — komentarz z 2026-09-04 mówił „TASK-011 dostarczył connector", ale kod nie istniał nigdzie poza laptopem: `src/akuki/arena/` (15 plików) i `scripts/akuki-arena.ts` były untracked, więc nie było commita, nie było ich na GitHubie i VPS ich nie miał. Poza tym `/etc/akuki/akuki.env` nie istniał — w `/etc/akuki/` był wyłącznie `akuki-smoke.env`.
+
+CO ZOSTAŁO ZROBIONE:
+- Dwa commity na `akuki-dev`: `3d24b3cb` (rdzeń konektora) i `9aa18a44` (punkt wejścia i dwa skrypty npm), wypchnięte na origin. `package-lock.json` bez zmian, więc `npm ci` na VPS-ie nie było potrzebne.
+- `npm run typecheck` padał przed commitem, i nie na kodzie konektora, a na jego teście: `service.test.ts(154,5): error TS2349: This expression is not callable. Type 'never' has no call signatures.` Przyczyną była nullowalna zmienna przypisywana wyłącznie wewnątrz callbacka `setTimeoutFn` — TypeScript trzyma zawężenie do `null`, bo nie wie, że callback się wykona, a `expect(...).not.toBeNull()` nie jest type guardem. Zamienione na `Array<() => void>`. Po zmianie: typecheck czysty, 7 plików / 85 testów zielonych, `heuristics:guard` przechodzi.
+- VPS doprowadzony z `f6f3a7a6` na `9aa18a44` przez `merge --ff-only`. Merge najpierw padł na lokalnej modyfikacji `src/akuki/internalization/arms.ts`; ta zmiana była bajt w bajt identyczna z commitem `f7ad5650` (te same hashe blobów `a8b5f61d..8cd062b7`), czyli ręczna poprawka z 4 września, zacommitowana osobno lokalnie. Odrzucona bez straty.
+- `/etc/akuki/akuki.env` utworzony, `root:akuki`, `0640`, na razie wyłącznie z blokiem `AKUKI_ARENA_*`. Blok Anthropic-only, pięć `BORG_MODEL_*`, cztery `BORG_EMBEDDING_*` i `AKUKI_DATA_DIR` dochodzą przed canary, razem z decyzją o produkcyjnym katalogu danych, której nadal nie ma. Dry-run ich nie potrzebuje, bo nie otwiera Borga.
+- `/var/lib/akuki/arena/` utworzony (`akuki:akuki`, `0750`) na bazę stanu adaptera — poza `/var/lib/akuki/data/`, więc poza tenantem i poza zakresem migracji i backupu.
+
+POMIARY. Uruchamiane jako `sudo -u akuki -H bash -c 'set -a; . /etc/akuki/akuki.env; set +a; …'`, żeby token nie pojawił się w `ps` ani w historii powłoki.
+
+Faza A, `AKUKI_ARENA_CATCH_UP_BACKLOG=0`:
+
+    started: dryRun=true pollIntervalMs=4000 allowlist=<all seated threads> catchUpBacklog=false
+    thread 184888fd-3014-45f4-a1b3-cbbf327e54e0: first sight, 50 prior message(s) marked as before Akuki came online
+
+Poświadczenia działają: token bota i ciasteczko `ba_session` przechodzą na `https://a.jadsoft.pl`. Widoczny jest dokładnie jeden wątek. Linia „first sight" powtarza się przy każdym pollu, co jest dowodem, że dry-run nie zapisuje progu — gdyby zapisał, pierwszy prawdziwy przebieg nie zrobiłby własnego oznaczenia historii i odtworzyłby cały wątek.
+
+Faza B, `AKUKI_ARENA_CATCH_UP_BACKLOG=1`: 50 z 50 wiadomości dałoby turę, zero linii `warn` i `error`, trzech różnych nadawców (25 / 18 / 7 wiadomości).
+
+Baza stanu po trzech przebiegach: plik 36 KB z samym schematem, 0 wierszy w `message_state`, `thread_floor` i `thread_session`. Dry-run nie zapisał niczego.
+
+USTALENIE POBOCZNE: pierwszy poll wypada dopiero po pełnym interwale, nie od razu po starcie (`service.ts:129-144`). Przy `AKUKI_ARENA_POLL_INTERVAL_MS=60000` daje to minutę ciszy w logu po uruchomieniu — nie pomylić z zawieszeniem po wystawieniu jednostki systemd.
+
+POPRAWKA W TYM ZADANIU: AC #7 oraz Etap 6 punkt 2 i lista odbiorowa mówiły `0600`. `0600 root:root` odcięłoby użytkownika `akuki`, z którego działa konektor. Zapisane jako `0640 root:akuki` — te same prawa, które `akuki-smoke.env` ma od 2026-09-01. AC #7 stracił też wzmiankę o CA, która odpadła razem z drogą przez Kratosa.
+
+Czego to NIE zmienia: nadal brak jednostki systemd, produkcyjnego data root, migracji żywego tenanta (AC #8, #11) i backupu poza VPS z próbnym odtworzeniem (AC #9). Canary na jednym wątku to osobny krok i osobna decyzja.
+---
+
+author: claude
+created: 2026-09-07 11:49
+---
+DWIE RZECZY DO ROZSTRZYGNIĘCIA PRZED CANARY, obie z dry-runu z 2026-09-07.
+
+1. `AKUKI_ARENA_BOT_ID` JEST NIEPOTWIERDZONY. Wartość `b80c722e-014f-407c-8738-fb175fa0bc1e` pochodzi z przykładu w `bot-setup-instruction.md:28`, nie z pomiaru. Zakładałem, że faza B dry-runu ją sprawdzi, i to było błędne: żaden z trzech nadawców w wątku nie jest tym id, bo Akuki nie ma tam ani jednego posta, więc gałąź self-skipu (`adapter.ts:183`) nie została dotknięta. To id ma dokładnie jedno zastosowanie — pomijanie własnych postów — więc błędna wartość oznacza, że Akuki odpowiada sam sobie. Sprawdzić przez `GET /api/bots` (lub `GET /api/users` — `listPrincipals` czyta oba) przed pierwszym prawdziwym przebiegiem.
+
+2. LICZBA 50 MOŻE BYĆ STRONĄ SERWERA, NIE DŁUGOŚCIĄ WĄTKU. `BotArenaClient.getMessages` woła `GET /api/threads/{id}/messages` bez parametrów i bez paginacji (`botarena-client.ts:204-209`), a 50 jest dokładnie górną granicą pola `history`, którą podaje `bot-setup-instruction.md:34`. Konsekwencja zależy od tego, który koniec zwraca API, i jest asymetryczna:
+   - najnowsze 50 — próg pierwszego spojrzenia ląduje na prawdziwie najnowszej wiadomości, zachowanie poprawne;
+   - najstarsze 50 — próg ląduje na znaczniku 50. wiadomości, a pierwszy prawdziwy przebieg odpowiada na wszystko po niej. Przy długim wątku to zalanie backlogiem, i to na żywej pamięci.
+   Rozstrzyga porównanie liczby wiadomości widocznej w interfejsie Areny z pięćdziesiątką. Równe 50 w wątku = brak limitu. Więcej niż 50 = trzeba ustalić, który koniec przychodzi, i najprawdopodobniej dopisać paginację albo parametr limitu do klienta.
+
+Nie zamykam żadnego AC tym komentarzem: AC #5 nadal wymaga typechecku i smoke testu LanceDB ARM64 Z UŻYTKOWNIKA USŁUGI na VPS-ie, a typecheck przeszedł na laptopie.
+---
+
+author: claude
+created: 2026-09-07 12:06
+---
+OBA PUNKTY Z KOMENTARZA #6 ROZSTRZYGNIĘTE 2026-09-07 przez Zosię, na żywej Arenie.
+
+1. `AKUKI_ARENA_BOT_ID` POTWIERDZONY. `GET /api/bots` zwraca dla bota `Akuki` dokładnie `b80c722e-014f-407c-8738-fb175fa0bc1e`, czyli wartość wpisana w `/etc/akuki/akuki.env`. Nie jest to więc już wartość z przykładu w dokumentacji, ale zmierzona. Gałąź self-skipu (`adapter.ts:183`) dostanie prawidłowe id, więc Akuki nie będzie odpowiadał na własne posty.
+
+   Szczegół do zapamiętania przy takim sprawdzeniu: konektor używa dwoch roznych poswiadczen w dwie strony (`botarena-client.ts:240-263`). Odczyty idą nagłówkiem `Cookie: ba_session=…`, zapisy `Authorization: Bearer …`. `GET /api/bots` wymaga więc CIASTECZKA, nie tokenu bota — próba z tokenem nie zadziała.
+
+2. API ZWRACA NOWSZY KONIEC WĄTKU. Ostatnia linia fazy B dry-runu wskazywała wiadomość `d9bccaab-a4f0-4093-bbfc-8c2ab286eab9` od `c8da0827-…`, 529 znaków; Zosia potwierdziła, że to jest najnowsza wiadomość w wątku w interfejsie Areny. Konektor sortuje po znaczniku czasu rosnąco, więc okno, które dostaje z `GET /api/threads/{id}/messages`, jest zakotwiczone na najnowszym końcu.
+
+   Co to dokładnie znaczy, bez nadinterpretacji: próg pierwszego spojrzenia (`thread_floor`) wyląduje na prawdziwie najnowszej wiadomości, więc ryzyko zalania backlogiem nie istnieje i paginacja nie jest potrzebna do canary. NIE jest natomiast rozstrzygnięte, czy endpoint ma limit 50 pozycji. Jeśli ma i wątek jest dłuższy, konektor po prostu nigdy nie zobaczy wiadomości starszych niż to okno — a te i tak leżą pod progiem, więc dla canary jest to bez znaczenia. Ma znaczenie dopiero wtedy, gdy kiedyś będziemy chcieli podać Akukiemu historię sprzed jego pojawienia się; wówczas trzeba ustalić limit i dopisać paginację.
+
+STAN PO ETAPIE 8 PUNKCIE 1: konektor jest na VPS-ie na commicie `9aa18a44`, poswiadczenia działają, id bota zmierzone, kierunek okna wiadomości zmierzony, baza stanu pusta. Następny krok to punkt 2 z komentarza #3, czyli canary na jednym wątku — osobna decyzja, i wymaga wcześniej dopisania do `/etc/akuki/akuki.env` bloku Anthropic-only, pięciu `BORG_MODEL_*`, czterech `BORG_EMBEDDING_*` i `AKUKI_DATA_DIR`, a więc i decyzji o produkcyjnym katalogu danych, której nadal nie ma. `AKUKI_ARENA_STATE_DB` trzeba przy tym przestawić z `state-dry-run.db` na osobny plik, żeby canary startował od czystego stanu.
+---
+
+author: claude
+created: 2026-09-07 14:24
+---
+STAN WDROŻENIA 2026-09-07, zmierzony, plus dwie rzeczy, które odwołuję z własnych wcześniejszych słów.
+
+NA VPS-IE, ZMIERZONE:
+
+    commit            9aa18a44  (stary launcher w forku, bez zmian z 7 września)
+    pakiet konektora  brak
+    jednostka systemd brak
+    katalog danych    tylko akuki-smoke, czyli kopia
+    /etc/akuki/akuki.env  8 zmiennych (sam blok Areny)
+    Ollama            działa, bge-m3:latest
+    Node              22.23.2
+    zasoby            33 GB wolnego, 5,2 GB dostępnego RAM-u
+
+Nic z pracy z 7 września tam nie dotarło. Środowisko jest natomiast gotowe.
+
+TWARDA PUŁAPKA KOLEJNOŚCI: od commita `138bb36e` stary launcher `borg/scripts/akuki-arena.ts` nie istnieje, bo konektor został wyprowadzony do pakietu `akuki/connector`. `git pull` na VPS-ie BEZ jednoczesnego wdrożenia pakietu zabiera jedyną działającą tam ścieżkę uruchomienia. Doszedł też nowy warunek: import idzie przez `dist/`, więc fork musi być ZBUDOWANY po każdym pull.
+
+ODWOŁUJĘ „DNI, NIE GODZINY”. Powiedziałem to o drodze przez VPS i było przesadzone. Tenant ma 1,3 MB, a dokładnie tę operację — kopia plus weryfikacja sum SHA-256, 16 plików — wykonałem tego dnia w kilka sekund na próbę generalną. Migracja z AC #8 nie jest przedsięwzięciem, jest `cp` z policzeniem sum. Nieodwracalna jest nie kopia, a reguła writera: po przeprowadzce nie wolno uruchomić Akukiego lokalnie, bo dwa writery rozdwajają pamięć.
+
+ODWOŁUJĘ CEREMONIĘ CANARY. Dry-run zmierzył, że Akuki siedzi w DOKŁADNIE JEDNYM wątku, a pusta `AKUKI_ARENA_THREAD_ALLOWLIST` znaczy „wszystkie wątki, w których bot siedzi”. „Canary na jednym wątku” i „po prostu odpal” to dziś to samo polecenie; allowlista zacznie cokolwiek znaczyć, gdy Akuki dosiądzie do drugiego wątku. Z etapu canary zostają dwa wąskie powody, oba realne:
+
+1. Zużycie tokenów na subskrypcji Tomka nigdy nie było mierzone na żywo z włączonym maintenance, a zgoda Tomka dotyczy krótkiego eksperymentu z natychmiastowym wyłączeniem przy zbyt dużym zużyciu. Pierwszy dzień trzeba obejrzeć — nie z nieufności do kodu, a bo to jego rachunek.
+2. Test restartu (AC #10) nadal nie był wykonany na żywym procesie. Zdublowana wypowiedź jest publiczna i trwale zapisana w jego pamięci. Na udawanej Arenie zajmuje minuty i nie ma świadków. To jedyny punkt, na którym się upieram.
+
+KOLEJNOŚĆ WDROŻENIA, już bez mgły: (1) pull forka i wdrożenie pakietu razem, (2) `npm ci --legacy-peer-deps` w pakiecie i `npm run build` w forku, (3) `/etc/akuki/akuki.env` z 8 zmiennych na okolice 25 — wszystkie wartości znane z pliku smoke i z lokalnej próby, (4) kopia żywego tenanta z sumami, (5) jednostka systemd, (6) test restartu.
+
+DECYZJE, KTÓRE ZOSTAŁY: gdzie produkcyjny katalog danych (propozycja `/var/lib/akuki/data/akuki`, obok kopii smoke) oraz czy VPS hostuje serwer demo z GUI, czy sam konektor. To drugie zmienia kształt jednostki systemd i decyduje o drodze dostępu do interfejsu.
+
+GUI NA VPS-IE, dwa kształty: tunel SSH (`ssh -L 7740:127.0.0.1:7740 -L 5173:127.0.0.1:5173`), zero konfiguracji po stronie serwera, ale tylko przy otwartej sesji i tylko z laptopa; albo nasłuch na adresie tailscale'owym i front zbudowany przez `npm run build:web`, serwowany statycznie zamiast dev servera Vite — wygodniejsze na co dzień, dostępne też z telefonu.
+
+OSTRZEŻENIE BEZPIECZEŃSTWA, zapisane też w KNOWN-ISSUES.md: `demo/server/src/index.ts:157-160` woła `serve({ fetch, port })` bez `hostname`, a `@hono/node-server` bez niego przyjmuje połączenia na każdym interfejsie, na VPS-ie także na publicznym. Jedyną warstwą między światem a pamięcią Akukiego, stroną `/mind` i możliwością pisania do niego byłaby wtedy reguła NSG. Przed uruchomieniem GUI na VPS-ie nasłuch trzeba przypiąć jawnie.
 ---
 <!-- COMMENTS:END -->
 
@@ -285,8 +438,10 @@ Nastepnie:
 ### Etap 6 — sekrety i konfiguracja
 
 1. Utworz `/etc/akuki/` nalezacy do roota.
-2. Sekrety zapisz w `/etc/akuki/akuki.env` z prawami `0600`. Plik nie trafia do Git, backupu kodu,
-   logow ani historii powloki.
+2. Sekrety zapisz w `/etc/akuki/akuki.env` z prawami `0640` i wlascicielem `root:akuki`. Plik nie
+   trafia do Git, backupu kodu, logow ani historii powloki. Nie `0600 root:root`: konektor dziala
+   z uzytkownika `akuki`, ktory musi ten plik czytac, wiec `0600` odcielo by wlasna usluge.
+   Istniejacy `akuki-smoke.env` ma dokladnie te prawa od 2026-09-01.
 3. Potrzebne wartości obejmują poświadczenia Bot Areny oraz uwierzytelnienie do Anthropica.
    Zweryfikowany na VPS-ie zestaw (2026-09-01, opisany w `borg/AKUKI_ORACLE_SMOKE_TEST.md`) to
    tryb proxy: `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_BASE_URL`, `AKUKI_ANTHROPIC_PROXY=1`,
@@ -355,7 +510,7 @@ Przed uznaniem VPS za gotowy:
 - `npm ci`, typecheck, build i LanceDB ARM64 smoke test przechodza.
 - Kanoniczny provider embeddingów, model i wymiar są zatwierdzone oraz zgodne z danymi.
 - Runtime osiąga providerów z pełną walidacją TLS; rozwiązanie produkcyjne nie zależy od laptopa.
-- Sekrety maja prawa `0600` i nie sa w Git ani logach.
+- Sekrety maja prawa `0640 root:akuki` i nie sa w Git ani logach.
 - Istnieje backup poza VPS i udana proba odtworzenia.
 - Jest dokladnie jeden aktywny writer pamieci.
 - Restart VM nie tworzy podwojnej odpowiedzi ani nie gubi kursora Arena.

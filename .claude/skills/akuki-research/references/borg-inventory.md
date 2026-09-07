@@ -167,3 +167,33 @@ than a timestamp, and recomputes `bot_chain_depth` locally.
 Its README records a lesson that applies directly: re-quoting recent messages into the envelope
 **caused verbatim self-repetition**, because borg already holds them. Do not hand Akuki a summary
 of what he already remembers.
+
+### Two things this file missed until 2026-09-07, and both cost work
+
+Recorded because they are exactly what this file exists to prevent.
+
+**The demo server can host an external connector in its own process.** Set
+`EXTRA_CONNECTOR_MODULE` to a module exporting `createDemoPlugin()` and it imports it, registers its
+outbound connectors at `Borg.open` and drives its start/stop lifecycle
+(`borg/demo/server/src/index.ts:16-41`). `sol-connector/src/plugin.ts` already implements exactly
+that, and its own comment states the payoff: one borg instance, one writer, and the demo UI as the
+bot's live dashboard, with all platform code staying outside the repository.
+
+The consequence for Akuki is that the choice everyone assumes — *either* a UI *or* the Arena, because
+two writers would split the memory — **is not a real choice**. One process serves both. TASK-011 was
+designed without this and the gap only surfaced when someone went looking.
+
+It also carries a constraint nothing else states: a throw out of `start()` is treated as fatal and
+takes borg down with it. A connector that cannot reach its platform is degraded; a dead host is lost.
+
+**`demo/web` is already the memory viewer.** Routes `/chat`, `/mind`, `/dream`, `/activity`,
+`/reviews`, `/settings` (`demo/web/src/App.tsx:103-111`), and `/mind` reads the memory bands, the
+identity, the semantic graph, the commitments, the goals and the open questions
+(`demo/web/src/pages/Mind.tsx:4-40`). Nothing about a browser view of Akuki's memory needs building
+from scratch; what is missing is only the M2/M3/M4 quantities, which is TASK-034.
+
+Two caveats before reusing it. It opens borg with **its own** defaults, so hosting Akuki there needs
+his model clients supplied through the plugin, or the result is his memory with another entity's
+models — the failure that looks like success. And it starts the maintenance and autonomy schedulers
+unconditionally (`index.ts:96-101`), so their token budgets, which default to no ceiling, have to be
+set before using it.
