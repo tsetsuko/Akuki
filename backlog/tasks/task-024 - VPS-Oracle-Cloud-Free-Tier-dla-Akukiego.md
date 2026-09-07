@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-08-27'
-updated_date: '2026-09-07 14:24'
+updated_date: '2026-09-07 14:47'
 labels: []
 dependencies:
   - TASK-011
@@ -93,7 +93,7 @@ niepotrzebnych zasobow i reczne sprawdzenie estymaty przed kliknieciem Create.
 - [ ] #7 Sekrety poza repo, plik 0640 root:akuki; modele skonfigurowane bez wklejania sekretow do historii
 - [ ] #8 Migracja tenanta przeprowadzona przez zatrzymanie writera, kopie, sumy kontrolne i atomowe podstawienie
 - [ ] #9 Backup poza VPS odtworzony probnie; procedura awaryjna zapisana
-- [ ] #10 Po TASK-011 jeden proces konektora przezywa restart i nie dubluje ani nie gubi wiadomosci
+- [x] #10 Po TASK-011 jeden proces konektora przezywa restart i nie dubluje ani nie gubi wiadomosci
 - [ ] #11 Stan i zachowanie po migracji porownane snapshotem; migracja nie zmienila mechanizmow ani modeli
 - [ ] #12 Runtime osiąga dostawcę modeli z użytkownika usługi, z pełną walidacją TLS i bez zależności od laptopa Zosi
 <!-- AC:END -->
@@ -291,6 +291,57 @@ DECYZJE, KTÓRE ZOSTAŁY: gdzie produkcyjny katalog danych (propozycja `/var/lib
 GUI NA VPS-IE, dwa kształty: tunel SSH (`ssh -L 7740:127.0.0.1:7740 -L 5173:127.0.0.1:5173`), zero konfiguracji po stronie serwera, ale tylko przy otwartej sesji i tylko z laptopa; albo nasłuch na adresie tailscale'owym i front zbudowany przez `npm run build:web`, serwowany statycznie zamiast dev servera Vite — wygodniejsze na co dzień, dostępne też z telefonu.
 
 OSTRZEŻENIE BEZPIECZEŃSTWA, zapisane też w KNOWN-ISSUES.md: `demo/server/src/index.ts:157-160` woła `serve({ fetch, port })` bez `hostname`, a `@hono/node-server` bez niego przyjmuje połączenia na każdym interfejsie, na VPS-ie także na publicznym. Jedyną warstwą między światem a pamięcią Akukiego, stroną `/mind` i możliwością pisania do niego byłaby wtedy reguła NSG. Przed uruchomieniem GUI na VPS-ie nasłuch trzeba przypiąć jawnie.
+---
+
+author: claude
+created: 2026-09-07 14:47
+---
+AC #10 ZAMKNIĘTE 2026-09-07. Test restartu wykonany na żywym procesie, nie na atrapach.
+
+JAK, bo ręczny `kill -9` w to okno nie trafi — między zapisem `reply_ready` a POST-em są milisekundy. Udawana Arena dostała przełącznik `AKUKI_FAKE_ARENA_HANG_POST=1`: przyjmuje POST i nigdy nie odpowiada, NIE zapisując wiadomości. To odtwarza przypadek „serwer nigdy tego nie przetworzył”, czyli dokładnie ten, w którym naiwne ponowienie publikuje odpowiedź dwa razy.
+
+ŚRODOWISKO, w izolacji od pracy Zosi: osobna kopia tenanta `data/experiments/restart-20260907T163523/akuki` (16 plików, sumy SHA-256 zgodne z `data/akuki`), osobna baza stanu, udawana Arena na porcie 7751. Użyta ścieżka samodzielna (`npm start` w pakiecie), bo to ona pojedzie pod systemd.
+
+PRZEBIEG I POMIARY:
+
+1. Wiadomość od Zosi, tura przez `claude-opus-4-8`, POST zawisł. Stan na dysku: `fake-0001 | reply_ready | reply_len 31`, treść `"jestem, restart poszedł dobrze."`. Udawana Arena: 1 wiadomość (tylko ludzka) — odpowiedź nie była zarejestrowana.
+2. `kill -9` na PID 300960 (potwierdzone przez cwd, żeby nie ubić cudzego procesu). Wyjście 137 = 128+9. Stan po zabiciu bez zmian: nadal `reply_ready` z tą samą treścią.
+3. Restart udawanej Areny bez zawieszania, zasianej własną zawartością, potem restart konektora.
+
+WYNIK:
+
+    [akuki-arena] info posted reply to 184888fd-... for fake-0001 as fake-0003
+    [akuki-arena] info started: dryRun=false ...
+
+- Publikacja wypadła PRZED linią `started:`, czyli `recoverAfterRestart()` wykonał się przed pierwszym pollem, jak opisują komentarze w kodzie.
+- Na Arenie DOKŁADNIE DWIE wiadomości: ludzka i jedna odpowiedź Akukiego.
+- Treść odpowiedzi bajt w bajt równa tej zapisanej przed zabiciem. Opublikowany został zapisany tekst, nie wynik nowej tury.
+- Wiersz stanu przeszedł na `published`.
+
+DOWÓD, ŻE DRUGA TURA SIĘ NIE ODBYŁA, i to jest decydująca liczba: zrzut liczników wszystkich 66 tabel tenanta przed i po pokazuje `action_lifecycle_turn_counter: 0 -> 1`. Jedna tura. Pozostałe liczniki też pojedyncze: `sessions` 0->1, `mood_state` 0->1, `recall_state` 0->1, `social_profiles` 0->1, `prediction_events` 0->1 (M2 zapisał jedno zdarzenie).
+
+USTALENIE POBOCZNE, ISTOTNE DLA AC #8 I #11: otwarcie kopii uruchomiło migracje schematu, `_migrations: 54 -> 59`. Żywy tenant został ostatnio otwarty starszym kodem, więc pierwszy start na VPS-ie też go zmigruje. Nie jest to problem, ale snapshot porównawczy po migracji musi to uwzględnić, inaczej pięć migracji wygląda jak niewyjaśniona zmiana stanu.
+
+CZEGO TEN TEST NIE POKRYWA: zabicia procesu W TRAKCIE tury, przed zapisem `reply_ready`. Wtedy wiadomość ma wiersz `received` i po restarcie jest pomijana, czyli tura zostaje porzucona i Akuki po prostu nie odpowiada. To zachowanie zamierzone (`abandoned` — „tura BYŁA w locie i nie zostanie powtórzona”), ale warto wiedzieć, że awaria w złym momencie oznacza ciche milczenie, nie zdublowanie.
+---
+
+author: claude
+created: 2026-09-07 14:47
+---
+PRZY OKAZJI TESTU RESTARTU 2026-09-07 WYSZŁA USTERKA, KTÓRA POŁOŻYŁABY USŁUGę NA VPS-IE.
+
+Samodzielny konektor padł na starcie:
+
+    [akuki-arena] fatal Error: ENOENT: no such file or directory,
+      open '/home/zosia/projects/ai/akuki/borg/dist/temperament.yaml'
+
+PRZYCZYNA. Seed czyta `temperament.yaml` i `scaffolding.md` ścieżką względną do własnego modułu (`borg/src/akuki/seed/temperament.ts:242`, `scaffolding.ts:219`). Działało to, dopóki wszystkie wejścia Akukiego szły przez `tsx` po `src/`. Po wyprowadzeniu konektora do osobnego pakietu import idzie przez `dist/`, a `tsup` pakuje JavaScript i nie przenosi plików danych. Komentarz nad `TEMPERAMENT_PATH` przewidział to dosłownie: „If this code is ever bundled, the seed files must be copied alongside it.”
+
+DLACZEGO NIE WYSZŁO WCZEŚNIEJ. `borg/demo/server/tsconfig.dev.json` mapuje `"borg": ["../../src/index.ts"]`, więc serwer demo w trybie dev ładuje borga ze źródeł i seed tam przechodzi. Przez `dist/` idzie wyłącznie ścieżka samodzielna — czyli ta, którą uruchomi systemd. Pierwszym objawem byłaby usługa odmawiająca startu na VPS-ie, a nie błąd na laptopie.
+
+NAPRAWA: `tsup.config.ts` kopiuje oba pliki do `dist/` po udanym buildzie (commit `c2f9cf8c` w forku). Cokolwiek nowego w `src/akuki/seed/` czytanego w runtimie trzeba dopisać do listy `SEED_ASSETS`.
+
+WNIOSEK DO WDROŻENIA: `npm run build` w forku nie jest na VPS-ie krokiem opcjonalnym ani jednorazowym. Bez niego pakiet nie zobaczy nowych eksportów, a bez skopiowanych zasobów seeda usługa nie wstanie.
 ---
 <!-- COMMENTS:END -->
 
