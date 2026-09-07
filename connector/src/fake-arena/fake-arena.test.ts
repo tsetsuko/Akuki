@@ -192,3 +192,40 @@ describe("the page's statement about the tenant", () => {
     expect(page).toContain("nieustawiony");
   });
 });
+
+describe("fault injection for the restart test", () => {
+  it("hangs the POST without recording it, so a retry cannot double-post", async () => {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    store = new FakeArenaStore({
+      threads: [{ id: THREAD, name: "rehearsal", participant_bot_ids: [BOT_ID], is_archived: false }],
+      users: [{ id: HUMAN_ID, name: "Zosia" }],
+      bots: [{ id: BOT_ID, name: "Akuki" }],
+      messages: [],
+    });
+    server = createFakeArena({
+      store,
+      credentials: { sessionCookie: COOKIE, botToken: TOKEN, botId: BOT_ID },
+      humanId: HUMAN_ID,
+      hangPost: true,
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
+    const address = server.address() as AddressInfo;
+
+    // The request never completes, so it is abandoned by timeout rather than awaited.
+    const controller = new AbortController();
+    const pending = fetch(`http://127.0.0.1:${address.port}/api/threads/${THREAD}/messages`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ text: "would be posted" }),
+      signal: controller.signal,
+    }).catch(() => "aborted");
+
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    controller.abort();
+    await pending;
+
+    // Nothing recorded: this is what makes the hang reproduce "the server never
+    // processed it", the case where a naive retry would post the reply twice.
+    expect(store.listMessages(THREAD).messages).toEqual([]);
+  });
+});

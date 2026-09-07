@@ -33,6 +33,18 @@ export type FakeArenaOptions = {
    * sentence about it.
    */
   tenant?: TenantView;
+  /**
+   * FAULT INJECTION, for the restart test only. Accept the POST and then never
+   * answer it, recording nothing.
+   *
+   * The invariant under test is what happens when the connector dies between
+   * persisting a composed reply and completing its publication. That window is
+   * milliseconds wide, so no hand on a keyboard can hit it; hanging the transport
+   * holds it open for as long as the test needs. Recording nothing is the point:
+   * it reproduces a POST the server never processed, which is the case where a
+   * naive retry would post twice.
+   */
+  hangPost?: boolean;
 };
 
 const JSON_HEADERS = { "content-type": "application/json" } as const;
@@ -125,6 +137,12 @@ async function handle(
       if (!options.store.hasThread(threadId)) {
         send(response, 404, { error: `no such thread: ${threadId}` });
         return;
+      }
+      if (options.hangPost === true) {
+        // Before readBody and before store.post: nothing is recorded and nothing
+        // is answered, so the caller sits in its POST until it is killed.
+        process.stderr.write(`[fake-arena] hanging POST for thread ${threadId}\n`);
+        return await new Promise<void>(() => {});
       }
       const raw = await readBody(request);
       const parsed = raw.trim() === "" ? {} : (JSON.parse(raw) as Record<string, unknown>);

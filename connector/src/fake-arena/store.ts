@@ -56,6 +56,15 @@ export class FakeArenaStore {
     this.users = [...seed.users];
     this.bots = [...seed.bots];
     this.messages = [...(seed.messages ?? [])];
+    // Start past anything seeded, so a reseeded store cannot mint an id a seeded
+    // message already has. Found during the restart test of 2026-09-07: the store
+    // was reseeded from its own contents and then handed Akuki's reply the same
+    // `fake-0001` the human message had. Harmless there, but a double double takes
+    // a real bug and makes it look like a fixture quirk.
+    this.counter = this.messages.reduce((highest, message) => {
+      const digits = /^fake-(\d+)$/u.exec(message.id)?.[1];
+      return digits === undefined ? highest : Math.max(highest, Number.parseInt(digits, 10));
+    }, 0);
   }
 
   listThreads(): { threads: FakeThread[] } {

@@ -66,6 +66,8 @@ const server = createFakeArena({
     botId,
   },
   humanId,
+  // Fault injection for the restart test; off unless explicitly asked for.
+  hangPost: process.env.AKUKI_FAKE_ARENA_HANG_POST === "1",
   // Reported on the page, not asserted about. This process cannot see which Borg
   // the demo server opened, so it shows what the environment says and labels it as
   // configuration -- and it flags the two variables disagreeing, which would mean
