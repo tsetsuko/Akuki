@@ -13,7 +13,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 
 import { FakeArenaStore } from "./store.js";
-import { renderPage } from "./ui.js";
+import { renderPage, type TenantView } from "./ui.js";
 
 export type FakeArenaCredentials = {
   sessionCookie: string;
@@ -27,6 +27,12 @@ export type FakeArenaOptions = {
   credentials: FakeArenaCredentials;
   /** Who a message typed into the page is from. */
   humanId: string;
+  /**
+   * What the environment says the tenant directory is, shown on the page so the
+   * reader can tell a rehearsal copy from the live tenant instead of trusting a
+   * sentence about it.
+   */
+  tenant?: TenantView;
 };
 
 const JSON_HEADERS = { "content-type": "application/json" } as const;
@@ -55,7 +61,9 @@ async function handle(
   // an endpoint the real Arena does not have.
   if (method === "GET" && path === "/") {
     response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-    response.end(renderPage(options.store, options.credentials.botId, options.humanId));
+    response.end(
+      renderPage(options.store, options.credentials.botId, options.humanId, options.tenant ?? {}),
+    );
     return;
   }
   if (method === "POST" && path === "/say") {

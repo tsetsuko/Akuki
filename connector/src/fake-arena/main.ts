@@ -66,6 +66,14 @@ const server = createFakeArena({
     botId,
   },
   humanId,
+  // Reported on the page, not asserted about. This process cannot see which Borg
+  // the demo server opened, so it shows what the environment says and labels it as
+  // configuration -- and it flags the two variables disagreeing, which would mean
+  // the connector and the demo server were driving two different tenants.
+  tenant: {
+    akukiDataDir: process.env.AKUKI_DATA_DIR?.trim(),
+    borgDataDir: process.env.BORG_DATA_DIR?.trim(),
+  },
 });
 
 // 127.0.0.1, never 0.0.0.0: this thing accepts a bot token and answers reads, and

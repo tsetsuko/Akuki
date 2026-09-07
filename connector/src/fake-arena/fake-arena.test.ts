@@ -136,3 +136,59 @@ describe("the fake Arena, driven by the real client", () => {
     await expect(client().getMessages("no-such-thread")).rejects.toThrow(/404/u);
   });
 });
+
+describe("the page's statement about the tenant", () => {
+  // The page used to say "his memory is real", meaning "not a mock". Read on a page
+  // it says "this is the memory that stays", which is false for a rehearsal on a
+  // copy and would be most reassuring exactly when the configuration pointed at the
+  // live tenant. These pin the replacement: report the directory, claim nothing.
+  async function pageWith(tenant: {
+    akukiDataDir?: string;
+    borgDataDir?: string;
+  }): Promise<string> {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    store = new FakeArenaStore({
+      threads: [{ id: THREAD, name: "rehearsal", participant_bot_ids: [BOT_ID], is_archived: false }],
+      users: [{ id: HUMAN_ID, name: "Zosia" }],
+      bots: [{ id: BOT_ID, name: "Akuki" }],
+      messages: [],
+    });
+    server = createFakeArena({
+      store,
+      credentials: { sessionCookie: COOKIE, botToken: TOKEN, botId: BOT_ID },
+      humanId: HUMAN_ID,
+      tenant,
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
+    const address = server.address() as AddressInfo;
+    return await (await fetch(`http://127.0.0.1:${address.port}/`)).text();
+  }
+
+  it("never claims the memory is real, in any configuration", async () => {
+    for (const tenant of [
+      {},
+      { akukiDataDir: "/copy", borgDataDir: "/copy" },
+      { akukiDataDir: "/a", borgDataDir: "/b" },
+    ]) {
+      const page = await pageWith(tenant);
+      expect(page).not.toMatch(/Pamięć Akukiego jest natomiast prawdziwa/u);
+    }
+  });
+
+  it("shows the configured directory so a copy is distinguishable from the live tenant", async () => {
+    const page = await pageWith({ akukiDataDir: "/tmp/rehearsal/akuki", borgDataDir: "/tmp/rehearsal/akuki" });
+    expect(page).toContain("/tmp/rehearsal/akuki");
+  });
+
+  it("flags the two variables disagreeing, which would be two tenants", async () => {
+    const page = await pageWith({ akukiDataDir: "/tmp/one", borgDataDir: "/tmp/two" });
+    expect(page).toContain("Dwa różne katalogi");
+    expect(page).toContain("/tmp/one");
+    expect(page).toContain("/tmp/two");
+  });
+
+  it("says it has nothing to show rather than guessing, when neither is set", async () => {
+    const page = await pageWith({});
+    expect(page).toContain("nieustawiony");
+  });
+});
