@@ -22,6 +22,7 @@ import {
   applyAkukiPredictionEnv,
   applyAkukiSeed,
   buildAkukiClients,
+  loadConfig,
   type Borg,
   type EmbeddingClient,
   type LLMClient,
@@ -52,6 +53,8 @@ export type CreatePluginOptions = {
   buildClients?: typeof buildAkukiClients;
   /** Test seam: replaces the prediction-parameter side effect on the environment. */
   prepareEnv?: (env: NodeJS.ProcessEnv) => void;
+  /** Test seam: replaces configuration resolution, which reads the tenant directory. */
+  resolveConfig?: typeof loadConfig;
 };
 
 export function createDemoPlugin(options: CreatePluginOptions = {}): AkukiPlugin {
@@ -61,6 +64,7 @@ export function createDemoPlugin(options: CreatePluginOptions = {}): AkukiPlugin
 
   const buildClients = options.buildClients ?? buildAkukiClients;
   const prepareEnv = options.prepareEnv ?? applyAkukiPredictionEnv;
+  const resolveConfig = options.resolveConfig ?? loadConfig;
 
   let service: ArenaService | null = null;
 
@@ -127,6 +131,16 @@ export function createDemoPlugin(options: CreatePluginOptions = {}): AkukiPlugin
         // it. temperament.yaml and scaffolding.md are the source of truth in git and
         // the database follows them, so editing either needs a restart of the host.
         seed(borg);
+        // WHERE WILL IT DIAL. An embedding failure surfaces as EmbeddingError
+        // "Connection error." and names no host, which is one line of information
+        // short of a diagnosis -- it cost an afternoon once. So the tenant and the
+        // embedding endpoint are stated up front, before anything can fail.
+        //
+        // Resolved here rather than read off the Borg, which exposes no config. Same
+        // env and same directory as the host used, so it matches in practice, and it
+        // is a log line either way -- hence "as resolved here", not "as running".
+        logResolvedTarget(env, resolveConfig, log);
+
         service = await startService({
           env,
           config: loadArenaConfig(env),
@@ -157,6 +171,30 @@ export function createDemoPlugin(options: CreatePluginOptions = {}): AkukiPlugin
       await running.stop();
     },
   };
+}
+
+/**
+ * States the tenant directory and the embedding endpoint. The API key is left out
+ * deliberately: it is a credential, and a log line is the wrong place for one.
+ */
+function logResolvedTarget(
+  env: NodeJS.ProcessEnv,
+  resolveConfig: typeof loadConfig,
+  log: (level: string, message: string) => void,
+): void {
+  try {
+    const dataDir = env.BORG_DATA_DIR?.trim();
+    const config = resolveConfig(dataDir === undefined || dataDir === "" ? {} : { dataDir });
+    log(
+      "info",
+      `as resolved here: tenant=${config.dataDir} ` +
+        `embeddings=${config.embedding.baseUrl} model=${config.embedding.model} ` +
+        `dims=${String(config.embedding.dims)}`,
+    );
+  } catch (error) {
+    // Never fatal: this is instrumentation, and losing it must not cost the run.
+    log("warn", `could not resolve configuration for the log: ${describe(error)}`);
+  }
 }
 
 function describe(error: unknown): string {

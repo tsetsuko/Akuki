@@ -9,7 +9,7 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import type { Borg, buildAkukiClients } from "borg";
+import type { Borg, buildAkukiClients, loadConfig } from "borg";
 
 import type { FetchImpl } from "./botarena-client.js";
 
@@ -184,6 +184,53 @@ describe("createDemoPlugin", () => {
 
     plugin.prepareEnv();
     expect(seen).toEqual([environment]);
+  });
+
+  it("states the tenant and the embedding endpoint before anything can fail", async () => {
+    // The failure this answers: EmbeddingError "Connection error." names no host, so
+    // it cannot distinguish a dead Ollama from a config pointing somewhere else.
+    const logged: string[] = [];
+    const plugin = createDemoPlugin({
+      env: env({ BORG_DATA_DIR: "/tmp/rehearsal/akuki" }),
+      seed: () => {},
+      buildClients: () => ({ llmClient: {} }) as unknown as ReturnType<typeof buildAkukiClients>,
+      resolveConfig: (() => ({
+        dataDir: "/tmp/rehearsal/akuki",
+        embedding: { baseUrl: "http://127.0.0.1:11434/v1", model: "bge-m3", dims: 1024, apiKey: "secret-key" },
+      })) as unknown as typeof loadConfig,
+      startService: async () => ({ stop: async () => {}, pollOnce: async () => {} }),
+    });
+
+    const { borg } = fakeBorg();
+    await plugin.start({ getBorg: () => borg, log: (level, m) => logged.push(`${level} ${m}`) });
+
+    const line = logged.find((entry) => entry.includes("as resolved here"));
+    expect(line).toContain("tenant=/tmp/rehearsal/akuki");
+    expect(line).toContain("embeddings=http://127.0.0.1:11434/v1");
+    expect(line).toContain("model=bge-m3");
+    expect(line).toContain("dims=1024");
+    // A credential has no business in a log line.
+    expect(logged.join("\n")).not.toContain("secret-key");
+  });
+
+  it("still starts when the configuration cannot be resolved for the log", async () => {
+    const logged: string[] = [];
+    const plugin = createDemoPlugin({
+      env: env(),
+      seed: () => {},
+      buildClients: () => ({ llmClient: {} }) as unknown as ReturnType<typeof buildAkukiClients>,
+      resolveConfig: (() => {
+        throw new Error("no config here");
+      }) as unknown as typeof loadConfig,
+      startService: async () => ({ stop: async () => {}, pollOnce: async () => {} }),
+    });
+
+    const { borg } = fakeBorg();
+    await plugin.start({ getBorg: () => borg, log: (level, m) => logged.push(`${level} ${m}`) });
+    expect(logged.some((line) => line.includes("could not resolve configuration"))).toBe(true);
+    expect(logged.some((line) => line.includes("connector started inside the host process"))).toBe(
+      true,
+    );
   });
 
   it("never closes the borrowed Borg", async () => {
