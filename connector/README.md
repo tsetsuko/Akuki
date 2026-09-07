@@ -110,12 +110,18 @@ schedulers started nor `close()` called on it.
 
 ```bash
 cd ../borg
-EXTRA_CONNECTOR_MODULE=../connector/src/plugin.ts \
-BORG_DATA_DIR=/path/to/a/tenant \
-  npm run dev:server
+set -a; . ../connector/.env; set +a          # `npm run dev:server` reads no .env itself
+EXTRA_CONNECTOR_MODULE=../connector/src/plugin.ts npm run dev:server
 # and, separately:
 npm --prefix demo/web run dev
 ```
+
+Sourcing the connector's `.env` is what puts the `AKUKI_ARENA_*` values in the demo
+server's environment, since the plugin reads them from the process it runs inside. Note
+that the demo server reads **`BORG_DATA_DIR`**, not `AKUKI_DATA_DIR` -- the latter is only
+read when the connector opens its own Borg. Set only the first and the connector runs
+against the right tenant; set only the second and the demo server opens `.borg-data/demo`
+instead, which looks healthy and remembers nothing. `.env.example` sets both.
 
 One process, one open Borg, **one writer** on the tenant. The demo UI becomes the window
 onto Akuki's memory -- `/chat` to talk to him, `/mind` to see the bands, the identity, the
