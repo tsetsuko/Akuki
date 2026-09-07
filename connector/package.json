@@ -5,9 +5,9 @@
   "type": "module",
   "description": "BotArena <-> borg connector for the bot 'Akuki'. Polls BotArena as a human session, drives one long-lived borg instance, posts replies with the bot token. Lives outside the borg fork on purpose: the transport is platform code, the seed and the model clients are entity code and stay in the fork.",
   "scripts": {
-    "start": "node --import tsx src/index.ts",
-    "dry-run": "node --import tsx src/index.ts --dry-run",
-    "fake-arena": "node --import tsx src/fake-arena/main.ts",
+    "start": "node --env-file-if-exists=.env --import tsx src/index.ts",
+    "dry-run": "node --env-file-if-exists=.env --import tsx src/index.ts --dry-run",
+    "fake-arena": "node --env-file-if-exists=.env --import tsx src/fake-arena/main.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"

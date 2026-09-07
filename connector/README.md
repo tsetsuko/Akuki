@@ -145,10 +145,18 @@ with a working UI and an explanation, not a dead server.
 ## The fake Arena -- a rehearsal with no social trace
 
 ```bash
+cp .env.example .env   # once
 npm run fake-arena     # http://127.0.0.1:7750, loopback only
 ```
 
-Then point the connector at it with `AKUKI_ARENA_API_BASE=http://127.0.0.1:7750`.
+Every script loads `.env` if it exists, so both halves of a rehearsal read one copy of the
+values that have to match and cannot drift apart. `.env` is gitignored.
+
+**Do not put the live token or cookie in it.** The fake Arena is not the Arena: those two
+values are a shared secret between two local processes, so any two matching strings work.
+The bot id is different -- `.env.example` carries the real one, because it is an identifier
+rather than a secret and using it means the rehearsal exercises the same self-skip path the
+live run will.
 
 It answers the same five endpoints, in the same shapes, with the same credential split, and
 it enforces that split -- a read carrying the bot token gets a 401, exactly as it would live.
