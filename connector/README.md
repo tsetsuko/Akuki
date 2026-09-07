@@ -66,6 +66,9 @@ cd ../borg && npm run build
 Skipping this is the likely cause of `Module '"borg"' has no exported member …`.
 
 **`npm ci` needs `legacy-peer-deps`,** which `.npmrc` pins so it need not be remembered.
+The same flag is needed by hand for `demo/server` and `demo/web` in the fork, which have no
+`.npmrc` of their own; without it the install crashes and leaves no `node_modules`, and the
+first symptom is `vite` failing to resolve `@vitejs/plugin-react`.
 npm 10.9.8 crashes resolving vitest's peer graph with
 `Cannot read properties of null (reading 'edgesOut')`. The crash is in peer resolution for
 `@vitest/browser-playwright` and has nothing to do with the link to the fork.
@@ -110,11 +113,22 @@ schedulers started nor `close()` called on it.
 
 ```bash
 cd ../borg
-set -a; . ../connector/.env; set +a          # `npm run dev:server` reads no .env itself
-EXTRA_CONNECTOR_MODULE=../connector/src/plugin.ts npm run dev:server
+npm --prefix demo/server install --legacy-peer-deps   # once; see the npm note above
+npm --prefix demo/web install --legacy-peer-deps      # once
+set -a; . ../connector/.env; set +a                   # dev:server reads no .env itself
+npm run dev:server
 # and, separately:
 npm --prefix demo/web run dev
 ```
+
+**Every path in `.env` has to be absolute for this route.** `npm run dev:server` delegates
+to `npm --prefix demo/server`, so the server's working directory is `borg/demo/server`, and
+relative paths resolve against that, not against the repo root:
+
+- `EXTRA_CONNECTOR_MODULE=../connector/src/plugin.ts` becomes `borg/demo/connector/...` and
+  fails with `ERR_MODULE_NOT_FOUND`.
+- `AKUKI_ARENA_STATE_DB=./.akuki-arena/state.db` lands in `borg/demo/server/`, a different
+  file from the one `npm start` would use -- two state databases for one rehearsal.
 
 Sourcing the connector's `.env` is what puts the `AKUKI_ARENA_*` values in the demo
 server's environment, since the plugin reads them from the process it runs inside. Note
