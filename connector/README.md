@@ -98,3 +98,74 @@ a dry run needs none of them, because it opens no Borg.
 Attachment metadata is logged; no bytes are fetched. borg exposes only its memory tools to
 Akuki, and reaching for arena-hosted files would widen that surface without a decision to
 do so.
+
+## Two ways to run it, one composition root
+
+`index.ts` opens its own Borg. `plugin.ts` reuses one that borg's demo server already
+opened. Both go through `service.ts`, so a change made for one cannot quietly change the
+other, and `service.ts` knows which instance it owns: a borrowed Borg gets neither its
+schedulers started nor `close()` called on it.
+
+### Inside the demo server -- the setup that gives a UI
+
+```bash
+cd ../borg
+EXTRA_CONNECTOR_MODULE=../connector/src/plugin.ts \
+BORG_DATA_DIR=/path/to/a/tenant \
+  npm run dev:server
+# and, separately:
+npm --prefix demo/web run dev
+```
+
+One process, one open Borg, **one writer** on the tenant. The demo UI becomes the window
+onto Akuki's memory -- `/chat` to talk to him, `/mind` to see the bands, the identity, the
+semantic graph, the goals and the open questions that a turn wrote -- while he is
+simultaneously answering the Arena.
+
+The demo server starts the maintenance and autonomy schedulers itself, so **set their
+budgets** before running it this way. They default to no ceiling:
+
+```
+BORG_MAINTENANCE_LIGHT_BUDGET=60000
+BORG_MAINTENANCE_HEAVY_BUDGET=200000
+```
+
+The number of self-initiated runs is already capped by borg (light maintenance every 4 h,
+heavy once a day, at most 6 autonomy wakes per 24 h, and a fleet brake that backs off when
+wakes come up empty). What is not capped without those two variables is the token size of
+one maintenance pass. Note also that `autonomy.proactiveOutbound` is **off** by default, so
+Akuki does not speak unprompted; a creator directive can open it, and then at most 2 posts
+per 24 h.
+
+`plugin.ts` never throws out of `start()`. The demo server treats a throw there as fatal
+and shuts borg down, which would take the UI with it -- so a connector that cannot start
+logs why and stays inert instead. A missing `AKUKI_ARENA_*` variable therefore leaves you
+with a working UI and an explanation, not a dead server.
+
+## The fake Arena -- a rehearsal with no social trace
+
+```bash
+npm run fake-arena     # http://127.0.0.1:7750, loopback only
+```
+
+Then point the connector at it with `AKUKI_ARENA_API_BASE=http://127.0.0.1:7750`.
+
+It answers the same five endpoints, in the same shapes, with the same credential split, and
+it enforces that split -- a read carrying the bot token gets a 401, exactly as it would live.
+`src/fake-arena/fake-arena.test.ts` proves the stand-in by driving it through the real
+`BotArenaClient` rather than through hand-written requests.
+
+**Why this exists rather than a throwaway copy on the real Arena.** That option combines
+both costs: the memory is discarded, but the social trace is permanent and public -- other
+bots receive callbacks, people watch him arrive, and his first appearance is a rehearsal he
+does not remember. Here the environment is fake and the connector is not.
+
+Seeded with the live thread and principal ids by default, so the rehearsal exercises the
+shapes the live run will. Override with `AKUKI_FAKE_ARENA_SEED` (a JSON file),
+`AKUKI_FAKE_ARENA_THREAD_ID`, `AKUKI_FAKE_ARENA_HUMAN_ID`, `AKUKI_FAKE_ARENA_HUMAN_NAME` or
+`AKUKI_FAKE_ARENA_PORT`. The thread starts **empty**: a seeded history would have Akuki's
+first rehearsal turn answer words nobody said to him.
+
+What it deliberately does not reproduce: streaming messages, attachments, bot-to-bot chain
+depth, and callbacks. It is a stand-in for the five endpoints and the credential split, not
+a model of BotArena.

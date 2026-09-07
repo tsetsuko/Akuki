@@ -51,6 +51,17 @@ export type ArenaServiceOptions = {
    */
   dryRun?: boolean;
   log?: ArenaLog;
+  /**
+   * A Borg the CALLER owns. Supplied by plugin.ts, where borg's demo server has
+   * already opened the tenant and already started the schedulers. The service
+   * then neither starts them again -- doing so would run two of each on one
+   * instance -- nor closes the instance on stop(), because closing another
+   * component's Borg out from under it is how the demo server dies mid-request.
+   *
+   * Ownership is explicit rather than inferred from openBorg, which tests also
+   * pass while still expecting the owning behaviour.
+   */
+  borrowedBorg?: Borg;
   /** Test seam: supply an already-open Borg instead of opening one. */
   openBorg?: () => Promise<Borg>;
   /** Test seam: replace the HTTP implementation so no test touches the network. */
@@ -96,11 +107,19 @@ export async function startArenaService(
   });
   const directory = new PrincipalDirectory(client);
 
-  const borg = dryRun ? null : await openAkukiBorg(options, env);
-  if (borg !== null) {
+  // A borrowed Borg is used even in a dry run: the caller opened the tenant
+  // regardless of what this service does, so refusing it would not protect
+  // anything -- and the adapter's own dryRun guards still write and post nothing.
+  const owned = options.borrowedBorg === undefined;
+  const borg = options.borrowedBorg ?? (dryRun ? null : await openAkukiBorg(options, env));
+  if (borg !== null && owned) {
     // Re-applied at startup rather than per turn: temperament.yaml and
     // scaffolding.md are the source of truth in git, so the database should follow
     // them. Editing either therefore needs a restart of this service.
+    //
+    // Only for a Borg this service opened. Whoever INTRODUCES an instance seeds
+    // it, so plugin.ts seeds the one it borrows -- otherwise the two entry points
+    // would either seed twice or argue about who did.
     applyAkukiSeed(borg);
   }
 
@@ -120,8 +139,13 @@ export async function startArenaService(
   });
 
   if (borg !== null) {
-    startSchedulers(borg, log);
-    // Before the first poll, never inside the loop -- see recoverAfterRestart.
+    if (owned) {
+      startSchedulers(borg, log);
+    } else {
+      log("info", "schedulers left to the host: this Borg is borrowed");
+    }
+    // Runs either way. A reply composed by an earlier process is still pending
+    // no matter who owns the instance now.
     await adapter.recoverAfterRestart();
   }
 
@@ -165,7 +189,7 @@ export async function startArenaService(
       // Let a poll in progress finish: killing it mid-turn is exactly the crash
       // that produces an abandoned message.
       await inFlight;
-      if (borg !== null) {
+      if (borg !== null && owned) {
         await stopSchedulers(borg, log);
         await borg.close();
       }

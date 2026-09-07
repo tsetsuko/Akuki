@@ -65,12 +65,16 @@ describe("transport/cognition boundary", () => {
     }
   });
 
-  it("keeps borg reachable from only the two files that are supposed to reach it", () => {
+  it("keeps borg reachable from only the files that are supposed to reach it", () => {
     // The list above can be forgotten when a file is added. This checks the
-    // complement: whatever files exist, only the runner and the composition root
-    // may see borg. A new transport file therefore fails here by default rather
-    // than quietly joining the wrong side.
-    const allowedToImportBorg = new Set(["runner.ts", "service.ts"]);
+    // complement: whatever files exist, only the runner, the composition root and
+    // the demo-server plugin may see borg. A new transport file therefore fails
+    // here by default rather than quietly joining the wrong side.
+    //
+    // plugin.ts is on this side because its whole job is to hand the host's Borg to
+    // the composition root; index.ts is NOT, because the launcher only wires signals
+    // to stop() and never touches an instance.
+    const allowedToImportBorg = new Set(["runner.ts", "service.ts", "plugin.ts"]);
     const sources = readdirSync(here).filter(
       (file) => file.endsWith(".ts") && !file.endsWith(".test.ts"),
     );
