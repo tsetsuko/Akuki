@@ -18,6 +18,9 @@ describe("loadArenaConfig", () => {
     // The default must be false: replaying history would answer conversations
     // that happened before Akuki existed.
     expect(config.catchUpBacklog).toBe(false);
+    // Null, not a number: unset must keep the previous behaviour rather than
+    // start dropping messages nobody asked it to drop.
+    expect(config.maxCatchUpAgeMs).toBeNull();
     expect(config.stateDbPath).toBe("./.akuki-arena/state.db");
   });
 
@@ -59,6 +62,17 @@ describe("loadArenaConfig", () => {
       expect(
         loadArenaConfig({ ...minimal, AKUKI_ARENA_CATCH_UP_BACKLOG: value }).catchUpBacklog,
       ).toBe(false);
+    }
+  });
+
+  it("reads the catch-up window and rejects a value that is not a positive integer", () => {
+    expect(
+      loadArenaConfig({ ...minimal, AKUKI_ARENA_MAX_CATCH_UP_AGE_MS: "600000" }).maxCatchUpAgeMs,
+    ).toBe(600_000);
+    for (const value of ["0", "-1", "ten minutes"]) {
+      expect(() =>
+        loadArenaConfig({ ...minimal, AKUKI_ARENA_MAX_CATCH_UP_AGE_MS: value }),
+      ).toThrow(ArenaConfigError);
     }
   });
 

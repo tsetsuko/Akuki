@@ -26,6 +26,8 @@ export type ArenaConfig = {
   pollIntervalMs: number;
   threadAllowlist: ReadonlySet<string>;
   catchUpBacklog: boolean;
+  /** Null means no window: a message is answered however long it waited. */
+  maxCatchUpAgeMs: number | null;
 };
 
 function required(env: NodeJS.ProcessEnv, name: string): string {
@@ -45,6 +47,19 @@ function optionalPositiveInt(env: NodeJS.ProcessEnv, name: string, fallback: num
   const raw = env[name];
   if (raw === undefined || raw.trim() === "") {
     return fallback;
+  }
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new ArenaConfigError(`Env var ${name} must be a positive integer, got: ${raw}`);
+  }
+  return parsed;
+}
+
+/** Null when unset, so a caller can tell "no window" from "a window of zero". */
+function optionalPositiveIntOrNull(env: NodeJS.ProcessEnv, name: string): number | null {
+  const raw = env[name];
+  if (raw === undefined || raw.trim() === "") {
+    return null;
   }
   const parsed = Number.parseInt(raw, 10);
   if (!Number.isFinite(parsed) || parsed <= 0) {
@@ -82,5 +97,8 @@ export function loadArenaConfig(env: NodeJS.ProcessEnv = process.env): ArenaConf
     // Defaults to false: on a first connection, replaying the thread's history
     // would have Akuki answer conversations that happened before he existed.
     catchUpBacklog: optionalBool(env, "AKUKI_ARENA_CATCH_UP_BACKLOG", false),
+    // How far back a returning process still answers. Unset keeps the old
+    // behaviour, where an absence of any length is repaid message by message.
+    maxCatchUpAgeMs: optionalPositiveIntOrNull(env, "AKUKI_ARENA_MAX_CATCH_UP_AGE_MS"),
   };
 }

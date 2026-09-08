@@ -134,6 +134,7 @@ export async function startArenaService(
     botId: config.botId,
     threadAllowlist: config.threadAllowlist,
     catchUpBacklog: config.catchUpBacklog,
+    maxCatchUpAgeMs: config.maxCatchUpAgeMs,
     dryRun,
     log,
   });
@@ -174,7 +175,9 @@ export async function startArenaService(
     "info",
     `started: dryRun=${dryRun} pollIntervalMs=${config.pollIntervalMs} ` +
       `allowlist=${config.threadAllowlist.size === 0 ? "<all seated threads>" : [...config.threadAllowlist].join(",")} ` +
-      `catchUpBacklog=${config.catchUpBacklog} state=${config.stateDbPath}`,
+      `catchUpBacklog=${config.catchUpBacklog} ` +
+      `maxCatchUpAge=${config.maxCatchUpAgeMs === null ? "<none>" : `${config.maxCatchUpAgeMs}ms`} ` +
+      `state=${config.stateDbPath}`,
   );
   scheduleNext();
 

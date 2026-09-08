@@ -12,6 +12,15 @@
 // it. The only structural guard is the self-skip: Akuki's own posts are retired
 // without a turn, otherwise he would answer himself forever.
 //
+// ABSENCE IS NOT A DEBT. When the process is away -- stopped, crashed, or filtered
+// off a thread -- the thread's floor stays where it was, so on return every message
+// above it would get its own turn: an hour of other people's conversation answered
+// line by line, minutes late. maxCatchUpAgeMs bounds that. Messages older than the
+// window are retired as `skipped`, which is a durable row: what Akuki never heard
+// stays countable rather than merely absent. It is a structural age test, not a
+// judgement about content, so the cardinal rule above still holds -- but be honest
+// about the cost: those messages never reach him at all.
+//
 // ATTACHMENTS: counted and logged, never passed on. Akuki's isolation comes from
 // borg exposing only memory tools, and pulling attachment bytes would widen that
 // input surface. The log line is what keeps the omission observable (AC #8).
@@ -56,6 +65,12 @@ export type BotArenaAdapterOptions = {
    * replays that backlog -- which on first connection would answer history.
    */
   catchUpBacklog?: boolean;
+  /**
+   * How far back a returning process still answers, in milliseconds. Null (the
+   * default) keeps the old behaviour: an absence of any length is repaid message
+   * by message.
+   */
+  maxCatchUpAgeMs?: number | null;
   /** When true, run no turns and post nothing; just report what would happen. */
   dryRun?: boolean;
   now?: () => number;
@@ -65,6 +80,7 @@ export type BotArenaAdapterOptions = {
 export class BotArenaAdapter {
   private readonly threadAllowlist: ReadonlySet<string>;
   private readonly catchUpBacklog: boolean;
+  private readonly maxCatchUpAgeMs: number | null;
   private readonly dryRun: boolean;
   private readonly now: () => number;
   private readonly log: ArenaLog;
@@ -72,6 +88,7 @@ export class BotArenaAdapter {
   constructor(private readonly options: BotArenaAdapterOptions) {
     this.threadAllowlist = options.threadAllowlist ?? new Set<string>();
     this.catchUpBacklog = options.catchUpBacklog ?? false;
+    this.maxCatchUpAgeMs = options.maxCatchUpAgeMs ?? null;
     this.dryRun = options.dryRun ?? false;
     this.now = options.now ?? (() => Date.now());
     this.log = options.log ?? (() => {});
@@ -182,6 +199,22 @@ export class BotArenaAdapter {
 
     if (message.senderId === this.options.botId) {
       this.claimAndSkip(thread, message, tsMs, "Akuki's own post");
+      return;
+    }
+
+    // Measured against the clock, not against the newest message in the thread: the
+    // question is how long ago this was said, and a thread that has been quiet all
+    // day must not make its own last message look fresh.
+    const ageMs = this.now() - tsMs;
+    if (this.maxCatchUpAgeMs !== null && ageMs > this.maxCatchUpAgeMs) {
+      const reason = `said ${Math.round(ageMs / 1000)}s ago, past the ${Math.round(
+        this.maxCatchUpAgeMs / 1000,
+      )}s catch-up window`;
+      if (this.dryRun) {
+        this.log("info", `[dry-run] would skip ${thread.id}/${message.id}: ${reason}`);
+        return;
+      }
+      this.claimAndSkip(thread, message, tsMs, reason);
       return;
     }
 

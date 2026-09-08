@@ -158,6 +158,76 @@ describe("first sight", () => {
   });
 });
 
+describe("catch-up window", () => {
+  const SAID_AT = Date.parse("2026-09-04T10:00:00.000Z");
+
+  it("retires a message said before the window instead of answering it late", async () => {
+    // An absence: the floor is below the message, so without a window this message
+    // would get its own turn however long the process was away.
+    store.setFloor("t1", SAID_AT - 1);
+    const transport = fakeTransport({ messages: [message({ id: "stale" })] });
+    const runner = fakeRunner(() => ({ text: "should not happen" }));
+    const lines: string[] = [];
+    const adapter = build(transport, runner, {
+      maxCatchUpAgeMs: 10 * 60 * 1000,
+      now: () => SAID_AT + 30 * 60 * 1000,
+      log: (_level, text) => lines.push(text),
+    });
+
+    await adapter.pollOnce();
+
+    expect(runner.seen).toHaveLength(0);
+    expect(transport.posted).toHaveLength(0);
+    // Skipped, not absent: what he never heard has to stay countable.
+    expect(store.get("t1", "stale")?.state).toBe("skipped");
+    expect(lines.some((line) => line.includes("catch-up window"))).toBe(true);
+  });
+
+  it("answers a message inside the window", async () => {
+    store.setFloor("t1", SAID_AT - 1);
+    const transport = fakeTransport({ messages: [message({ id: "fresh" })] });
+    const runner = fakeRunner(() => ({ text: "jestem" }));
+    const adapter = build(transport, runner, {
+      maxCatchUpAgeMs: 10 * 60 * 1000,
+      now: () => SAID_AT + 60 * 1000,
+    });
+
+    await adapter.pollOnce();
+
+    expect(runner.seen.map((m) => m.messageId)).toEqual(["fresh"]);
+    expect(store.get("t1", "fresh")?.state).toBe("published");
+  });
+
+  it("answers however late when no window is configured", async () => {
+    store.setFloor("t1", SAID_AT - 1);
+    const transport = fakeTransport({ messages: [message({ id: "stale" })] });
+    const runner = fakeRunner(() => ({ text: "jestem" }));
+    const adapter = build(transport, runner, { now: () => SAID_AT + 30 * 60 * 1000 });
+
+    await adapter.pollOnce();
+
+    expect(runner.seen.map((m) => m.messageId)).toEqual(["stale"]);
+  });
+
+  it("writes no row in a dry run, so the next real run still decides for itself", async () => {
+    store.setFloor("t1", SAID_AT - 1);
+    const transport = fakeTransport({ messages: [message({ id: "stale" })] });
+    const runner = fakeRunner(() => ({ text: "should not happen" }));
+    const lines: string[] = [];
+    const adapter = build(transport, runner, {
+      maxCatchUpAgeMs: 10 * 60 * 1000,
+      now: () => SAID_AT + 30 * 60 * 1000,
+      dryRun: true,
+      log: (_level, text) => lines.push(text),
+    });
+
+    await adapter.pollOnce();
+
+    expect(store.get("t1", "stale")).toBeUndefined();
+    expect(lines.some((line) => line.includes("[dry-run] would skip"))).toBe(true);
+  });
+});
+
 describe("routing", () => {
   it("hands every final foreign message to the runner without inspecting content", async () => {
     const transport = fakeTransport();

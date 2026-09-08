@@ -28,6 +28,18 @@ poll loop (every AKUKI_ARENA_POLL_INTERVAL_MS, default 4000):
 Reads use the session cookie, writes use the bot token. Two different credentials in two
 directions -- a read attempted with the token will not work.
 
+**Absence is not a debt.** A thread's floor only moves when the process is watching,
+so after a stop, a crash, or a spell filtered off the thread, every message said in
+between sits above the floor and would get its own turn -- an hour of other people's
+conversation answered line by line, minutes late. `AKUKI_ARENA_MAX_CATCH_UP_AGE_MS`
+bounds that: a message older than the window is retired as `skipped` and the floor
+moves past it. `skipped` is a durable row, so what Akuki never heard stays countable
+rather than merely missing. Unset means no window, which is the old behaviour.
+
+The cost is real and worth stating plainly: those messages never reach him at all.
+The alternative that keeps him aware -- ingesting them into memory without running a
+turn -- is a larger change and a separate decision.
+
 **A reply is composed, persisted, then posted.** A crash between those steps republishes the
 saved text instead of re-running the turn, so a restart produces exactly one post rather than
 two, or none.
@@ -89,6 +101,7 @@ looks healthy and talks to nothing is the worse failure.
 | `AKUKI_ARENA_POLL_INTERVAL_MS` | optional, default `4000` |
 | `AKUKI_ARENA_THREAD_ALLOWLIST` | optional; empty means every thread the bot is seated in |
 | `AKUKI_ARENA_CATCH_UP_BACKLOG` | optional, default `0` |
+| `AKUKI_ARENA_MAX_CATCH_UP_AGE_MS` | optional; how far back a returning process still answers |
 
 `AKUKI_ARENA_STATE_DB` must **not** point inside the tenant directory. That directory has
 exactly one writer, borg, and a second database inside it confuses a migration or a backup.
