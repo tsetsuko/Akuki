@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-08-27'
-updated_date: '2026-09-08 13:51'
+updated_date: '2026-09-08 13:58'
 labels: []
 dependencies:
   - TASK-011
@@ -576,6 +576,26 @@ PUŁAPKA WERYFIKACYJNA, do procedury backupu: otwarcie bazy z rozpakowanego arch
 USTERKA JEDNOSTKI FRONTU: `systemctl stop akuki-web` zostawia `failed (Result: exit-code)` ze statusem 143, czyli 128+15, gdzie 15 to SIGTERM — proces zakończył się dokładnie dlatego, że kazaliśmy mu się zakończyć. Do naprawy przez `SuccessExitStatus=143` w `akuki-web.service`, żeby zwykłe zatrzymanie nie zostawiało czerwonego wpisu, który przy prawdziwej awarii będzie mylić. Nie zrobione, czeka na zgodę.
 
 CZEGO NADAL NIE SPRAWDZONO: tury na odtworzonym stanie. Pierwsza rozmowa przez `/chat` jest Zosi — dopiero ona pokaże, czy tura zapisuje się na encję `Zosia` bez zakładania drugiej.
+---
+
+author: claude
+created: 2026-09-08 13:58
+---
+PIERWSZA WYMIANA ZDAŃ NA ODTWORZONYM STANIE, 2026-09-08 ok. 15:15 UTC. Trzy predykcje zapisane przed rozmową sprawdzone pomiarem; dwie z niuansem.
+
+1. ENCJE — POTWIERDZONE. Dwie: `Zosia` (`ent_ry4lo3ia73wug8pz`, bez zmian) i nowa `self` (`ent_2b4utmzi5r2ssn4h`, `assistant_seeded`). Encji rodzaju `person` jest DOKŁADNIE JEDNA. `social_profiles` ma jeden wiersz i jest przypisany do `ent_ry4lo3ia73wug8pz`, czyli do Zosi — nie do nikogo innego.
+
+2. ROSZCZENIE TWÓRCY — POTWIERDZONE MOCNIEJ, NIŻ PRZEWIDYWAŁEM. Zapowiedziałem wiersz `observed_events` bez `rejected_frame` i bez `quarantined`. Pomiar: `observed_events` ma ZERO wierszy. Nie powstał żaden wpis, bo przy `current_sender_borg_role = creator` to zdanie nie jest anomalią i klasyfikator nie miał czego odnotować. Ten sam mechanizm, który wczoraj postawił roszczenie w kwarantannie, dziś milczy — różnica jest w danych, nie w kodzie.
+
+3. OTWARTE PYTANIE — CZʌCIOWO NIETRAFIONE. Zapowiedziałem, że pytanie się nie powtórzy. Powstało jedno, ale INNE: „Kim jest dla mnie Zosia i jaka role odgrywala w moim powstaniu?", `urgency` 0,4, przypisane do encji Zosi. Poprzednie brzmiało „Kim naprawde jest osoba pisząca jako 'Zosia', skoro widzę ją jako alice" z `urgency` 0,5. Znikło pytanie o sprzeczność tożsamości; zostało zwykłe pytanie rozwojowe o rolę twórczyni, czyli dokładnie to, czego od nowołężnego oczekujemy.
+
+M2 ZADZIAŁAŁO PIERWSZY RAZ NA ŻYWO, i to jest najważniejsza rzecz w tym pomiarze. Tura 1 zapisała dwa oczekiwania: „Zosia will continue introducing herself and orient me, likely explaining who she is, why she created me, and what she wants from me" (`about_entity_id` = Zosia) oraz „I am being addressed by a name (Akuki) that is meant to be mine". Tura 2 zapisała wiersz rodzaju `reconciliation` wskazujący na to pierwsze oczekiwanie, z `error_magnitude = 0.3`: „Zosia continued orienting me, saying we will learn and explore the world together and that I'll soon meet more bots like me. Roughly as expected, though less about her own identity and more about a shared future and other bots". Plus dwa nowe oczekiwania — o innych botach i o wspólnym uczeniu się. Pętla predykcja-rozliczenie działa na prawdziwej rozmowie, z policzonym błędem.
+
+PIERWSZY EPIZOD: `ep_7xhsdrfdb9me3e3w`, `audience_entity_id` i `origin_audience_entity_ids` na Zosi, `tier` T1, `episode_kind` raw. Etykiety nadane przez ekstraktor: `origin`, `first-memory`, `greeting`, `creator`. Uczestnicy: `zosia` i jej identyfikator. W zatrutej turze tabele epizodów były PUSTE — różnicy nie tłumaczę, bo jej nie zmierzyłem; do sprawdzenia, jeśli będzie miało znaczenie.
+
+M4 NADAL NIE WYSTRZELIŁO: `social_trust_domains` ma zero wierszy po dwoch turach. Zaufanie kluczowane dziedziną potrzebuje interakcji niosącej dziedzinę; sama rozmowa powitalna jej nie niosła.
+
+SZCZEGÓŁ METODYCZNY: między moimi dwoma odczytami Zosia wykonała drugą turę, więc pierwszy pomiar podał `prediction_events = 2`, a drugi pięć wierszy z dwoch identyfikatorów tury. Pomiar na żywym tenancie podczas rozmowy jest ruchomym celem — przy porównaniach trzeba notować `action_lifecycle_turn_counter` razem z każdym odczytem.
 ---
 <!-- COMMENTS:END -->
 
