@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-08-27'
-updated_date: '2026-09-08 10:00'
+updated_date: '2026-09-08 10:25'
 labels: []
 dependencies:
   - TASK-011
@@ -87,8 +87,8 @@ niepotrzebnych zasobow i reczne sprawdzenie estymaty przed kliknieciem Create.
 - [ ] #1 Konto OCI Free Tier zalozone; region domowy i rzeczywiste limity z konsoli zapisane z data
 - [ ] #2 MFA oraz alerty budzetowe wlaczone; brak upgrade do Pay As You Go
 - [ ] #3 A1 ARM64 VM utworzona jako Always Free z estymowanym kosztem 0
-- [x] #4 NSG i firewall wpuszczaja tylko SSH od Zosi/Bastiona; brak publicznych portow aplikacji
-- [ ] #5 Node >=22.18, npm ci, typecheck, build i LanceDB ARM64 smoke test przechodza
+- [x] #4 Dostęp zawężony na obu drogach: NSG bez reguł ingress dla portów aplikacji, a polityka tailnetu przepuszcza tylko wskazane urządzenia na wskazane porty; brak publicznych portów aplikacji
+- [x] #5 Node >=22.18, npm ci, typecheck, build i LanceDB ARM64 smoke test przechodza
 - [x] #6 Provider embeddingów, model i wymiar zatwierdzone; zgodność z migrowanym corpusem potwierdzona
 - [ ] #7 Sekrety poza repo, plik 0640 root:akuki; modele skonfigurowane bez wklejania sekretow do historii
 - [ ] #8 Migracja tenanta przeprowadzona przez zatrzymanie writera, kopie, sumy kontrolne i atomowe podstawienie
@@ -396,6 +396,38 @@ JEDNYM ZDANIEM: dwa firewalle na drodze publicznej, zero na drodze przez tunel.
 CO Z TEGO WYNIKŁO DLA WDROŻENIA: `DEMO_HOST=127.0.0.1` w `/etc/akuki/akuki.env`, a serwer demo przyjmuje tę zmienną od commita `a600bb88`. Front proxuje `/api` na loopback, więc API i pamięć Akukiego nie są osiągalne z tailnetu. Zostaje jedne drzwi — port frontu — i to one są właściwym miejscem na ACL.
 
 TREŚĆ AC #4 NIE ODPOWIADA MECHANIZMOWI. Kryterium mówi „NSG i firewall wpuszczają tylko SSH od Zosi/Bastiona”. Zmierzony stan: NSG nie wpuszcza niczego, firewall hosta przyjmuje port 22 z DOWOLNEGO adresu (reguła 5, bez ograniczenia źródła), a przez tunel wchodzi wszystko na każdy port. Dostęp faktycznie jest zawężony do sieci Zosi, więc nie odhaczam kryterium wstecz, ale jego opis myli co do tego, CO go zawęża. Zapisane też w KNOWN-ISSUES.md.
+---
+
+author: claude
+created: 2026-09-08 10:25
+---
+POLITYKA TAILNETU WDROŻONA I SPRAWDZONA POMIAREM 2026-09-08. Zosia wkleiła ją w konsoli Tailscale'a.
+
+SKŁADNIA BYŁA INNA, NIŻ NAPISAłEM. Zosia wkleiła swoją obecną politykę i okazało się, że ten tailnet używa `grants`, nie `acls`. Różnica jest jedna i łatwo na niej poląc: porty idą do pola `ip`, nie doklejone do `dst`.
+
+    acls    "dst": ["akuki-vcn:22,5173"]
+    grants  "dst": ["akuki-vcn"], "ip": ["tcp:22", "tcp:5173"]
+
+Gdyby nie ta wklejka, podałbym politykę, która by nie zadziałała. Aliasy z sekcji `hosts` są w `grants` dozwolone w `src` i w `dst` — to sprawdzone w dokumentacji, nie założone. Nazwy maszyn NIE są dozwolonym selektorem; lista to Any, Tailscale IP, Subnet CIDR Range, Autogroups, Groups, Users, Tags, Hosts, IP sets.
+
+CO WESZŁO: laptop dostaje `tcp:22` i `tcp:5173`, telefon tylko `tcp:5173`. Sekcja `ssh` z domyślnej polityki zachowana bez zmian (Tailscale SSH, mechanizm tu nieużywany — logowanie idzie zwykłym `sshd` i kluczem `akuki_oci`). Usunięta została domyślna reguła `{"src": ["*"], "dst": ["*"], "ip": ["*"]}`, która była źródłem zachowania zmierzonego w komentarzu 12.
+
+POMIAR PRZED I PO, na tym samym porcie 39999, z DZIAŁAJĄCYM serwerem nasłuchującym na 0.0.0.0 — to istotne, bo nie testujemy „nic tam nie było”, a „cos tam było i polityka to zatrzymała”:
+
+    39999 przez tunel, przed:  HTTP 200 w 65 ms
+    39999 przez tunel, po:     HTTP 000, trzy próby
+    TCP 22 przez tunel, po:    otwarty
+    SSH po:                    działa, hostname akuki-vcn
+
+Nasłuchujące porty na VPS-ie po zmianie: `0.0.0.0:22` i `[::]:22` (sshd), `127.0.0.1:11434` (Ollama, tylko loopback), `127.0.0.53:53` (systemd-resolved) oraz porty samego `tailscaled`. Ani 7740, ani 39999.
+
+PUŁAPKA NARZĘDZIOWA, ta sama co wczoraj: `pgrep -f "http.server 39999"` trafia we własną komendę `ssh`, bo jej treść zawiera ten wzorzec. Fałszywy alarm „sonda nadal żyje” rozstrzyga lista portów, nie `pgrep`.
+
+AC #4 PRZEPISANE. Stara treść — „NSG i firewall wpuszczaja tylko SSH od Zosi/Bastiona” — była zmierzalnie nieprawdziwa co do mechanizmu: NSG nie wpuszcza niczego, firewall hosta przyjmuje port 22 z dowolnego adresu, a przez tunel wchodziło wszystko. Nowa treść nazywa obie drogi osobno, bo zawężają je dwie różne rzeczy: NSG publiczną, polityka tailnetu tunelową. Kryterium zostaje odhaczone i teraz jego opis odpowiada pomiarowi.
+
+KOPIA POLITYKI: `tailscale-acl.json` w katalogu głównym repo, plus wyjaśnienie w `vps-ssh-dostep.md` — gdzie się ją wkleja (suwak na tryb edycji pliku, nie zakładki edytora wizualnego), czym różni się `grants` od `acls`, i że plik jest kompletną polityką, nie łatką. Źródłem prawdy jest konsola, nie repo.
+
+CZEGO NADAL NIE POTWIERDZIŁEM: czy sekcja `tests` ocenia `grants` tak samo jak dawne `acls`. Zapis polityki przeszedł, więc konsola jej nie odrzuciła — to jednak nie dowodzi, że testy cokolwiek sprawdzają, tylko że nie są błędem składniowym.
 ---
 <!-- COMMENTS:END -->
 
