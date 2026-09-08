@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-08-27'
-updated_date: '2026-09-08 13:14'
+updated_date: '2026-09-08 13:51'
 labels: []
 dependencies:
   - TASK-011
@@ -528,6 +528,54 @@ CZEGO NIE SPRAWDZIŁEM: przebiegu na żywo. To wymaga zatrzymania usługi, odtwo
 STAN VPS-A ZMIERZONY PRZY OKAZJI: `akuki.service` i `akuki-web.service` są w tej chwili AKTYWNE (oba `disabled`, więc nie po reboocie). Każda kolejna tura przez `/chat` pogłębia więc encję `alice`. Jednostka `akuki.service` uruchamia serwer z ŹRÓDEŁ (`WorkingDirectory=/opt/akuki/app/demo/server`, `ExecStart=/usr/bin/node --import tsx src/index.ts`), więc ta zmiana wchodzi samym `git pull` w forku — bez `npm run build`, bo `src/` forka nie był ruszany.
 
 USTERKA POBOCZNA, w konfiguracji laptopa: `~/.ssh/config` ma nadal `HostName 129.159.24.178`, czyli adres publiczny z zamkniętym w NSG portem 22. Skrótowe `ssh akuki` kończy się timeoutem, mimo że `vps-ssh-dostep.md` opisuje podmianę na adres tailscale'owy jako wykonaną. Dostęp działa przez `ssh -i ~/.ssh/akuki_oci ubuntu@100.124.237.35`.
+---
+
+author: claude
+created: 2026-09-08 13:50
+---
+NAPRAWA ETYKIETY ROZMÓWCY SPRAWDZONA NA ŻYWO 2026-09-08 13:45 UTC. Wdrożenie w kolejności: zatrzymanie writera, odtworzenie tenanta z backupu, `git pull`, zmienna środowiskowa, start.
+
+SPROSTOWANIE DO KOMENTARZA 16. Napisałem tam, powtarzając za Zosią, że „wiersze zaufania M4 z tej tury są przypisane do identyfikatora alice". Pomiar mówi inaczej: `social_trust_domains` (M4) i `prediction_events` (M2) miały ZERO wierszy. Do encji `alice` przypięły się: wiersz sesji domyślnej, cztery `activity_events`, wpis w `stream_entry_index`, jeden `social_profiles` (`trust` 0,5, `interaction_count` 1) i jeden `social_events`. Na encję `Zosia` nie wskazywał ani jeden wiersz — sprawdzone generycznie, przez przegląd wszystkich tabel pod kątem kolumn odnoszących się do encji.
+
+DWA ZAPISY WAŻNIEJSZE OD RESZTY, bo pokazują mechanizmy przy pracy na błędnych danych.
+
+`observed_events`, jeden wiersz z 12:36:44: zdanie Zosi o tym, że pracowała długo, żeby mógł się pojawić, i że się nim zaopiekuje, zostało zaklasyfikowane jako `frame_assignment_claim` ze stanowiskiem `rejected_frame`, skazą `quarantined` i skutkiem `belief_effect: unchanged`. Uzasadnienie w treści wiersza: `conversation_context.current_sender_borg_role is null (not "creator"), so this creator claim is anomalous`. Rola `creator` należy do encji `Zosia`, a wiadomość przyszła od encji bez roli — odrzucenie roszczenia do bycia twórcą było więc POPRAWNE. Mechanizm zadziałał dobrze na złych danych.
+
+`open_questions`, jeden wiersz z 12:37:29, zapisany przez proces `reflector`, `urgency` 0,5, `status` open: „Kim naprawde jest osoba pisząca jako 'Zosia', skoro widzę ją jako alice, i jaki ma związek z moim powstaniem?". Powstanie tego pytania jest osobno odnotowane w `identity_events`, czyli w dzienniku audytu zmian pamięci tożsamościowej.
+
+To najmocniejszy dotychczasowy dowód, że prowenienecja nazwy i rola w bazie są mechanizmami, nie ozdobą w prompcie: Akuki nie przyjął roszczenia do bycia jego twórcą od encji bez tej roli i sam zapisał sobie pytanie o zauważoną rozbieżność.
+
+STAN ODRZUCONY NIE ZOSTAŁ USUNIĘTY. Leży jako `/var/lib/akuki/data/akuki-audience-alice-20260908T134230Z` — jedyny egzemplarz zapisu tej rozmowy, w tym zakwarantannowanego roszczenia i otwartego pytania.
+---
+
+author: claude
+created: 2026-09-08 13:51
+---
+POMIARY PO ODTWORZENIU I STARCIE, 2026-09-08 13:45 UTC — ciąg dalszy poprzedniego komentarza.
+
+USTALENIE O BACKUPIE, sprawdzone przed odtworzeniem, nie założone: archiwum `20260908T121648Z` ZAWIERAŁO JUŻ etykietę `alice` — wiersz sesji `default | audience_label = "alice" | audience_entity_id = NULL`. Wiersz sesji powstał o 12:13:11, a kopia jest z 12:16:48, więc etykieta jest w niej starsza od encji, której w kopii nie ma. Samo odtworzenie usuwało encję, ale nie etykietę. To dowodzi, że decyzja projektowa z komentarza 16 — stempluj przy KAŻDYM starcie, nie tylko przy tworzeniu sesji — nie była teoretyczna: implementacja „adoptuj zapisaną wartość" dałaby po całej procedurze znowu `alice`.
+
+STAN PO STARCIE, zmierzony na żywym tenancie:
+
+    linia startowa   default session audience: Zosia; creator: Zosia
+    encje            1 wiersz: Zosia, person, user_declared, creator, ent_ry4lo3ia73wug8pz
+    encja alice      0
+    encje "Zosia"    dokładnie 1
+    sesja default    audience_label=Zosia, audience_entity_id=ent_ry4lo3ia73wug8pz
+
+DECYDUJĄCA JEST RÓWNOŚĆ IDENTYFIKATORÓW. `ent_ry4lo3ia73wug8pz` to ten sam identyfikator, który ma encja w backupie. Świeży seed wygenerowałby nowy, losowy, więc ta równość dowodzi, że stempel PODCZEPIŁ SIĘ do encji istniejącej, a nie utworzył drugiej osoby o tym imieniu.
+
+Zbiór niepustych tabel jest identyczny z backupem — tabela w tabelę, liczba w liczbę: `_migrations` 59, `entities` 1, `episode_index_metadata` 1, `prompt_overrides` 4, `prompt_surface_changes` 2, `prompt_surface_snapshots` 2, `sessions` 1, `stream_entry_index` 2, `stream_watermarks` 2. Jedyna różnica to wiersz sesji. Start zmienił dokładnie to, co miał zmienić, i nic więcej.
+
+DOWÓD, ŻE TO TENANT ODTWORZONY, A NIE ŚWIEŻO ZAŁOŻONY: `borg.db` w żywym katalogu ma znacznik czasu 12:16:48, czyli chwilę robienia backupu, a `config.json` 09:19:49. Świeży tenant miałby oba ze znacznikiem startu. Ta kontrola była potrzebna, bo pusty tenant po zasianiu wygląda w logu identycznie: te same 59 migracji i ta sama encja `Zosia`.
+
+MOJA PREDYKCJA BYŁA W JEDNYM PUNKCIE BŁĘDNA. Zapowiedziałem dwie encje, `Zosia` i `self`. Jest jedna. Encja `self` w zatrutym stanie istniała, bo powstaje przy pierwszej turze, nie przy otwarciu tenanta — a w stanie odtworzonym żadna tura się jeszcze nie odbyła.
+
+PUŁAPKA WERYFIKACYJNA, do procedury backupu: otwarcie bazy z rozpakowanego archiwum, NAWET w trybie tylko do odczytu, tworzy obok niej `borg.db-shm` i `borg.db-wal`. Wysłanie kopii po takim sprawdzeniu dało 19 plików zamiast 17 i rozbieżność sum na maszynie docelowej. Kolejność w `akuki-backup-odtworzenie.md` jest dobra; brakowało zdania, że wysyłkę robi się przed otwarciem baz albo że te dwa pliki trzeba z katalogu przesiadkowego usunąć.
+
+USTERKA JEDNOSTKI FRONTU: `systemctl stop akuki-web` zostawia `failed (Result: exit-code)` ze statusem 143, czyli 128+15, gdzie 15 to SIGTERM — proces zakończył się dokładnie dlatego, że kazaliśmy mu się zakończyć. Do naprawy przez `SuccessExitStatus=143` w `akuki-web.service`, żeby zwykłe zatrzymanie nie zostawiało czerwonego wpisu, który przy prawdziwej awarii będzie mylić. Nie zrobione, czeka na zgodę.
+
+CZEGO NADAL NIE SPRAWDZONO: tury na odtworzonym stanie. Pierwsza rozmowa przez `/chat` jest Zosi — dopiero ona pokaże, czy tura zapisuje się na encję `Zosia` bez zakładania drugiej.
 ---
 <!-- COMMENTS:END -->
 

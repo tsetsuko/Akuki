@@ -118,6 +118,18 @@ for (const n of await db.tableNames()) {
 Zgodne sumy dowodzą, że bajty są te same. `integrity_check` i otwarcie LanceDB dowodzą, że
 te bajty są **używalną bazą**. To dwie różne rzeczy i obie trzeba sprawdzić.
 
+UWAGA NA KOLEJNOŚĆ, złapana przy odtworzeniu 2026-09-08: **czwarte sprawdzenie zmienia
+zawartość rozpakowanego katalogu.** Otwarcie bazy, nawet w trybie tylko do odczytu, każe
+SQLite utworzyć obok niej `borg.db-shm` (pamięć współdzielona) i `borg.db-wal` (dziennik).
+Rozpakowany katalog ma po tym 19 plików, nie 17, więc kopia wysłana na maszynę **po** tym
+sprawdzeniu nie przechodzi porównania sum po stronie celu. Oba pliki są niegroźne — `-wal`
+jest pusty, `-shm` odbudowuje się sam — ale nie mają czego szukać w podstawianym katalogu.
+Albo wysyłać przed czwartym sprawdzeniem, albo usunąć je z katalogu przesiadkowego:
+
+```bash
+rm -f /tmp/akuki-restore/borg.db-shm /tmp/akuki-restore/borg.db-wal
+```
+
 ## Odtworzenie po awarii
 
 Kolejność ma znaczenie: **najpierw zatrzymać writera, na końcu podstawić atomowo.**
@@ -156,6 +168,24 @@ journalctl -u akuki -f
 W logu po starcie należy szukać linii `as resolved here: tenant=… embeddings=… model=… dims=…`.
 Ona mówi, na jaki katalog i jaki endpoint proces naprawdę patrzy — i wyłapuje pomyłkę
 w ścieżce zanim zdąży zaboleć.
+
+Druga linia do przeczytania to `default session audience: … ; creator: …`. Mówi, za kogo
+proces uważa rozmówcę sesji domyślnej; wartość bierze ze zmiennej `DEMO_AUDIENCE_LABEL`,
+a jej brak daje fiksturę demonstracyjną `alice` (opisane w `KNOWN-ISSUES.md`).
+
+SPRAWDZENIE, KTÓREGO NIE WOLNO POMINĄĆ, bo dwa różne stany wyglądają w logu identycznie.
+Jeśli podstawienie się nie wykonało, katalog tenanta nie istnieje i Borg zakłada w tym
+miejscu **nowy, pusty tenant** — z tymi samymi 59 migracjami i z tą samą encją `Zosia`
+z seeda. Rozstrzygają dwie rzeczy, obie tanie:
+
+```bash
+sudo ls -la --time-style=+%H:%M:%S /var/lib/akuki/data/akuki   # borg.db ze znacznikiem
+                                                               # backupu, nie startu
+```
+
+oraz identyfikator encji twórczyni. Świeży seed generuje nowy, losowy identyfikator, więc
+zgodność z identyfikatorem z backupu jest dowodem, że to ten sam byt, a nie jego kopia
+o tym samym imieniu.
 
 ## Czego ten backup NIE chroni
 

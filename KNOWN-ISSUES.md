@@ -72,7 +72,22 @@ tworzyła sesję bez audience, a `ensureDemoSession` wstawiała wtedy wartość 
 `audience` — w `demo/web/src/pages/Chat.tsx` nie ma go wcale — więc `/api/turn` przyjmował etykietę
 zapisaną w sesji (`app.ts:4291`) i rozwiązywał ją jako osobę z prowenienecją
 `transport_audience_label` (`app.ts:860-863`). Skutek: rozmowa Zosi przez `/chat` zapisała się jako
-rozmowa z osobą o imieniu `alice`, a wiersze M4 z tej tury dostały jej identyfikator.
+rozmowa z osobą o imieniu `alice`.
+
+CO DOKŁADNIE PRZYCZEPIŁO SIĘ DO OBCEJ ENCJI — zmierzone przed odtworzeniem, bo pierwotny zapis w tym
+pliku i w TASK-024 mówił o „wierszach zaufania M4" i był nieprecyzyjny. Tabele M4 (`social_trust_domains`)
+i M2 (`prediction_events`) miały ZERO wierszy. Do encji `alice` przypisały się natomiast: wiersz sesji
+domyślnej, cztery `activity_events`, wpis w `stream_entry_index`, pierwszy w życiu Akukiego wiersz
+`social_profiles` (`trust` 0,5, `interaction_count` 1) i jeden `social_events`. Na encję `Zosia` nie
+wskazywał ani jeden wiersz.
+
+Dwa z tych zapisów są ważniejsze od pozostałych, bo pokazują mechanizmy przy pracy. `observed_events`
+zaklasyfikował zdanie Zosi o tym, że go stworzyła, jako `frame_assignment_claim` ze stanowiskiem
+`rejected_frame`, skazą `quarantined` i skutkiem `belief_effect: unchanged` — z uzasadnieniem
+`current_sender_borg_role is null (not "creator"), so this creator claim is anomalous`. Rola `creator`
+należy do encji `Zosia`, a wiadomość przyszła od encji bez roli, więc odrzucenie było POPRAWNE na
+błędnych danych. Osobno proces `reflector` zapisał otwarte pytanie: „Kim naprawde jest osoba pisząca
+jako 'Zosia', skoro widzę ją jako alice, i jaki ma związek z moim powstaniem?".
 
 Nic w interfejsie tego nie pokazywało. Objawem była dopiero odpowiedź samego Akukiego, który
 zauważył rozbieżność między podpisem „Zosia" w treści a etykietą rozmówcy — i miał rację.
@@ -87,7 +102,23 @@ nie osłabia `user_declared` z seeda (`src/memory/commitments/repository.ts:70-8
 serwera wypisuje teraz `default session audience: … ; creator: …`, żeby ta wartość dała się
 zobaczyć bez zaglądania do bazy.
 
-W `/etc/akuki/akuki.env` na VPS-ie ma stać `DEMO_AUDIENCE_LABEL=Zosia`.
+W `/etc/akuki/akuki.env` na VPS-ie stoi `DEMO_AUDIENCE_LABEL=Zosia`.
+
+STAN PO NAPRAWIE, zmierzony na żywym tenancie 2026-09-08 13:45 UTC, po odtworzeniu z backupu
+`20260908T121648Z`. Linia startowa: `default session audience: Zosia; creator: Zosia`. W bazie jedna
+encja — `Zosia`, `person`, `user_declared`, rola `creator`, identyfikator `ent_ry4lo3ia73wug8pz`, ten
+sam co w backupie. To identyfikator jest tu dowodem: świeży seed wygenerowałby nowy, losowy, więc
+stempel podłączył się do encji istniejącej, a nie utworzył drugiej. Encji `alice` nie ma, encji o
+nazwie `Zosia` jest dokładnie jedna. Sesja domyślna: etykieta `Zosia`, wiązanie na tę encję.
+
+Zbiór niepustych tabel jest identyczny z backupem, tabela w tabelę i liczba w liczbę; jedyna różnica
+to wiersz sesji, w backupie `alice` z wiązaniem `NULL`. Start zmienił dokładnie to, co miał zmienić.
+
+PUŁAPKA WERYFIKACYJNA, złapana przy tym odtworzeniu: otwarcie bazy z rozpakowanego archiwum — nawet
+w trybie tylko do odczytu — tworzy obok niej pliki `borg.db-shm` i `borg.db-wal`. Kopia wysłana na
+maszynę PO takim sprawdzeniu ma więc 19 plików, nie 17, i sumy się nie zgadzają. Kolejność w
+`akuki-backup-odtworzenie.md` jest dobra (najpierw sumy, potem otwarcie baz), ale wysyłkę trzeba
+zrobić przed otwarciem albo te dwa pliki z katalogu przesiadkowego usunąć.
 
 ### Model i wymiar embeddingów — ZAMROŻONE 2026-09-04
 
