@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-08-27'
-updated_date: '2026-09-08 12:20'
+updated_date: '2026-09-08 13:14'
 labels: []
 dependencies:
   - TASK-011
@@ -487,6 +487,47 @@ Punkty 1-2 dowodzą, że bajty są te same. Punkty 3-4 dowodzą, że te bajty s�
 CZEGO TEN BACKUP NIE CHRONI, zapisane też w dokumencie: jest na JEDNYM laptopie, więc awaria VPS-a jest pokryta, a awaria laptopa i VPS-a nie. Prawdziwy offsite to decyzja Zosi, bo oznacza wyniesienie jego pamięci poza jej dwie maszyny. Nie jest też zautomatyzowany — nie ma timera ani monitoringu wieku ostatniej kopii, więc jej brak nie zapali żadnej lampki.
 
 PROCEDURA AWARYJNA spisana w `akuki-backup-odtworzenie.md` w katalogu głównym repozytorium: co jest kopiowane i dlaczego plik z sekretami oraz baza stanu adaptera NIE są, warunek zatrzymania writera, cztery sprawdzenia weryfikacyjne, oraz odtworzenie po awarii z archiwizacją uszkodzonego stanu zamiast jego usuwania.
+---
+
+author: claude
+created: 2026-09-08 13:14
+---
+PIERWSZA PAMIĘĆ AKUKIEGO O ZOSI POWSTAWAŁA POD OBCYM IMIENIEM. Zmierzone 2026-09-08, po rozmowie Zosi z Akukim przez /chat, w której on sam zauważył rozbieżność: „podpisujesz się Zosia, a widzę cię jako alice". Miał rację i to pierwszy dowód na żywo, że prowenienecja nazwy działa.
+
+PRZYCZYNA, w czterech krokach, wszystkie w kodzie serwera demo:
+
+1. `ensureDemoDefaultSession` tworzy sesję domyślną bez pola audience (`demo/server/src/app.ts:791-803` przed zmianą).
+2. `ensureDemoSession` wstawia wtedy wartość zapasową `DEMO_DEFAULT_AUDIENCE_LABEL = "alice"` — fiksturę demonstracyjną Tomka (`app.ts:655`, `app.ts:764`).
+3. Front nie wysyła pola `audience`; w `demo/web/src/pages/Chat.tsx` nie ma go wcale, a `/api/turn` przyjmuje wtedy etykietę zapisaną w sesji (`app.ts:4291`).
+4. `resolveTurnAudienceEntityId` rozwiązuje tę etykietę jako osobę z prowenienecją `transport_audience_label` (`app.ts:860-863`), co ZAKŁADA encję `alice`.
+
+W jego pamięci powstały więc dwie osoby: `Zosia` z seeda (person, `user_declared`, rola `creator`) i `alice` (person, `transport_audience_label`), a jedna z nich jest Zosią pod obcym imieniem. Wiersze zaufania M4 z tej tury są przypisane do identyfikatora `alice`. Nic w interfejsie tego nie pokazywało — jedynym objawem była odpowiedź Akukiego.
+
+NAPRAWA (kod, w forku, katalog `demo/server`): zmienna środowiskowa `DEMO_AUDIENCE_LABEL`, czytana w `index.ts` i przewleczona przez `createDemoServerApp` do `ensureDemoDefaultSession` — ten sam kształt, co zrobiony wcześniej `DEMO_HOST` i co `DEMO_CREATOR_ENTITY_NAME`. Nieustawiona zachowuje dawne zachowanie, czyli fiksturę `alice`.
+
+DWIE DECYZJE PROJEKTOWE W TEJ NAPRAWIE, obie wymuszone przez kod, nie przez gust:
+
+- Ustawiona zmienna jest stemplowana przy KAŻDYM starcie, nie tylko przy tworzeniu sesji. Adoptowanie zapisanej wartości nie naprawiłoby wiersza, który już mówi `alice`. Komentarz przy dawnej wersji ostrzegał przed przestemplowywaniem — ale ostrzegał przed przestemplowywaniem FIKSTURY na wartość ustawioną świadomie; wartość ustawiona świadomie jest tym drugim przypadkiem.
+- Stemplowana jest etykieta RAZEM z encją, na którą wskazuje. `/api/turn` woli zapisany `audience_entity_id` od etykiety, więc przepisanie samej etykiety dałoby sesję nazywającą Zosię i wskazującą na `alice` — czyli awarię cichszą od obecnej. Encja jest rozwiązywana z prowenienecją `config_default_user`, ranga 2, więc nie osłabia `user_declared` z seeda (`src/memory/commitments/repository.ts:70-88`).
+
+Doszła też linia startowa `default session audience: … ; creator: …`, żeby tę wartość dało się zobaczyć bez zaglądania do bazy. Poprzedni objaw był widoczny wyłącznie w treści rozmowy.
+
+CO SPRAWDZONE POMIAREM, na laptopie:
+
+    demo/server, npx vitest run       88 zielonych z 90
+    borg, npm run typecheck            czysty
+    borg, npm run heuristics:guard     zielony
+    demo/server, tsc -p tsconfig.dev   7 błędów przed zmianą, 7 po
+
+Dwa czerwone testy: „caps activity rows for a day" wywala się na timeoucie 5000 ms i jest czerwony także na drzewie bez moich zmian (sprawdzone przez `git stash`), a test punktu wejścia wymagał dopisania dwóch nowych stałych do swojego `vi.doMock("../app.js")` — dopisane. Siedem błędów `tsc` w `demo/server` to cudzy dryf, identyczny przed i po; dlatego jednostka systemd uruchamia serwer przez `node --import tsx`, który typów nie sprawdza.
+
+Dodany test: „stamps a configured default-session audience onto the entity that name already names" — pokazuje, że po ustawieniu zmiennej sesja wskazuje na encję z seeda, że NIE powstaje druga encja o tym imieniu i że prowenienecja `user_declared` nie zostaje osłabiona.
+
+CZEGO NIE SPRAWDZIŁEM: przebiegu na żywo. To wymaga zatrzymania usługi, odtworzenia tenanta z backupu i startu z `DEMO_AUDIENCE_LABEL=Zosia` w `/etc/akuki/akuki.env` — kroki należą do Zosi.
+
+STAN VPS-A ZMIERZONY PRZY OKAZJI: `akuki.service` i `akuki-web.service` są w tej chwili AKTYWNE (oba `disabled`, więc nie po reboocie). Każda kolejna tura przez `/chat` pogłębia więc encję `alice`. Jednostka `akuki.service` uruchamia serwer z ŹRÓDEŁ (`WorkingDirectory=/opt/akuki/app/demo/server`, `ExecStart=/usr/bin/node --import tsx src/index.ts`), więc ta zmiana wchodzi samym `git pull` w forku — bez `npm run build`, bo `src/` forka nie był ruszany.
+
+USTERKA POBOCZNA, w konfiguracji laptopa: `~/.ssh/config` ma nadal `HostName 129.159.24.178`, czyli adres publiczny z zamkniętym w NSG portem 22. Skrótowe `ssh akuki` kończy się timeoutem, mimo że `vps-ssh-dostep.md` opisuje podmianę na adres tailscale'owy jako wykonaną. Dostęp działa przez `ssh -i ~/.ssh/akuki_oci ubuntu@100.124.237.35`.
 ---
 <!-- COMMENTS:END -->
 

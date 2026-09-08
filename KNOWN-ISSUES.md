@@ -64,6 +64,31 @@ uruchomienie konektora jako pluginu w serwerze demo (`EXTRA_CONNECTOR_MODULE`).
 
 Sidecar i właściwy Akuki-aware runtime nie mogą równocześnie pisać do tego samego katalogu tenanta.
 
+### Serwer demo nadawał rozmówcy imię fikstury demonstracyjnej — naprawione 2026-09-08
+
+Sesja domyślna serwera demo dostawała etykietę audience z fikstury Tomka. `ensureDemoDefaultSession`
+tworzyła sesję bez audience, a `ensureDemoSession` wstawiała wtedy wartość zapasową
+`DEMO_DEFAULT_AUDIENCE_LABEL = "alice"` (`demo/server/src/app.ts:655`, `:764`). Front nie wysyła pola
+`audience` — w `demo/web/src/pages/Chat.tsx` nie ma go wcale — więc `/api/turn` przyjmował etykietę
+zapisaną w sesji (`app.ts:4291`) i rozwiązywał ją jako osobę z prowenienecją
+`transport_audience_label` (`app.ts:860-863`). Skutek: rozmowa Zosi przez `/chat` zapisała się jako
+rozmowa z osobą o imieniu `alice`, a wiersze M4 z tej tury dostały jej identyfikator.
+
+Nic w interfejsie tego nie pokazywało. Objawem była dopiero odpowiedź samego Akukiego, który
+zauważył rozbieżność między podpisem „Zosia" w treści a etykietą rozmówcy — i miał rację.
+
+NAPRAWA: zmienna środowiskowa `DEMO_AUDIENCE_LABEL`, czytana w `demo/server/src/index.ts` i
+przewleczona przez `createDemoServerApp`, tym samym kształtem co `DEMO_HOST` i
+`DEMO_CREATOR_ENTITY_NAME`. Nieustawiona zachowuje dawne zachowanie, czyli fiksturę. Ustawiona
+jest stemplowana przy każdym starcie **razem z encją, na którą wskazuje**, bo `/api/turn` woli
+zapisany `audience_entity_id` od etykiety: przepisanie samej etykiety dałoby sesję nazywającą
+jedną osobę i wskazującą na drugą. Prowenienecja stempla to `config_default_user`, ranga 2, więc
+nie osłabia `user_declared` z seeda (`src/memory/commitments/repository.ts:70-88`). Linia startowa
+serwera wypisuje teraz `default session audience: … ; creator: …`, żeby ta wartość dała się
+zobaczyć bez zaglądania do bazy.
+
+W `/etc/akuki/akuki.env` na VPS-ie ma stać `DEMO_AUDIENCE_LABEL=Zosia`.
+
 ### Model i wymiar embeddingów — ZAMROŻONE 2026-09-04
 
 Kanoniczna konfiguracja embeddingów, zatwierdzona przez Zosię 2026-09-04:
