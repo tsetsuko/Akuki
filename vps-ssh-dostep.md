@@ -397,11 +397,27 @@ nie `iptables`**.
 
 Polityka **nie jest plikiem w tym repozytorium**. Mieszka w chmurze Tailscale'a i edytuje
 się ją na stronie `https://console.tailscale.com/admin/acls` w konsoli administracyjnej
-(alternatywnie przez API Tailscale'a albo GitOps).
+(alternatywnie przez API Tailscale'a, Terraform albo GitOps).
+
+Na tej stronie są DWA tryby i to jest miejsce, w którym łatwo się pogubić. Zakładki
+*General access rules*, *Tailscale SSH* i *Auto approvers* to **edytor wizualny**, klikający
+reguły po jednej. Cała polityka jest natomiast jednym dokumentem, więc wkleja się ją
+w **trybie edycji pliku**, przełączanym suwakiem u góry strony. Oba tryby operują na tym
+samym pliku i można się między nimi przełączać.
+
+Format to **HuJSON**, czyli „JSON for Humans" — wolno w nim komentarze i przecinki na końcu
+list. To dobre miejsce, żeby przy regułach zapisać, dlaczego akurat te porty.
+
+UWAGA PRZED WKLEJENIEM: `tailscale-acl.json` jest **kompletną polityką, nie łatką**.
+Wklejenie zastąpi wszystko, co jest w konsoli. Najpierw skopiować obecną treść na boku
+i sprawdzić, czy nie ma w niej sekcji `ssh` (Tailscale SSH — osobny mechanizm logowania,
+inny niż zwykły `sshd` na porcie 22, którego tu używamy) albo `tagOwners`, które trzeba
+zachować.
 
 Plik `tailscale-acl.json` w katalogu głównym repozytorium to **kopia do wglądu i do
 odtworzenia**, nie źródło prawdy. Po każdej zmianie w konsoli warto go zaktualizować, bo
-inaczej się rozjedzie.
+inaczej się rozjedzie. Dokumentacja Tailscale'a, którą przeczytałem, nie mówi, czy konsola
+trzyma historię wersji polityki — to dodatkowy powód, żeby ta kopia była aktualna.
 
 ## Jak czytać tę politykę
 
