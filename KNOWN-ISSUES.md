@@ -137,15 +137,89 @@ słucha. Objawem jest `EmbeddingError: Failed to generate embeddings ... "Connec
 nie podaje hosta. Od 2026-09-07 konektor wypisuje przy starcie linię `as resolved here: tenant=...
 embeddings=... model=... dims=...`, właśnie żeby ten objaw dał się zdiagnozować w jednej linii.
 
+### Tailscale omija NSG i firewall hosta — zmierzone 2026-09-08
+
+To najważniejsze ustalenie o sieci Akukiego i było przez cztery dni opisane błędnie, także
+w tym pliku. Poprzednia wersja ostrzegała, że bez przypięcia nasłuchu „jedyną warstwą
+między światem a pamięcią Akukiego byłaby reguła NSG". Z internetu nie dochodzi tam nic —
+Zosia to zauważyła i miała rację. Prawdziwe ryzyko jest inne i większe.
+
+POMIAR. Na VPS-ie postawiony serwer na porcie 39999, którego nie ma ani w regułach ingress
+NSG, ani w regule firewalla hosta:
+
+    przez tunel,  100.124.237.35:39999  ->  HTTP 200 w 65 ms
+    przez publiczny, 129.159.24.178:39999  ->  HTTP 000, brak odpowiedzi
+
+DLACZEGO. Ruch tailscale'owy przylatuje jako WireGuard po UDP 41641, jądro go rozpakowuje
+i pakiety pojawiają się na interfejsie `tailscale0` już WEWNĄTRZ hosta. NSG widzi tylko ten
+jeden port UDP i nie ma pojęcia, co jest w środku. A pierwsza reguła łańcucha `INPUT` to
+skok do `ts-input`, w którym stoi:
+
+    -A ts-input -i tailscale0 -j ACCEPT
+
+Bezwarunkowo, przed wszystkimi regułami lokalnej polityki. Czyli **każdy port otwarty na
+interfejsie tailscale'owym jest dostępny z każdego urządzenia w tailnecie, bez filtrowania**.
+Zmierzona polityka tailnetu jest domyślna, „każdy do każdego na każdy port" — gdyby
+filtrowała, port 39999 nie odpowiedziałby niezależnie od `iptables`.
+
+TE REGUŁY NALEŻĄ DO TAILSCALE, NIE DO NAS. `tailscale debug prefs` pokazuje
+`NetfilterMode: 2`, czyli `tailscaled` sam zarządza swoimi łańcuchami i wstawia je na
+początek `INPUT` przy każdym starcie. Ręczne przestawianie ich nie ma sensu, bo zostaną
+nadpisane. Właściwą warstwą kontroli jest polityka tailnetu (ACL), nie `iptables`.
+
+STAN FAKTYCZNY, w jednym zdaniu: **dwa firewalle na drodze publicznej, zero na drodze przez
+tunel.**
+
+DOTYCZY TO TREŚCI AC #4 w TASK-024, które mówi „NSG i firewall wpuszczają tylko SSH od
+Zosi/Bastiona". Zmierzony stan: NSG nie wpuszcza niczego, firewall hosta przyjmuje port 22
+z dowolnego adresu (reguła 5 w `INPUT`, bez ograniczenia źródła), a przez tunel wchodzi
+wszystko. Kryterium zostaje odhaczone, bo dostęp faktycznie jest zawężony do sieci Zosi,
+ale jego opis nie odpowiada mechanizmowi.
+
+### ufw na VPS-ie jest nieaktywny mimo `ufw status: active`
+
+Kolejność w łańcuchu `INPUT`:
+
+    1  ts-input
+    2  ACCEPT  state RELATED,ESTABLISHED
+    3  ACCEPT  icmp
+    4  ACCEPT  -i lo
+    5  ACCEPT  tcp dpt:22  state NEW
+    6  REJECT  <- wszystko inne odbite TUTAJ
+    7  ufw-before-logging-input
+    8  ufw-before-input
+    9  ufw-after-input
+    10 ufw-after-logging-input
+
+Reguła 6 odbija wszystko, a łańcuchy ufw są dopiero w 7-10, więc **żadne nowe połączenie
+nigdy do nich nie dochodzi**. Ochronę na drodze publicznej dają reguły dostarczone przez
+Oracle'a (polityka `DROP` plus ta reguła odbijająca), nie ufw.
+
+Skutek praktyczny: widniejąca w ufw reguła `22/tcp ALLOW from 83.175.184.155` NIE egzekwuje
+niczego. To pozostałość po allowliście per-IP z czasów przed Tailscale, opisanych w
+`vps-ssh-dostep.md`. Wygląda jak ochrona i nią nie jest, a `ufw status` mówi „active", co
+jest najgorszym rodzajem mylącej informacji.
+
+ZOSTAWIONE ŚWIADOMIE, decyzja Zosi 2026-09-08. Dziś nic przez to nie przecieka, bo NSG
+trzyma drogę publiczną, a edycja `iptables` przez SSH grozi odcięciem się od maszyny. Wpis
+istnieje po to, żeby nikt — łącznie z nami — nie policzył ufw jako warstwy ochrony.
+
 ### Serwer demo nasłuchuje na wszystkich interfejsach
 
-`demo/server/src/index.ts:157-160` woła `serve({ fetch, port })` bez `hostname`, a
-`@hono/node-server` bez niego przyjmuje połączenia na każdym interfejsie — na VPS-ie także na
-adresie publicznym. Jedyną warstwą między światem a interfejsem Akukiego, czyli jego pamięcią,
-stroną `/mind` i możliwością pisania do niego, byłaby wtedy reguła NSG w OCI.
+`demo/server/src/index.ts` woła `serve({ fetch, port })`, a `@hono/node-server` bez
+`hostname` przyjmuje połączenia na każdym interfejsie. NIE oznacza to dostępu z internetu —
+NSG blokuje drogę publiczną. Oznacza dostęp z **każdego urządzenia w tailnecie**, z powodu
+opisanego w poprzednim wpisie: `ts-input` przyjmuje wszystko na `tailscale0`, przed
+jakąkolwiek regułą lokalną.
 
-Lokalnie nie ma to znaczenia. Przed uruchomieniem GUI na VPS-ie nasłuch trzeba przypiąć jawnie do
-loopbacka albo do adresu tailscale'owego i dopiero na to nakładać dostęp.
+ROZWIĄZANE 2026-09-08. Serwer demo przyjmuje teraz `DEMO_HOST` (commit `a600bb88`), a
+`/etc/akuki/akuki.env` ustawia `DEMO_HOST=127.0.0.1`. Front (`vite preview`) proxuje `/api`
+na `127.0.0.1:7740`, więc API nie musi i nie może być osiągalne z sieci. Nieustawiony
+`DEMO_HOST` zachowuje dawne zachowanie, a linia startowa mówi, który interfejs dostał, i
+dopisuje „every interface", gdy nie dostała żadnego.
+
+Zostaje jedna droga osiągalna z tailnetu: port frontu. To ona jest właściwym miejscem na
+politykę ACL tailnetu.
 
 ## Jakość i zależności
 

@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-08-27'
-updated_date: '2026-09-07 14:47'
+updated_date: '2026-09-08 10:00'
 labels: []
 dependencies:
   - TASK-011
@@ -342,6 +342,60 @@ DLACZEGO NIE WYSZŁO WCZEŚNIEJ. `borg/demo/server/tsconfig.dev.json` mapuje `"b
 NAPRAWA: `tsup.config.ts` kopiuje oba pliki do `dist/` po udanym buildzie (commit `c2f9cf8c` w forku). Cokolwiek nowego w `src/akuki/seed/` czytanego w runtimie trzeba dopisać do listy `SEED_ASSETS`.
 
 WNIOSEK DO WDROŻENIA: `npm run build` w forku nie jest na VPS-ie krokiem opcjonalnym ani jednorazowym. Bez niego pakiet nie zobaczy nowych eksportów, a bez skopiowanych zasobów seeda usługa nie wstanie.
+---
+
+author: claude
+created: 2026-09-08 09:09
+---
+TRZY DECYZJE ZOSI, 2026-09-08. Wdrożenie nie ma już otwartych pytań.
+
+1. PAMIĘĆ AKUKIEGO IDZIE NA VPS. Jej słowa: „taki był cel założenia VPS-a, aby Akuki działał niezależnie od włączenia laptopa”. Produkcyjny katalog danych to `/var/lib/akuki/data/akuki`, obok istniejącej kopii `akuki-smoke`.
+
+   KONSEKWENCJA DYSCYPLINARNA, nie techniczna: po migracji laptop NIE MOŻE otwierać `data/akuki` do zapisu. Dwa writery rozdwajają pamięć, a to jest nieodwracalne inaczej niż przez wybór jednej z dwoch rozjechanych wersji. Proponowane zabezpieczenie: po migracji przemianować lokalny katalog na `data/akuki-migrated-<data>`, żeby cokolwiek wskazującego na starą ścieżkę padało głośno, zamiast po cichu pisać do drugiej kopii.
+
+2. GUI TEŻ NA VPS-IE. Zosia nie była pewna i wyraziła preferencję „wolałabym żeby wszystko było na VPS”; rekomendacja przyjęta razem z układem poniżej. Decyzja jest ODWRACALNA: jednostka z serwerem demo i jednostka z samym konektorem czytają ten sam plik środowiskowy, ten sam tenant i tę samą bazę stanu, a w obu Akuki jest na Arenie — różni je tylko dostęp do `/chat` i `/mind`.
+
+   USTALENIE, KTÓRE ZDECYDOWAŁO O KSZTAŁCIE: serwer demo NIE serwuje zbudowanego frontu (brak `serveStatic` w `demo/server/src/app.ts`), a front używa ścieżek WZGLĘDNYCH (`demo/web/src/api/client.ts`, `fetch(path)`) i zakłada API na tym samym origin. Proxy stoi w `demo/web/vite.config.ts` na `http://127.0.0.1:7740` i jest skonfigurowane zarówno dla `server`, jak i dla `preview` — czyli działa też przy serwowaniu bundla.
+
+   Układ docelowy:
+
+       laptop/telefon --tailscale--> 100.124.237.35:5173   vite preview, zbudowany front
+                                            | proxy /api
+                                            v
+                                    127.0.0.1:7740        serwer demo + konektor jako plugin
+
+   Po tailnecie osiągalny jest JEDEN port. Serwer demo przypięty do `127.0.0.1`, więc API i pamięć Akukiego nie są wystawione — to zdejmuje ostrzeżenie z komentarza 8 o nasłuchu na wszystkich interfejsach, bez dopisywania serwowania plików statycznych do kodu Tomka.
+
+   SŁABOŚĆ NAZWANA WPROST: `vite preview` jest w dokumentacji Vite narzędziem podglądowym, nie serwerem produkcyjnym. Dla jednoosobowego panelu w prywatnej sieci to akceptowalny wybór; wymiana na statyczny serwer albo `serveStatic` w serwerze demo zostaje jako osobny, mały krok, jeśli okaże się kłopotliwy.
+
+3. BUDŻETY MAINTENANCE ZAAKCEPTOWANE: `BORG_MAINTENANCE_LIGHT_BUDGET=60000`, `BORG_MAINTENANCE_HEAVY_BUDGET=200000`. Zamyka to lukę z komentarza 8 — liczba przebiegów była ograniczona z projektu (light co 4 h, heavy raz na dobę), ale rozmiar tokenowy jednego przebiegu nie miał sufitu, a rachunek idzie na subskrypcję Tomka.
+---
+
+author: claude
+created: 2026-09-08 10:00
+---
+TAILSCALE OMIJA NSG. Zmierzone 2026-09-08, po tym jak Zosia zakwestionowała moje ostrzeżenie z komentarza 8 — i miała rację co do tego, co w nim było błędne.
+
+CO NAPISAŁEM BŁĘDNIE: „jedyną warstwą między światem a pamięcią Akukiego byłaby reguła NSG”. Z internetu nie dochodzi tam nic, bo NSG nie ma żadnej reguły ingress dla portów aplikacji. Ta część ostrzeżenia była nieuzasadniona.
+
+PRAWDZIWE RYZYKO, i jest większe. Postawiłem na VPS-ie serwer na porcie 39999, którego nie ma ani w NSG, ani w regule firewalla hosta:
+
+    przez tunel,     100.124.237.35:39999  ->  HTTP 200 w 65 ms
+    przez publiczny, 129.159.24.178:39999  ->  HTTP 000
+
+Ruch tailscale'owy przylatuje jako WireGuard po UDP 41641, jądro go rozpakowuje i pakiety pojawiają się na `tailscale0` już WEWNĄTRZ hosta. NSG widzi jeden port UDP i nie wie, co jest w środku. Pierwsza reguła `INPUT` to skok do `ts-input`, a tam stoi `-A ts-input -i tailscale0 -j ACCEPT` — bezwarunkowo, przed całą lokalną polityką.
+
+Polityka tailnetu jest domyślna, „każdy do każdego na każdy port” — dowodzi tego sam pomiar, bo gdyby filtrowała, 39999 nie odpowiedziałby niezależnie od `iptables`.
+
+NA PYTANIE ZOSI „ja to ustawiłam?” — nie. `tailscale debug prefs` pokazuje `NetfilterMode: 2`, czyli `tailscaled` sam zarządza swoimi łańcuchami i wstawia je na początek `INPUT` przy każdym starcie. Ręczne przestawianie tych reguł zostanie nadpisane, więc właściwą warstwą kontroli jest polityka tailnetu, nie `iptables`.
+
+UFW JEST NIEAKTYWNY MIMO `ufw status: active`. W łańcuchu `INPUT` reguła 6 to `REJECT`, a łańcuchy ufw są dopiero w pozycjach 7-10, więc żadne nowe połączenie do nich nie dochodzi. Widniejąca tam reguła `22/tcp ALLOW from 83.175.184.155` — pozostałość po allowliście per-IP z czasów przed Tailscale — nie egzekwuje niczego. Ochronę na drodze publicznej dają reguły Oracle'a. Zosia zdecydowała zostawić martwą regułę i tylko ją udokumentować; edycja `iptables` przez SSH grozi odcięciem, a dziś nic przez to nie przecieka.
+
+JEDNYM ZDANIEM: dwa firewalle na drodze publicznej, zero na drodze przez tunel.
+
+CO Z TEGO WYNIKŁO DLA WDROŻENIA: `DEMO_HOST=127.0.0.1` w `/etc/akuki/akuki.env`, a serwer demo przyjmuje tę zmienną od commita `a600bb88`. Front proxuje `/api` na loopback, więc API i pamięć Akukiego nie są osiągalne z tailnetu. Zostaje jedne drzwi — port frontu — i to one są właściwym miejscem na ACL.
+
+TREŚĆ AC #4 NIE ODPOWIADA MECHANIZMOWI. Kryterium mówi „NSG i firewall wpuszczają tylko SSH od Zosi/Bastiona”. Zmierzony stan: NSG nie wpuszcza niczego, firewall hosta przyjmuje port 22 z DOWOLNEGO adresu (reguła 5, bez ograniczenia źródła), a przez tunel wchodzi wszystko na każdy port. Dostęp faktycznie jest zawężony do sieci Zosi, więc nie odhaczam kryterium wstecz, ale jego opis myli co do tego, CO go zawęża. Zapisane też w KNOWN-ISSUES.md.
 ---
 <!-- COMMENTS:END -->
 
