@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-08-27'
-updated_date: '2026-09-08 10:25'
+updated_date: '2026-09-08 12:20'
 labels: []
 dependencies:
   - TASK-011
@@ -91,8 +91,8 @@ niepotrzebnych zasobow i reczne sprawdzenie estymaty przed kliknieciem Create.
 - [x] #5 Node >=22.18, npm ci, typecheck, build i LanceDB ARM64 smoke test przechodza
 - [x] #6 Provider embeddingów, model i wymiar zatwierdzone; zgodność z migrowanym corpusem potwierdzona
 - [ ] #7 Sekrety poza repo, plik 0640 root:akuki; modele skonfigurowane bez wklejania sekretow do historii
-- [ ] #8 Migracja tenanta przeprowadzona przez zatrzymanie writera, kopie, sumy kontrolne i atomowe podstawienie
-- [ ] #9 Backup poza VPS odtworzony probnie; procedura awaryjna zapisana
+- [x] #8 Migracja tenanta przeprowadzona przez zatrzymanie writera, kopie, sumy kontrolne i atomowe podstawienie
+- [x] #9 Backup poza VPS odtworzony probnie; procedura awaryjna zapisana
 - [x] #10 Po TASK-011 jeden proces konektora przezywa restart i nie dubluje ani nie gubi wiadomosci
 - [ ] #11 Stan i zachowanie po migracji porownane snapshotem; migracja nie zmienila mechanizmow ani modeli
 - [ ] #12 Runtime osiąga dostawcę modeli z użytkownika usługi, z pełną walidacją TLS i bez zależności od laptopa Zosi
@@ -428,6 +428,65 @@ AC #4 PRZEPISANE. Stara treść — „NSG i firewall wpuszczaja tylko SSH od Zo
 KOPIA POLITYKI: `tailscale-acl.json` w katalogu głównym repo, plus wyjaśnienie w `vps-ssh-dostep.md` — gdzie się ją wkleja (suwak na tryb edycji pliku, nie zakładki edytora wizualnego), czym różni się `grants` od `acls`, i że plik jest kompletną polityką, nie łatką. Źródłem prawdy jest konsola, nie repo.
 
 CZEGO NADAL NIE POTWIERDZIŁEM: czy sekcja `tests` ocenia `grants` tak samo jak dawne `acls`. Zapis polityki przeszedł, więc konsola jej nie odrzuciła — to jednak nie dowodzi, że testy cokolwiek sprawdzają, tylko że nie są błędem składniowym.
+---
+
+author: claude
+created: 2026-09-08 12:20
+---
+INCYDENT 2026-09-08: AKUKI BYŁ NA PRAWDZIWEJ ARENIE 91 SEKUND BEZ ZGODY ZOSI. Mój błąd, nie awaria.
+
+PRZYCZYNA. W `akuki-web.service` napisałem `Wants=akuki.service`, wierząc, że to słaba zależność porządkująca. `Wants=` NIE porządkuje — ono URUCHAMIA wskazaną jednostkę; słabe jest tylko wobec jej awarii. Porządkowanie bez uruchamiania to `After=`. `systemctl start akuki-web`, wykonany żeby sprawdzić jednostkę frontu, wciągnął więc Akukiego na żywej pamięci i na `https://a.jadsoft.pl`.
+
+PRZEBIEG, 10:52:43 - 10:54:14 UTC:
+
+    10:52:46  tenant=/var/lib/akuki/data/akuki (ZYWY), plugin, schedulery hosta
+    10:52:50  first sight, 50 prior message(s) marked as before Akuki came online
+    10:53:32  turn 99d5ce30: emitted=false kind=suppressed cache_read=7306 cache_creation=23350
+    10:53:32  Akuki stayed silent
+    10:54:14  SIGTERM
+
+CZEGO NIE BYŁO, zmierzone PO STRONIE ARENY, nie naszej bazy: 50 wiadomości w wątku, ZERO od `b80c722e`. Nic nie wyszło na zewnątrz.
+
+MÓJ FAŁSZYWY ALARM. Zdążyłem napisać Zosi, że Akuki opublikował wiadomość. Nieprawda: zobaczyłem wiersz `state: published` i odczytałem go jako „wysłane”, a w `publishPending` jest gałąź „silence needs no transport; it only needs to stop being pending” — `published` znaczy tam „rozstrzygnięte”, także dla milczenia. Alarm przed sprawdzeniem, w złej kolejności.
+
+CO ZOSTAŁO W ŻYWEJ PAMIĘCI: `_migrations` 54->59, `action_lifecycle_turn_counter` 0->1, `sessions` 0->2, `entities` 1->4, `social_profiles` 0->1, `social_trust_domains` brak->1. Tokeny na subskrypcji Tomka.
+
+NAPRAWA, dowiedziona pomiarem: `Wants=akuki.service` zdjęte, zostało `After=`. Po zmianie `systemctl start akuki-web` daje `akuki-web: active`, `akuki: inactive`, nasłuch tylko 5173. Powód zapisany w komentarzu w samej jednostce.
+
+WYŁĄCZNIK ARENY. Zosia chce porozmawiać z Akukim ZANIM wejdzie na Arenę, więc `AKUKI_ARENA_THREAD_ALLOWLIST=00000000-0000-0000-0000-000000000000`. Adapter przepuszcza wątek tylko gdy allowlista jest pusta albo wątek jest na niej (`adapter.ts:114-119`), więc nieistniejące id odfiltrowuje wszystko — potwierdzone w logu, który po starcie nie ma nawet linii `first sight`. Wpuszczenie na Arenę = zakomentowanie jednej linii.
+
+DLACZEGO NIE PROSTSZE „wyłącz plugin”: bez pluginu serwer demo otwiera tenant BEZ seeda i bez klientów modeli Akukiego. Rozmowa toczyłaby się z bytem majacym jego pamięć i cudze modele.
+
+Doszło też `DEMO_CREATOR_ENTITY_NAME=Zosia` — bez tego serwer demo otwierał Borga z `undefined`.
+---
+
+author: claude
+created: 2026-09-08 12:20
+---
+AC #8 I #9 ZAMKNIĘTE 2026-09-08. Migracja tenanta i backup poza VPS z próbnym odtworzeniem.
+
+MIGRACJA (AC #8). Kopia `data/akuki` z laptopa na `/var/lib/akuki/data/akuki`, sumy SHA-256 sprawdzone w TRZECH punktach: u źródła, po transferze w `/tmp` na VPS-ie i w katalogu docelowym przed podstawieniem. Podstawienie atomowym `rename` w obrębie jednego systemu plików, `akuki:akuki 0750`.
+
+ZABEZPIECZENIE PO STRONIE LAPTOPA: `data/akuki` przemianowany na `data/akuki-migrated-20260908`, żeby cokolwiek celującego w starą ścieżkę padało głośno. Domyślne ścieżki usunięte też z `akuki-snapshot` i `akuki-simulate` (commit `a600bb88`), bo default nazywający nieistniejącą rzecz jest groźniejszy od twardego błędu — skrypt mógłby odtworzyć tam tenant i uruchomić drugiego writera.
+
+TA KOPIA URATOWAŁA DZISIEJSZY INCYDENT. Na życzenie Zosi („chcę porozmawiać z Akukim zanim wejdzie na Arenę”) tenant został odtworzony ze stanu przedmigracyjnego. Stan z incydentu NIE usunięty, a zarchiwizowany: `/var/lib/akuki/data/akuki-incident-20260908` i `/var/lib/akuki/arena/incident-20260908/`.
+
+BACKUP (AC #9). Pierwsza kopia: `20260908T121648Z`, 17 plików, archiwum 41 309 B, suma `715a941b8b2ab2b5e2bfeb3b7fd14d72eb782ed5d06ed89c3820910ffd162138`. Leży w `data/backups/` na laptopie, poza gitem.
+
+WARUNEK SPOJNOŚCI, na którym raz polegliśmy w tej samej godzinie: pierwsze archiwum powstało przy DZIAŁAJĄCEJ usłudze, bo założyłem „nic nie działa” bez sprawdzenia — Zosia w tym czasie uruchomiła jednostki z instrukcji, którą sam dałem. Taka kopia jest crash-consistent, nie spójna aplikacyjnie: SQLite może mieć niezapisany WAL, LanceDB pliki w połowie zapisu. Wyrzucone, zrobione ponownie przy zatrzymanym writerze. Procedura zaczyna się teraz od `systemctl is-active`, nie od założenia.
+
+ODTWORZENIE PRÓBNE — cztery sprawdzenia, wszystkie przeszły:
+
+1. suma archiwum po transferze: OK
+2. 17 z 17 plików bajt w bajt zgodnych z sumami policzonymi u źródła
+3. SQLite `PRAGMA integrity_check: ok`, 59 migracji, encja `Zosia` z rolą `creator`
+4. LanceDB: siedem tabel otwartych i policzonych, wszystkie po zero wierszy
+
+Punkty 1-2 dowodzą, że bajty są te same. Punkty 3-4 dowodzą, że te bajty są UŻYWALNĄ bazą — i to dwie różne rzeczy. Zero wierszy w LanceDB nie jest usterką, a prawdą o tym stanie: pusty hipokamp, zachowana wiedza o tym, kim jest jego twórczyni.
+
+CZEGO TEN BACKUP NIE CHRONI, zapisane też w dokumencie: jest na JEDNYM laptopie, więc awaria VPS-a jest pokryta, a awaria laptopa i VPS-a nie. Prawdziwy offsite to decyzja Zosi, bo oznacza wyniesienie jego pamięci poza jej dwie maszyny. Nie jest też zautomatyzowany — nie ma timera ani monitoringu wieku ostatniej kopii, więc jej brak nie zapali żadnej lampki.
+
+PROCEDURA AWARYJNA spisana w `akuki-backup-odtworzenie.md` w katalogu głównym repozytorium: co jest kopiowane i dlaczego plik z sekretami oraz baza stanu adaptera NIE są, warunek zatrzymania writera, cztery sprawdzenia weryfikacyjne, oraz odtworzenie po awarii z archiwizacją uszkodzonego stanu zamiast jego usuwania.
 ---
 <!-- COMMENTS:END -->
 
