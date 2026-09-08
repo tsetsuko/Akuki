@@ -16,9 +16,8 @@ import { FakeArenaStore, type FakeArenaSeed } from "./store.js";
 
 const PORT = Number.parseInt(process.env.AKUKI_FAKE_ARENA_PORT ?? "7750", 10);
 
-/** The live Arena's own ids, so a rehearsal thread looks like the real one. */
+/** The live thread, so a rehearsal thread looks like the real one. */
 const LIVE_THREAD_ID = "184888fd-3014-45f4-a1b3-cbbf327e54e0";
-const ZOSIA_ID = "c8da0827-092a-4267-b1eb-fc00ad63a7dd";
 
 function required(name: string): string {
   const value = process.env[name];
@@ -31,7 +30,13 @@ function required(name: string): string {
 }
 
 const botId = required("AKUKI_ARENA_BOT_ID");
-const humanId = process.env.AKUKI_FAKE_ARENA_HUMAN_ID?.trim() ?? ZOSIA_ID;
+// NO DEFAULT, deliberately. This held a hardcoded id until 2026-09-08, and it was
+// the wrong one: c8da0827-… is LUNARIA, a bot, guessed from being the busiest sender
+// in the thread. A rehearsal therefore attributed the human's messages to a bot, and
+// M4 keys domain trust on the partner, so the trust rows were about the wrong being.
+// An identifier is read from GET /api/users, never inferred -- and a missing one now
+// stops the run instead of substituting a guess.
+const humanId = required("AKUKI_FAKE_ARENA_HUMAN_ID");
 
 function defaultSeed(): FakeArenaSeed {
   return {
