@@ -5,12 +5,25 @@
     "oppo-a6-pro-5g": "100.69.4.80"
   },
 
-  "acls": [
+  "grants": [
     {
-      "action": "accept",
-      "src": ["zosia-latitude-7490", "oppo-a6-pro-5g"],
-      "proto": "tcp",
-      "dst": ["akuki-vcn:22,5173"]
+      "src": ["zosia-latitude-7490"],
+      "dst": ["akuki-vcn"],
+      "ip": ["tcp:22", "tcp:5173"]
+    },
+    {
+      "src": ["oppo-a6-pro-5g"],
+      "dst": ["akuki-vcn"],
+      "ip": ["tcp:5173"]
+    }
+  ],
+
+  "ssh": [
+    {
+      "action": "check",
+      "src": ["autogroup:member"],
+      "dst": ["autogroup:self"],
+      "users": ["autogroup:nonroot", "root"]
     }
   ],
 
@@ -25,7 +38,7 @@
       "src": "oppo-a6-pro-5g",
       "proto": "tcp",
       "accept": ["akuki-vcn:5173"],
-      "deny": ["akuki-vcn:7740"]
+      "deny": ["akuki-vcn:22", "akuki-vcn:7740"]
     }
   ]
 }

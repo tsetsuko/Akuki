@@ -419,6 +419,22 @@ odtworzenia**, nie źródło prawdy. Po każdej zmianie w konsoli warto go zaktu
 inaczej się rozjedzie. Dokumentacja Tailscale'a, którą przeczytałem, nie mówi, czy konsola
 trzyma historię wersji polityki — to dodatkowy powód, żeby ta kopia była aktualna.
 
+## Składnia: `grants`, nie `acls`
+
+Ten tailnet używa NOWSZEJ składni. Domyślna polityka, którą Tailscale tam wstawił, ma sekcję
+`grants` z regułą `{"src": ["*"], "dst": ["*"], "ip": ["*"]}`, czyli „każdy do każdego na
+każdy port" — i to jest źródło zachowania zmierzonego wyżej.
+
+Różnica wobec starszego `acls` jest jedna i łatwo się na niej pomylić: **porty idą do pola
+`ip`, a nie doklejone do `dst`**.
+
+    acls    "dst": ["akuki-vcn:22,5173"]
+    grants  "dst": ["akuki-vcn"], "ip": ["tcp:22", "tcp:5173"]
+
+Dozwolone wartości `ip` z dokumentacji: `"*"` (wszystkie porty, w tym TCP, UDP i ICMP),
+`"443"`, `"80-443"`, `"tcp:443"`, `"tcp:80-443"`, `"icmp:*"`. Aliasy z `hosts` są dozwolone
+zarówno w `src`, jak i w `dst`.
+
 ## Jak czytać tę politykę
 
 Sekcja `hosts` przypisuje **własne aliasy** do adresów tailscale'owych. To nie są nazwy
@@ -428,17 +444,29 @@ Hosts, IP sets. Dlatego urządzenie adresuje się przez alias z `hosts`, przez t
 adres IP albo przez użytkownika. Aliasy nazwane są tak jak prawdziwe urządzenia wyłącznie
 dla czytelności.
 
-Sekcja `acls` przepuszcza laptop i telefon na serwer, na porty **22** (SSH) i **5173**
-(interfejs demo). Nic więcej.
+Sekcja `grants` ma dwie reguły, rozdzielone celowo: **laptop** dostaje port 22 (SSH)
+i 5173 (interfejs demo), **telefon** tylko 5173. Z telefonu nie logujesz się po SSH, więc
+nie ma powodu mu tego dawać.
 
-**Z chwilą, gdy sekcja `acls` istnieje, wszystko niedopasowane jest odrzucane.** Dziś jej
-nie ma, stąd „każdy do każdego". Po wklejeniu przestanie odpowiadać port 39999 z pomiaru,
-przestanie być osiągalny bezpośrednio port 7740, i — co warto wiedzieć — laptop przestanie
-widzieć telefon i odwrotnie. Jeśli to przeszkadza, trzeba dopisać drugą regułę.
+Sekcja `ssh` jest zachowana z domyślnej polityki bez zmian. Dotyczy Tailscale SSH — osobnego
+mechanizmu, którego tu nie używamy, bo logowanie idzie zwykłym `sshd` i kluczem
+`akuki_oci`. Zostawiona, bo jej usunięcie nic nie daje, a mogłoby zabrać coś, czego nie
+przewidzieliśmy.
+
+**Reguła `{"src": ["*"], "dst": ["*"], "ip": ["*"]}` musi zniknąć**, inaczej cała reszta jest
+bez znaczenia — ona przepuszcza wszystko. Po podmianie przestanie odpowiadać port 39999
+z pomiaru, port 7740 przestanie być osiągalny z tailnetu, a laptop przestanie widzieć telefon
+i odwrotnie. Jeśli to przeszkadza, dopisujemy trzecią regułę.
 
 Sekcja `tests` jest zabezpieczeniem przed odcięciem się. Tailscale sprawdza ją przy zapisie,
 więc polityka, która nie przepuszczałaby laptopa na port 22, nie zostanie przyjęta. Wpisane
 są tam także `deny`, żeby test pilnował nie tylko dostępu, ale i jego braku.
+
+CZEGO NIE POTWIERDZIŁEM: czy `tests` ocenia reguły `grants` tak samo jak dawne `acls`.
+Składnia sekcji `tests` jest udokumentowana, ale jej współpraca z `grants` nie była przeze
+mnie sprawdzona. Zachowanie konsoli jest tu na naszą korzyść — jeśli `tests` w tej formie
+jest nie do przyjęcia, zapis zostanie ODRZUCONY, a nie cicho zaakceptowany. Wtedy usunąć
+sekcję `tests` i wkleić resztę, tracąc tylko siatkę bezpieczeństwa, nie politykę.
 
 ## Czego ta polityka nie dotyczy
 
