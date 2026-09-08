@@ -364,3 +364,80 @@ ssh akuki
 
 Jeśli kiedykolwiek Tailscale nie wstanie, drogą wejścia jest Instance Console Connection
 w panelu Oracle — działa niezależnie od sieci i od reguł NSG.
+
+---
+
+# Polityka tailnetu (ACL) — dlaczego jest potrzebna i gdzie się ją wkleja
+
+Dopisane 2026-09-08, po pomiarze opisanym w `KNOWN-ISSUES.md`.
+
+## Co zostało zmierzone
+
+Na VPS-ie postawiony serwer na porcie 39999 — porcie, którego nie ma ani w regułach ingress
+NSG, ani w regule firewalla hosta:
+
+    przez tunel,     100.124.237.35:39999  ->  HTTP 200 w 65 ms
+    przez publiczny, 129.159.24.178:39999  ->  HTTP 000, brak odpowiedzi
+
+Czyli **tunel Tailscale nie podlega regułom NSG**, a domyślna polityka tailnetu przepuszcza
+każde urządzenie na każdy port.
+
+Mechanizm: ruch tailscale'owy przylatuje jako WireGuard po UDP 41641, jądro go rozpakowuje
+i pakiety pojawiają się na interfejsie `tailscale0` już **wewnątrz** hosta. NSG widzi tylko
+ten jeden port UDP i nie ma pojęcia, co jest w środku. A pierwsza reguła łańcucha `INPUT`
+to skok do `ts-input`, gdzie stoi `-A ts-input -i tailscale0 -j ACCEPT`, bezwarunkowo,
+przed całą lokalną polityką.
+
+Tych reguł nie ustawialiśmy my. `tailscale debug prefs` pokazuje `NetfilterMode: 2`, czyli
+`tailscaled` sam nimi zarządza i wstawia je na początek `INPUT` przy każdym starcie. Ręczne
+przestawianie ich zostanie nadpisane — **właściwą warstwą kontroli jest polityka tailnetu,
+nie `iptables`**.
+
+## Gdzie się to wkleja
+
+Polityka **nie jest plikiem w tym repozytorium**. Mieszka w chmurze Tailscale'a i edytuje
+się ją na stronie `https://console.tailscale.com/admin/acls` w konsoli administracyjnej
+(alternatywnie przez API Tailscale'a albo GitOps).
+
+Plik `tailscale-acl.json` w katalogu głównym repozytorium to **kopia do wglądu i do
+odtworzenia**, nie źródło prawdy. Po każdej zmianie w konsoli warto go zaktualizować, bo
+inaczej się rozjedzie.
+
+## Jak czytać tę politykę
+
+Sekcja `hosts` przypisuje **własne aliasy** do adresów tailscale'owych. To nie są nazwy
+urządzeń pobierane z Tailscale'a — nazwy maszyn NIE są dozwolonym selektorem. Lista
+dozwolonych to: Any, Tailscale IP, Subnet CIDR Range, Autogroups, Groups, Users, Tags,
+Hosts, IP sets. Dlatego urządzenie adresuje się przez alias z `hosts`, przez tag, przez
+adres IP albo przez użytkownika. Aliasy nazwane są tak jak prawdziwe urządzenia wyłącznie
+dla czytelności.
+
+Sekcja `acls` przepuszcza laptop i telefon na serwer, na porty **22** (SSH) i **5173**
+(interfejs demo). Nic więcej.
+
+**Z chwilą, gdy sekcja `acls` istnieje, wszystko niedopasowane jest odrzucane.** Dziś jej
+nie ma, stąd „każdy do każdego". Po wklejeniu przestanie odpowiadać port 39999 z pomiaru,
+przestanie być osiągalny bezpośrednio port 7740, i — co warto wiedzieć — laptop przestanie
+widzieć telefon i odwrotnie. Jeśli to przeszkadza, trzeba dopisać drugą regułę.
+
+Sekcja `tests` jest zabezpieczeniem przed odcięciem się. Tailscale sprawdza ją przy zapisie,
+więc polityka, która nie przepuszczałaby laptopa na port 22, nie zostanie przyjęta. Wpisane
+są tam także `deny`, żeby test pilnował nie tylko dostępu, ale i jego braku.
+
+## Czego ta polityka nie dotyczy
+
+Ruchu wychodzącego z VPS-a do internetu. Akuki dobija się do Bot Areny i do dostawcy modeli
+zwykłym interfejsem publicznym, a ACL rządzą wyłącznie ruchem wewnątrz tailnetu. Dlatego
+w polityce nie ma żadnej reguły dla `akuki-vcn` jako źródła.
+
+## Ryzyko i jak je odkręcić
+
+Źle napisana polityka może odciąć SSH. Ważna własność: politykę edytuje się w przeglądarce,
+więc naprawa **nie wymaga tunelu**. W ostateczności zostaje Instance Console Connection
+w OCI, opisane wyżej w tym dokumencie.
+
+Drugie, mniejsze ryzyko: `hosts` wiąże alias z **adresem IP**. Adresy tailscale'owe są
+trwałe, ale urządzenie usunięte i dodane ponownie może dostać inny. Objaw byłby głośny —
+odmowa dostępu — a nie cichy. Trwalszą alternatywą są tagi, ale wymagają ponownego
+uwierzytelnienia urządzenia z `--advertise-tags`, co przy trzech urządzeniach jest większym
+kosztem niż zyskiem.

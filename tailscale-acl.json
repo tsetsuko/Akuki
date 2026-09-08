@@ -1,0 +1,31 @@
+{
+  "hosts": {
+    "akuki-vcn": "100.124.237.35",
+    "zosia-latitude-7490": "100.73.191.40",
+    "oppo-a6-pro-5g": "100.69.4.80"
+  },
+
+  "acls": [
+    {
+      "action": "accept",
+      "src": ["zosia-latitude-7490", "oppo-a6-pro-5g"],
+      "proto": "tcp",
+      "dst": ["akuki-vcn:22,5173"]
+    }
+  ],
+
+  "tests": [
+    {
+      "src": "zosia-latitude-7490",
+      "proto": "tcp",
+      "accept": ["akuki-vcn:22", "akuki-vcn:5173"],
+      "deny": ["akuki-vcn:7740", "akuki-vcn:11434"]
+    },
+    {
+      "src": "oppo-a6-pro-5g",
+      "proto": "tcp",
+      "accept": ["akuki-vcn:5173"],
+      "deny": ["akuki-vcn:7740"]
+    }
+  ]
+}
