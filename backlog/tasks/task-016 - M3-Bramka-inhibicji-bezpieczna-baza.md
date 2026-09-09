@@ -105,6 +105,27 @@ created: 2026-09-03 08:20
 ---
 M3 DOMKNIETY (2026-09-03). Plasterek 3 (finalizer) GOTOWY: sygnal liczony w fazie deliberacji (buildSpeechInhibitionSection), renderowany na finalizerDynamicSystem przez blok borg_speech_inhibition (order 45) + render-case w finalizer.ts -> finalizer widzi go przy wyborze terminalnym. NA CACHE bezpiecznie: dynamiczna powierzchnia, nie static prefix. Wpiecie: DeliberationContext.speechInhibitionPromptSection, deliberator montuje w finalizerGroundingPromptSections (obok evidence-ledger, forward stringa - Deliberatora wewnatrz nie ruszalem); predictionRepository dodany do TurnPhaseCoordinatorOptions + orchestrator. Zrodla: partner=audienceEntityId, familiarity=socialRepository.getProfile.interaction_count, bledy=listReconciliationsForEntity, valence=workingMemory.mood.valence, figura=entityRepository.findByName(config.prediction.attachmentFigureName). Skip na self-audience i gdy brak predictionRepository. NIESPOJNOSC M3-vs-M1 rozwiazana (decyzja Zosi=B): proza [removable: silence-rule] w scaffolding.md ZMIEKCZONA (odsyla do 'odczuwanej niepewnosci', maleje z przewidywalnoscia + bliska obecnoscia, 'niepewnosc prowadzi ale nie knebluje') z ZACHOWANYM tagiem -> maszyneria M1 (withhold-by-tag) dalej dziala. AC: #1 policzony (nie tylko proza), #2 obecnosc obniza, #3 przewidywalnosc obniza, #4 EmitObserve ratuje przed pustym milczeniem (proza + framing), #6 przywiazanie maly skladnik progu + waga pamieci M2. Dowod: typecheck czysty (5 tsconfig); 585 testow dotknietych obszarow + akuki 75/75 (scaffolding+internalizacja zielone, tag nietkniety). Odblokowuje M4 (TASK-017).
 ---
+author: claude
+created: 2026-09-09 16:25
+---
+PIERWSZY ODCZYT M3 Z ZYWEJ PAMIECI (2026-09-09), narzedzie: `akuki-niesmialosc-check.sh` w korzeniu repozytorium projektu. Czyta tenanta na VPS-ie tylko do odczytu i nie zmienia zadnego parametru.
+
+Powsciagliwosc policzona ze stanu, przy bazie 0,75 i wadze niepewnosci 0,5:
+
+    wobec Zosi      9 interakcji   znajomosc 0,83   przewidywalnosc 0,74   powsciagliwosc 0,28
+    wobec Sola      5 interakcji   znajomosc 0,63   przewidywalnosc 0,56   powsciagliwosc 0,47
+    wobec Lunarii   3 interakcje   znajomosc 0,45   przewidywalnosc 0,40   powsciagliwosc 0,55
+
+MECHANIZM DZIALA I ROZROZNIA PARTNEROW. Wartosc maleje wraz ze znajomoscia dokladnie tak, jak zaprojektowano, i jest dwukrotnie wyzsza wobec bota poznanego niedawno niz wobec tworczyni. To jest pierwszy dowod na zywych danych, ze M3 nie jest ozdoba.
+
+Zachowanie: 20 tur, 19 odpowiedzi. Nastroj dodatni (walencja 0,27), wiec czlon ostroznosci nie dokladal nic.
+
+DWIE RZECZY, KTORE Z TEGO WYNIKLY, obie zapisane osobno, zeby nie utonely w tym komentarzu:
+- TASK-037: sredni blad przewidywania 0,115 przy pierwszym kontakcie z nieznanymi botami wyglada na ocene pobla¿liwa wobec siebie, a te liczbe ocenia sam model. Jesli wejscie jest zawyzone, to nie prog jest za niski.
+- TASK-033 (priorytet podniesiony): Akuki nie dostaje informacji, czy zagadnieto wlasnie jego, wiec rada "odezwij sie, gdy cie zagadnieto" znaczy dla niego "odezwij sie zawsze".
+
+PROGU NIE RUSZONO i nie nalezy go ruszac: zeby milczal przy Zosi, baze trzeba by podniesc z 0,75 do okolo 1,0, czyli uciszyc go wobec wszystkich, w tym obcych. Rozwoj ma brac sie z rosnacego dowodu, nie z przesuwania poprzeczki (inwariant 5).
+---
 <!-- COMMENTS:END -->
 
 ## Final Summary

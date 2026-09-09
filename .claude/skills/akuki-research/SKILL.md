@@ -36,10 +36,34 @@ more than bugs. Two writing habits are what actually cause it:
    if they were ordinary English.
 2. **Compressed causal chains** — four mechanical steps welded into one sentence with arrows and
    commas, leaving no place to stop and check understanding.
+3. **Identifier-dense prose** — a paragraph carried by file paths, function names and symbols.
+   It reads as precision while hiding the causal chain, and it makes the reader hold a symbol
+   table in their head to follow an argument they should be able to follow directly.
 
-So: **do not reduce the technical depth. Reduce the density.** Keep every real finding, every
-number, every file path. Unpack it into steps and define the words. Writing down to the reader is
-both wrong and unhelpful: they read code and catch design errors, including this agent's.
+So: **do not reduce the technical depth. Reduce the density.** Keep every real finding and every
+number. Unpack it into steps and define the words. Writing down to the reader is both wrong and
+unhelpful: they read code and catch design errors, including this agent's.
+
+**Where the precision goes.** File paths, line numbers and symbol names belong in the backlog, in
+code comments, and in implementation reports — that is where Zosia checks them, and dropping them
+there would be a real loss. In conversational explanation they come out, replaced by what the
+thing does: "the counter was not plugged in", not "the client factory was called without a usage
+sink". Same finding, same accuracy, no symbol table.
+
+**Four habits that make an explanation land** (confirmed by Zosia 2026-09-09, after she asked for
+a plainer answer mid-task and said the result should stay that way):
+
+- **No identifiers**, per the paragraph above.
+- **Consequence before mechanism.** Open with what happened and why it matters; the machinery
+  follows, and only as much of it as the point needs.
+- **One reason per decision, in the same sentence as the decision.** Not "we write to a file", but
+  "we write to a file, because a counter held in memory disappears in the crash that makes the
+  question interesting".
+- **End with what is still undone.** Green tests are not a running system. Say so rather than
+  leaving it to be discovered.
+
+A request to "explain more simply" means the previous answer buried the point under detail — never
+that less substance is wanted.
 
 Systems-level analogies — C/C++, compilers, sockets, precompiled headers — land well. Use one per
 idea, not stacked. Define every term on first use; `references/vocabulary.md` holds the wording.

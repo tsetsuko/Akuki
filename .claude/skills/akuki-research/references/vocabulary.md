@@ -216,3 +216,11 @@ that the rule, rather than the base model, produces the behaviour. Never run on 
 
 **"Does it exist in the database when nobody is looking?"** — the test that separates a mechanism
 from decoration.
+
+## Words to avoid in conversation
+
+**"Retention" / "retencja"** — Zosia asked for a plainer word on 2026-09-09. Say what the step
+actually does: **"czy zachowanie zostaje"**, **"przyjęcie za swoje"**, **"odrzucenie"**. The chain
+is then readable without a glossary: he copies something, tries it, and either it becomes his or
+it drops away. Keep `imitation_retention_floor` and the file names as they are — a parameter and a
+module keep their name — but never make her decode the word in prose.

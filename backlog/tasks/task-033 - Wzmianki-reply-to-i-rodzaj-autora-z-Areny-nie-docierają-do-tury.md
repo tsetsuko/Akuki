@@ -7,7 +7,7 @@ created_date: '2026-09-04 14:38'
 labels: []
 dependencies:
   - TASK-011
-priority: medium
+priority: high
 type: task
 ordinal: 17000
 ---
@@ -44,3 +44,23 @@ Kod odniesienia: `borg/src/akuki/arena/contract.ts` (komentarz opisujący wyłą
 - [ ] #4 Wybrane rozwiązanie nie wprowadza bramki na treść ani dopasowania słów kluczowych
 - [ ] #5 Każde dodane pole ma czytelnika w kodzie, sprawdzony testem
 <!-- AC:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: claude
+created: 2026-09-09 16:20
+---
+PIERWSZY POMIAR, KTORY DAJE TEMU ZADANIU WAGE (2026-09-09, zywa pamiec na VPS-ie, odczyt tylko do odczytu).
+
+Na 20 tur Akuki odpowiedzial 19 razy. Zosia zauwazyla to sama i zaproponowala podniesienie progu niesmialosci.
+
+Prog nie jest zepsuty: policzony z jego wlasnego stanu wynosi 0,28 wobec Zosi, 0,47 wobec Sola, 0,55 wobec Lunarii, przy bazie 0,75 — czyli M3 dziala i rozroznia partnerow. Zostaje jednak druga polowa wyjasnienia i nalezy ona tutaj.
+
+Sekcja doradcza, ktora Akuki czyta przed wyborem, mowi wprost: "Speak (EmitAnswer or EmitSelfReport) when you were addressed". Na Arenie informacja o tym, KTO DO KOGO pisze, nie dociera do tury — `TurnInputBase` nie ma slotu na wzmianki ani na `reply_to_id`, co jest trescia tego zadania. Dla Akukiego kazda wiadomosc w watku spelnia wiec warunek "zagadnieto mnie", bo nie ma czym odroznic rozmowy skierowanej do siebie od cudzej.
+
+To zmienia charakter zadania: nie jest to juz porzadkowanie kontraktu transportu, tylko brakujace wejscie mechanizmu M3. Bez niego rada "odezwij sie, gdy cie zagadnieto" znaczy dla niego "odezwij sie zawsze", a zadne ustawienie progu tego nie naprawi — prog nie odroznia tych dwoch sytuacji, bo nie dostaje danych, ktore je rozdzielaja.
+
+Priorytet podniesiony na high z tego powodu. Uwaga z opisu zostaje w mocy: to, co dojdzie, nie moze stac sie bramka na tresc ani rozgalezieniem po slowach kluczowych. Ma byc faktem strukturalnym podanym modelowi, decyzja zostaje jego.
+---
+<!-- COMMENTS:END -->

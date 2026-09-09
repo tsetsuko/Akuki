@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-08-27'
-updated_date: '2026-09-08 13:58'
+updated_date: '2026-09-09 11:40'
 labels: []
 dependencies:
   - TASK-011
@@ -84,13 +84,13 @@ niepotrzebnych zasobow i reczne sprawdzenie estymaty przed kliknieciem Create.
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Konto OCI Free Tier zalozone; region domowy i rzeczywiste limity z konsoli zapisane z data
-- [ ] #2 MFA oraz alerty budzetowe wlaczone; brak upgrade do Pay As You Go
-- [ ] #3 A1 ARM64 VM utworzona jako Always Free z estymowanym kosztem 0
+- [x] #1 Konto OCI Free Tier zalozone; region domowy i rzeczywiste limity z konsoli zapisane z data
+- [x] #2 MFA oraz alerty budzetowe wlaczone; brak upgrade do Pay As You Go
+- [x] #3 A1 ARM64 VM utworzona jako Always Free z estymowanym kosztem 0
 - [x] #4 Dostęp zawężony na obu drogach: NSG bez reguł ingress dla portów aplikacji, a polityka tailnetu przepuszcza tylko wskazane urządzenia na wskazane porty; brak publicznych portów aplikacji
 - [x] #5 Node >=22.18, npm ci, typecheck, build i LanceDB ARM64 smoke test przechodza
 - [x] #6 Provider embeddingów, model i wymiar zatwierdzone; zgodność z migrowanym corpusem potwierdzona
-- [ ] #7 Sekrety poza repo, plik 0640 root:akuki; modele skonfigurowane bez wklejania sekretow do historii
+- [x] #7 Sekrety poza repo, plik 0640 root:akuki; modele skonfigurowane bez wklejania sekretow do historii
 - [x] #8 Migracja tenanta przeprowadzona przez zatrzymanie writera, kopie, sumy kontrolne i atomowe podstawienie
 - [x] #9 Backup poza VPS odtworzony probnie; procedura awaryjna zapisana
 - [x] #10 Po TASK-011 jeden proces konektora przezywa restart i nie dubluje ani nie gubi wiadomosci

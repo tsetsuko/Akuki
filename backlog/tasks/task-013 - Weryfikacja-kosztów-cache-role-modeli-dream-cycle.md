@@ -189,4 +189,28 @@ TokenUsageEvent (borg/src/llm/index.ts:413-423) niesie oprócz modelu pole `budg
 
 Czyli zamknięcie AC #2 wymaga najpierw rozstrzygnięcia, czy atrybucja ma iść po roli (trzeba wtedy przenieść nazwę slotu do zdarzenia usage), czy po `budget` (wtedy AC trzeba przeformułować na etykiety miejsc wywołania). To nie jest sam pomiar — to najpierw mała zmiana w instrumentacji.
 ---
+author: claude
+created: 2026-09-09 14:20
+---
+TELEMETRIA NA ŻYWEJ ŚCIEŻCE — ZNALEZIONA LUKA I JEJ NAPRAWA (2026-09-09).
+
+CO BYŁO NIE TAK. `connector/src/service.ts:216` budował klientów modeli przez `buildAkukiClients({ env })`, bez `usageSink`. To samo w `connector/src/plugin.ts`. Borg ma telemetrię tokenów od dawna — `TokenUsageEvent` (`borg/src/llm/index.ts:413-423`) niesie `input_tokens`, `output_tokens`, `cache_read_input_tokens`, `cache_creation_input_tokens` plus etykiety `budget` (miejsce wywołania) i `model` — a fork ma gotowy kolektor (`borg/src/akuki/token-usage.ts:53`). Nikt ich jednak nie łączył na ścieżce konektora, czyli na jedynej drodze, którą Akuki chodzi po Arenie. Każda tura na Arenie wydawała tokeny bez pomiaru.
+
+DLACZEGO TO JEST BLOKER, A NIE USPRAWNIENIE. Opis tego zadania wymienia „brak telemetrii" jako warunek przerwania testu, a AC #2 (zużycie per rola) i AC #6 (canary zmierzył turę, maintenance i cache) są bez tego niewykonalne, nie tylko niezrobione.
+
+CO ZOSTAŁO ZROBIONE.
+
+1. `connector/src/token-usage-log.ts` (nowy): jedna linia JSON na każde wywołanie modelu — znacznik czasu, `budget`, `model`, cztery liczniki tokenów. Zapis synchroniczny, bez agregacji. Powód wyboru pliku zamiast sumy w pamięci: suma ginie dokładnie wtedy, kiedy odpowiedź ma znaczenie, czyli przy awarii, OOM albo `kill -9` w środku tury. Linia zapisana w chwili wywołania przeżywa wszystkie trzy i daje się potem zagregować dowolnie.
+2. Ścieżka pliku z `AKUKI_ARENA_TOKEN_USAGE_LOG`. Bez domyślnej wartości — konektor, który po cichu dopisuje do pliku, o który nikt nie prosił, jest sam w sobie niespodzianką. Nieustawiona zmienna daje ostrzeżenie przy starcie: „token usage NOT measured", więc brak telemetrii jest widoczny, a nie domyślny.
+3. Podpięcie w obu wejściach: `service.ts` (własny Borg) i `plugin.ts` (Borg pożyczony od serwera demo). Sink musi istnieć PRZED zbudowaniem klientów, bo jest wpinany przy konstrukcji — klient zbudowany bez niego nigdy nic nie zgłosi.
+4. Linia startowa konektora wypisuje teraz `tokenUsageLog=<ścieżka albo <off>>`, obok pozostałych ustawień.
+5. `borg/src/akuki/token-usage.ts`: agregat `byBudget` obok istniejącego `byModel`. `byModel` odpowiada „który model kosztuje", `byBudget` odpowiada „który mechanizm kosztuje" — a to jest pytanie z AC #2, bo jeden model obsługuje wiele miejsc wywołania (`reflection`, `offline-reflector`, `prediction-extractor`, `offline-procedural-synthesizer` i dalej).
+6. Awaria pliku nie przewraca tury: pierwszy błąd zapisu wyłącza logowanie i zgłasza się raz, zamiast krzyczeć przy każdym wywołaniu.
+
+GRANICA PAKIETU. `boundary.test.ts` pilnuje, że sześć plików transportu nie sięga borga wcale. Nowy plik sięga po TYP `TokenUsageEvent`, więc został dopisany do listy plików, którym wolno — z uzasadnieniem w kodzie: przepisanie tego kształtu lokalnie zamieniłoby prawdziwy import na kopię, która cicho się rozjedzie w dniu, w którym borg doda pole.
+
+DOWÓD. Konektor: 119 testów zielonych, typecheck czysty. Fork: `src/akuki/token-usage.test.ts` 4/4 po dopisaniu testu rozdzielającego dwa miejsca wywołania na jednym modelu. Trzy nowe testy telemetrii: zapis linii z zerem w brakującym liczniku, ostrzeżenie przy braku ścieżki, przeżycie awarii zapisu z jednym zgłoszeniem.
+
+CZEGO TO JESZCZE NIE DAJE, żeby nie przeciągać wniosku. To jest przyrząd, nie pomiar. Ani jedna liczba nie została jeszcze zebrana z żywego procesu, więc AC #2, #6 i #9 zostają otwarte. Następny krok jest pomiarowy: uruchomić z ustawioną zmienną, wykonać kilka tur i zagregować plik — najpierw z wyłączonym maintenance, potem z pojedynczo włączanymi procesami, zgodnie z planem canary z opisu.
+---
 <!-- COMMENTS:END -->

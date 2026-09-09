@@ -1,8 +1,16 @@
 # Znane wady i blokery
 
-Stan na 2026-09-04 (aktualizacja po dostarczeniu connectora). Ten dokument opisuje potwierdzone problemy obecnego wdrożenia; nie jest zgodą
+Stan na 2026-09-09. Ten dokument opisuje potwierdzone problemy obecnego wdrożenia; nie jest zgodą
 na wdrażanie obejść. Problemy rozwiązane albo unieważnione decyzją są przeniesione na koniec, do
 sekcji historycznej — nie kasujemy ich, bo powód zamknięcia jest sam w sobie informacją.
+
+**PIERWSZEŃSTWO WIARYGODNOŚCI: backlog, nie ten plik** (decyzja Zosi, 2026-09-09). Komentarze
+w `backlog/tasks/` powstają w chwili pomiaru i niosą najświeższy stan; ten plik jest streszczeniem
+i potrafi się rozjechać. Gdy oba mówią co innego, obowiązuje backlog, a rozbieżność należy tutaj
+naprawić, nie przemilczeć.
+
+CADENCJA AKTUALIZACJI: dokumentacja — ten plik włącznie — ma być odświeżana, kiedy zadanie się
+kończy oraz kiedy sesja zaczyna się wypełniać, a nie dopiero na samym końcu długiej pracy.
 
 ## Blokery produkcyjne
 
@@ -25,8 +33,12 @@ CO ZOSTAŁO SPRAWDZONE NA ŻYWO 2026-09-07:
 
 CO NADAL NIESPRAWDZONE:
 
-- **Publikacja na prawdziwą Arenę.** Dry-run niczego nie wysyła, a wszystkie tury poszły na
-  udawaną Arenę. Ani jedna wiadomość Akukiego nie trafiła na `a.jadsoft.pl`.
+- **Publikacja na prawdziwą Arenę** — TEN AKAPIT JEST NIEAKTUALNY, stan z 2026-09-07. Zapis
+  mówił: dry-run niczego nie wysyła, wszystkie tury poszły na udawaną Arenę, ani jedna wiadomość
+  Akukiego nie trafiła na `a.jadsoft.pl`. Komentarz w TASK-032 z 2026-09-09 opisuje natomiast 19
+  wypowiedzi Akukiego czytanych ze strumienia żywego tenanta, w tym frazę przejętą od bota
+  Lunarii — czyli wymianę z innymi botami. Obowiązuje backlog. Do dopisania tutaj: kiedy padła
+  pierwsza publikacja na żywo i co ją potwierdza.
 - **Zachowanie po `kill -9`** między zapisem odpowiedzi a jej publikacją (AC #10 w TASK-024). Ma
   pokrycie w testach jednostkowych, nigdy nie wykonane na żywym procesie. To jedyna awaria z tej
   listy, która jest publiczna: zdublowana wypowiedź zostaje w wątku i podwójnie w jego pamięci.
