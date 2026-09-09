@@ -31,6 +31,7 @@ import {
 
 import { loadArenaConfig } from "./config.js";
 import { startArenaService, type ArenaService } from "./service.js";
+import { createTokenUsageLog } from "./token-usage-log.js";
 
 export type AkukiPlugin = {
   outboundConnectors: MessageConnector[];
@@ -79,7 +80,17 @@ export function createDemoPlugin(options: CreatePluginOptions = {}): AkukiPlugin
   let clients: { llmClient: LLMClient; embeddingClient?: EmbeddingClient } | null = null;
   let clientError: unknown = null;
   try {
-    clients = buildClients({ env });
+    // Same reason as in service.ts: the sink is wired into each client at
+    // construction, so it has to exist before the clients do. In this path the host
+    // owns the Borg, but the model calls are still Akuki's and still cost his budget.
+    const usageLog = createTokenUsageLog({
+      path: env.AKUKI_ARENA_TOKEN_USAGE_LOG?.trim() ?? null,
+      log: (level, message) => process.stderr.write(`[akuki-arena] ${level} ${message}\n`),
+    });
+    clients = buildClients({
+      env,
+      ...(usageLog.usageSink === undefined ? {} : { usageSink: usageLog.usageSink }),
+    });
   } catch (error) {
     clientError = error;
     process.stderr.write(

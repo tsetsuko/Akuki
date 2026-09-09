@@ -28,6 +28,8 @@ export type ArenaConfig = {
   catchUpBacklog: boolean;
   /** Null means no window: a message is answered however long it waited. */
   maxCatchUpAgeMs: number | null;
+  /** JSONL file for per-call token telemetry. Null turns measurement off. */
+  tokenUsageLogPath: string | null;
 };
 
 function required(env: NodeJS.ProcessEnv, name: string): string {
@@ -68,6 +70,12 @@ function optionalPositiveIntOrNull(env: NodeJS.ProcessEnv, name: string): number
   return parsed;
 }
 
+/** Null when unset, so an absent path is distinguishable from a blank one. */
+function optionalOrNull(env: NodeJS.ProcessEnv, name: string): string | null {
+  const value = env[name];
+  return value === undefined || value.trim() === "" ? null : value.trim();
+}
+
 function optionalBool(env: NodeJS.ProcessEnv, name: string, fallback: boolean): boolean {
   const raw = env[name];
   if (raw === undefined || raw.trim() === "") {
@@ -100,5 +108,9 @@ export function loadArenaConfig(env: NodeJS.ProcessEnv = process.env): ArenaConf
     // How far back a returning process still answers. Unset keeps the old
     // behaviour, where an absence of any length is repaid message by message.
     maxCatchUpAgeMs: optionalPositiveIntOrNull(env, "AKUKI_ARENA_MAX_CATCH_UP_AGE_MS"),
+    // No default path. A connector that starts quietly appending to a file nobody
+    // asked for is a surprise; a connector that measures nothing must say so, and
+    // createTokenUsageLog logs a warning when this is null.
+    tokenUsageLogPath: optionalOrNull(env, "AKUKI_ARENA_TOKEN_USAGE_LOG"),
   };
 }

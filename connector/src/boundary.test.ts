@@ -74,7 +74,16 @@ describe("transport/cognition boundary", () => {
     // plugin.ts is on this side because its whole job is to hand the host's Borg to
     // the composition root; index.ts is NOT, because the launcher only wires signals
     // to stop() and never touches an instance.
-    const allowedToImportBorg = new Set(["runner.ts", "service.ts", "plugin.ts"]);
+    // token-usage-log.ts is here because it is glue for borg's own telemetry: it
+    // takes borg's TokenUsageEvent shape and nothing else. Re-declaring that shape
+    // locally to stay off this list would trade a real import for a copy that
+    // drifts silently the day borg adds a field.
+    const allowedToImportBorg = new Set([
+      "runner.ts",
+      "service.ts",
+      "plugin.ts",
+      "token-usage-log.ts",
+    ]);
     const sources = readdirSync(here).filter(
       (file) => file.endsWith(".ts") && !file.endsWith(".test.ts"),
     );

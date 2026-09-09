@@ -37,6 +37,7 @@ import type { AkukiRunner } from "./contract.js";
 import { PrincipalDirectory } from "./directory.js";
 import { ArenaAkukiRunner } from "./runner.js";
 import { ArenaStateStore } from "./state.js";
+import { createTokenUsageLog } from "./token-usage-log.js";
 
 export type ArenaServiceOptions = {
   env?: NodeJS.ProcessEnv;
@@ -111,7 +112,14 @@ export async function startArenaService(
   // regardless of what this service does, so refusing it would not protect
   // anything -- and the adapter's own dryRun guards still write and post nothing.
   const owned = options.borrowedBorg === undefined;
-  const borg = options.borrowedBorg ?? (dryRun ? null : await openAkukiBorg(options, env));
+  // Only for a Borg this service opens. A borrowed one arrived with its clients
+  // already built by plugin.ts, which wires its own log.
+  const tokenUsageLog =
+    options.borrowedBorg === undefined && !dryRun
+      ? createTokenUsageLog({ path: config.tokenUsageLogPath, log })
+      : { usageSink: undefined, path: null };
+  const borg =
+    options.borrowedBorg ?? (dryRun ? null : await openAkukiBorg(options, env, tokenUsageLog.usageSink));
   if (borg !== null && owned) {
     // Re-applied at startup rather than per turn: temperament.yaml and
     // scaffolding.md are the source of truth in git, so the database should follow
@@ -176,6 +184,7 @@ export async function startArenaService(
     `started: dryRun=${dryRun} pollIntervalMs=${config.pollIntervalMs} ` +
       `allowlist=${config.threadAllowlist.size === 0 ? "<all seated threads>" : [...config.threadAllowlist].join(",")} ` +
       `catchUpBacklog=${config.catchUpBacklog} ` +
+      `tokenUsageLog=${tokenUsageLog.path ?? "<off>"} ` +
       `maxCatchUpAge=${config.maxCatchUpAgeMs === null ? "<none>" : `${config.maxCatchUpAgeMs}ms`} ` +
       `state=${config.stateDbPath}`,
   );
@@ -205,6 +214,7 @@ export async function startArenaService(
 async function openAkukiBorg(
   options: ArenaServiceOptions,
   env: NodeJS.ProcessEnv,
+  usageSink: ReturnType<typeof createTokenUsageLog>["usageSink"],
 ): Promise<Borg> {
   if (options.openBorg !== undefined) {
     return options.openBorg();
@@ -213,7 +223,9 @@ async function openAkukiBorg(
   if (dataDir === undefined || dataDir === "") {
     throw new Error("AKUKI_DATA_DIR must be set explicitly before starting the Arena connector");
   }
-  const clients = buildAkukiClients({ env });
+  // The sink has to be in place before the clients are built: it is wired into each
+  // client at construction, so a client built without it never reports a call.
+  const clients = buildAkukiClients({ env, ...(usageSink === undefined ? {} : { usageSink }) });
   // Temperament-driven M2 prediction parameters have to be in the env before
   // Borg.open reads the config.
   applyAkukiPredictionEnv(env);

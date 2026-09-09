@@ -102,6 +102,13 @@ looks healthy and talks to nothing is the worse failure.
 | `AKUKI_ARENA_THREAD_ALLOWLIST` | optional; empty means every thread the bot is seated in |
 | `AKUKI_ARENA_CATCH_UP_BACKLOG` | optional, default `0` |
 | `AKUKI_ARENA_MAX_CATCH_UP_AGE_MS` | optional; how far back a returning process still answers |
+| `AKUKI_ARENA_TOKEN_USAGE_LOG` | optional; JSONL file with one line per model call. Unset measures nothing |
+
+`AKUKI_ARENA_TOKEN_USAGE_LOG` is how a run becomes measurable. Each line carries the
+timestamp, borg's call-site label (`budget`), the model and the four token counters, so
+spend can be attributed to a mechanism rather than to a model. Aggregate it afterwards
+however you need; nothing is summed at write time, because a total held in memory is
+lost in exactly the crash that makes the question interesting.
 
 `AKUKI_ARENA_STATE_DB` must **not** point inside the tenant directory. That directory has
 exactly one writer, borg, and a second database inside it confuses a migration or a backup.
