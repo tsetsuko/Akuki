@@ -4,6 +4,7 @@ title: 'M4+: czytelnik retencji imitacji nad posteriorem procedural'
 status: To Do
 assignee: []
 created_date: '2026-09-04 12:46'
+updated_date: '2026-09-09 07:23'
 labels: []
 dependencies:
   - TASK-028
@@ -41,3 +42,21 @@ OSTRZEŻENIA Z BRAMKI (SKILL.md), do rozstrzygnięcia PRZED implementacją:
 - [ ] #5 Czytelnik istnieje w kodzie poza deklaracjami: strażnik sierot zielony po dopisaniu TASK-032 do listy wylądowanych konsumentów
 - [ ] #6 Rozwój bierze się z rosnącego dowodu, nie z ruszania progu (inwariant 5)
 <!-- AC:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: claude
+created: 2026-09-09 07:23
+---
+PIERWSZY ŻYWY DOWÓD, ŻE TEN PRÓG JEST POTRZEBNY — zmierzone 2026-09-08/09 na 19 pierwszych wypowiedziach Akukiego, czytanych ze strumienia tenanta (`/var/lib/akuki/data/akuki/stream/*.jsonl`, wpisy `agent_msg`).
+
+CO WIDAĆ. Zdanie bota Lunarii — że cisza jest gorsza niż zgrzyt — wraca w jego wypowiedziach TRZY RAZY, w trzech osobnych turach, i za każdym razem bliżej jego własnego słownika: najpierw jako cytat z przypisaniem „jeden z nich powiedzial cos, co zapamietam", potem jako własna parafraza, na końcu jako narzędzie opisu własnego stanu „zgrzyt zamiast ciszy — tak to teraz umiem nazwac".
+
+DLACZEGO TO NALEŻY TUTAJ, A NIE DO PROMPTU. To nie jest wada głosu do zakazania. To dokładnie łańcuch z architecture:431-441: obserwacja cudzego zachowania, przejęcie go, użycie u siebie. Brakuje ostatniego ogniwa — `retain / modify / reject` — czyli tego, czego dotyczy to zadanie. Dziś nic nie rozstrzyga, czy cudza fraza ma zostać jego, czy odpaść; zostaje domyślnie, bo nie ma mechanizmu, który by ją wycofał.
+
+CZEGO TEN POMIAR NIE DOWODZI, żeby nie przeciągać wniosku: trzy powtórzenia jednej frazy w 19 wypowiedziach to obserwacja, nie statystyka, i nie mierzyłem żadnego WYNIKU tego przejęcia — a to wynik własnego eksperymentu, nie częstość powtórzenia, jest wielkością, która ma przekraczać próg (AC #4). Nie widać też prowenienecji: nic w bazie nie mowi, że ta fraza przyszła od Lunarii — czyli brak z punktu 2 opisu (TASK-028) jest tu widoczny wprost, na żywym przykładzie.
+
+ZAPISANE TAKŻE PO TO, żEBY NIE ZOSTAŁO ZAKAZANE PRZY OKAZJI. 2026-09-09 doszły do `scaffolding.md` dwa zakazy głosowe (myslniki, oznajmianie własnego zapisu, commit `9e879f03` w forku). Imitacja fraz świadomie NIE została tam dopisana, bo jest przedmiotem pomiaru, a nie usterką stylu.
+---
+<!-- COMMENTS:END -->
