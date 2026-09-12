@@ -191,4 +191,6 @@ evidence-gated action menu without reading that reference first.
 - `references/znane-wady.md` — standing instructions already given once, and the recurring
   mistakes they came from. **Read before writing any message the user will send** (Tomek, IT — the
   structure is fixed and must not be restyled) and before stating a cause, a third-party API
-  number, or a prediction. Add an entry whenever she says she has told you before.
+  number, or a prediction. **Also before scanning, merging or deleting anything keyed by entity id,
+  and before wiring a new input channel** — entry 9 covers identity split across two resolution
+  keys. Add an entry whenever she says she has told you before.
