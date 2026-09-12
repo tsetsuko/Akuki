@@ -60,6 +60,17 @@ if [ "$AKCJA" = "gui" ]; then
   exec npm --prefix "$KATALOG/borg" run dev:web
 fi
 
+# Stan pytany nizej dotyczy VPS-a, bo tam wykonuje sie `curl`. Front dziala na
+# laptopie i puka w LOKALNY 7740, wiec bez tunelu dostaje ECONNREFUSED, mimo ze
+# Akuki zyje. Ta linijka rozstrzyga te pozorna sprzecznosc bez pytania.
+if [ "$AKCJA" = "stan" ]; then
+  if (exec 3<>/dev/tcp/127.0.0.1/7740) 2>/dev/null; then
+    echo "tunel lokalny: otwarty (front na laptopie ma z czym rozmawiac)"
+  else
+    echo "tunel lokalny: ZAMKNIETY (front dostalby ECONNREFUSED; otworz przez ./akuki-serwis.sh gui)"
+  fi
+fi
+
 ssh -o BatchMode=yes -o ConnectTimeout=15 -i "$VPS_KEY" "$VPS_USER@$VPS_ADDR" \
   "sudo -n env AKCJA=$AKCJA bash -s" <<'REMOTE'
 set -uo pipefail
