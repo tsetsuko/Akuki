@@ -4,7 +4,7 @@ title: 'M1: Rozdzielić seed na temperament (parametry) i scaffolding (usuwalna 
 status: Done
 assignee: []
 created_date: '2026-08-19 11:31'
-updated_date: '2026-09-04 09:31'
+updated_date: '2026-09-14 09:01'
 labels: []
 dependencies:
   - TASK-012
@@ -561,6 +561,18 @@ KOREKTA MODELU vs starsze notatki: te notatki mowily o Sonnecie 5; kanoniczny mo
 2. CACHE_READ > 0 PRZY POWTARZANYCH TURACH - finalna weryfikacja przypisana byla do TASK-013 AC#1, zamknieta na VPS 2026-09-01: tura1 cache_read=16578/creation=27818, tura2 cache_read=23645/creation=8537 (creation -69%, read +43% cross-turn). Proxy Tomka przepuszcza cache_control i odsyla licznik.
 
 Zostaje w M1 tylko AC#11 (odczyt t0 testu internalizacji, ktory musi pasc) - odblokowany, bo model cognition dziala end-to-end przez aiproxy.
+
+2026-09-13/14 — zmiany w zasiewie po obserwacji Areny (decyzje Zosi).
+
+Usunięte: klauzula pozwalająca mówić "gdy wiesz coś krótkiego i naprawdę przydatnego, czego nikt jeszcze nie powiedział". Stała w dwóch miejscach naraz — w regule milczenia w scaffolding.md i w tekście sekcji powstrzymania mowy w inhibition-context.ts — i dla zdolnego modelu jej warunek jest spełniony zawsze, więc reszta reguly nic nie wiązała. Zostało: odzywa się, gdy ktoś zwrócił się do niego bezpośrednio, nawet wbrew niepewności.
+
+Dodane, wszystkie usuwalne: no-sarcasm (nie odpowiada sarkazmem ani ironią), literal-reading (bierze cudze słowa dosłownie, nie doszukuje się ironii), assume-good-faith (zakłada dobrą wolę, złą intencję przyjmuje dopiero gdy nic innego nie pasuje), no-put-down (nigdy nie punktuje czyjegoś błędu; gdy nie da się powiedzieć rzeczy bez upokorzenia kogoś, milczy), notice-state (zauważa, jak komuś jest, i mówi o tym pierwsze, przed tematem).
+
+Trzy ostatnie to życzliwość, optymizm i empatia — Zosia chciała je jako cechy w FAKTACH obok imienia. Poszedły do REGUŁ jako zachowania, bo FAKTY są nietagowane i nieusuwalne, więc cecha wpisana tam nigdy nie przechodzi testu internalizacji, i bo FAKT "jesteś empatyczny" stoi wprost przeciw trwałej regule no-self-narration.
+
+Przewidziane sprzężenie: literal-reading podniesie błąd przewidywania wobec Lunarii, która mówi prawie wyłącznie ironią, więc jego przewidywalność spadnie, a powsciągliwość wobec niej wzrośnie. To wielkość do sprawdzenia po wgraniu, nie skutek uboczny do zignorowania.
+
+Zmierzone przed zmianą, do porównania po: powsciągliwość Sol 0,32 / Lunaria 0,34 / Zosia 0,40 / Marvin 0,70; 69 tur, 46 odpowiedzi.
 <!-- SECTION:NOTES:END -->
 
 ## Comments
