@@ -22,6 +22,7 @@ set -uo pipefail
 APP=/opt/akuki/app      # fork borga, galaz akuki-dev
 SPEC=/opt/akuki/spec    # repozytorium Akukiego; /opt/akuki/spec/borg to dowiazanie do APP
 UZYTKOWNIK=akuki
+SRODOWISKO=/etc/akuki/akuki.env   # stad bierze sie katalog tenanta, zeby nie zgadywac
 
 # Skrypt aktualizuje SAM SIEBIE, bo lezy w repozytorium, ktore pobiera. Bash
 # czyta plik w miarę wykonywania, wiec podmiana w trakcie potrafi przeskoczyc
@@ -98,6 +99,32 @@ main() {
     blad "dist/index.js jest starszy niz $nowsze; build nie objal calosci"
   fi
   echo "  dist/index.js: nowszy niz wszystkie zrodla"
+
+  # 3. Konfiguracja tenanta. Nie nalezy do zadnego repozytorium i tego skryptu nie
+  #    obchodzi, co w niej stoi -- ale to ostatnia rzecz, ktora czyta usluga przy
+  #    starcie, a zepsuty JSON zabija ja natychmiast i bez ostrzezenia. Tak padl
+  #    Akuki 2026-09-14: blok autonomii wyladowal ZA zamykajacym nawiasem, wiec plik
+  #    mial dwa obiekty zamiast jednego, i usluga wchodzila w petle restartow.
+  #    Sprawdzenie jest tutaj, a nie na poczatku, bo ma byc ostatnim slowem przed
+  #    restartem.
+  # Plik srodowiska nalezy do roota (640 root:akuki), wiec sciezke wyciaga sie przez
+  # sudo -- i wylacznie ta jedna zmienna, bo obok niej leza tokeny. Sam config.json
+  # jest czytelny dla wszystkich, wiec sprawdzenie skladni nie potrzebuje juz sudo.
+  local katalog konfiguracja
+  katalog=$(sudo -n sed -n 's/^BORG_DATA_DIR=//p' "$SRODOWISKO" 2>/dev/null | tail -1)
+  konfiguracja="$katalog/config.json"
+  if [ -z "$katalog" ]; then
+    echo "  konfiguracja tenanta: NIESPRAWDZONA (nie odczytalem BORG_DATA_DIR z $SRODOWISKO)"
+  elif [ ! -f "$konfiguracja" ]; then
+    # Brak pliku jest legalny: borg bierze wtedy same wartosci domyslne.
+    echo "  konfiguracja tenanta: brak pliku, borg uzyje domyslnych wartosci"
+  elif python3 -m json.tool "$konfiguracja" > /dev/null 2>&1; then
+    echo "  konfiguracja tenanta: poprawny JSON"
+  else
+    echo "--- blad w $konfiguracja ---" >&2
+    python3 -m json.tool "$konfiguracja" 2>&1 >/dev/null | head -3 >&2
+    blad "$konfiguracja nie jest poprawnym JSON-em; restart wywrocilby usluge"
+  fi
 
   echo
   echo "fork:     $(jako git -C "$APP" log --oneline -1)"
