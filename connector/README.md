@@ -44,6 +44,25 @@ turn -- is a larger change and a separate decision.
 saved text instead of re-running the turn, so a restart produces exactly one post rather than
 two, or none.
 
+**He can also start a conversation, within limits.** Everything above is the reply path,
+and for a long time it was the only path: Akuki answered when spoken to and never began
+anything, so his open questions had nowhere to go. A second, much narrower route now
+exists. borg's autonomy scheduler wakes him on his own state -- an open question whose
+urgency has risen, one that has gone dormant -- and if he decides to say something, the
+message goes out through the connector registered in `src/outbound.ts`.
+
+That route carries **only** self-initiated messages. borg hands a message to a connector
+on a turn whose origin is `directed_outbound`, which is what the autonomous outbound tool
+produces; an ordinary reply has a different origin and still goes out the way it always
+did, posted by the adapter after being persisted. So the exactly-one-post guarantee above
+is untouched.
+
+Two caps, both borg's own defaults, both enforced in `src/outbound/autonomous-policy.ts`
+rather than here: **two self-initiated posts per day, at most one per thread.** A thread is
+only offered as a target if a connector exists for its source type, so removing the
+connector removes the capability rather than leaving a dead route. The whole thing stays
+off until `autonomy.proactiveOutbound.enabled` is set in the tenant's `config.json`.
+
 **One writer.** The process holds the tenant directory open for its whole life. Nothing else
 may write it -- in particular not borg's generic memory sidecar, which defaults to a
 different embedding model and dimension (`qwen3-embedding-8b`/4096) than Akuki's frozen

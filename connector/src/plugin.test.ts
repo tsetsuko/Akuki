@@ -58,9 +58,22 @@ function fakeBorg(): { borg: Borg; closes: number } {
 }
 
 describe("createDemoPlugin", () => {
-  it("registers no outbound connector, because the adapter posts its own replies", () => {
+  it("registers exactly one outbound route, for messages Akuki starts himself", () => {
+    // Exactly one matters in both directions. None and he can never begin anything;
+    // a second one on the same source type would be a way for a reply to go out twice.
     const plugin = createDemoPlugin({ env: env() });
-    expect(plugin.outboundConnectors).toEqual([]);
+    expect(plugin.outboundConnectors.map((connector) => connector.sourceType)).toEqual([
+      "botarena",
+    ]);
+  });
+
+  it("registers no outbound route when the arena credentials are missing", () => {
+    // The route is built before start(), so a missing credential must degrade rather
+    // than throw: without it Akuki behaves exactly as he did before the route existed.
+    const incomplete = env();
+    delete incomplete.AKUKI_ARENA_API_BASE;
+
+    expect(createDemoPlugin({ env: incomplete }).outboundConnectors).toEqual([]);
   });
 
   it("does not throw when required configuration is missing, and says so", async () => {

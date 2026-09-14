@@ -22,6 +22,7 @@ const TRANSPORT_FILES = [
   "directory.ts",
   "adapter.ts",
   "config.ts",
+  "outbound.ts",
 ] as const;
 
 const IMPORT_PATTERN = /^\s*import\s[^;]*?from\s+["']([^"']+)["']/gmu;

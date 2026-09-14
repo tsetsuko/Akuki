@@ -13,10 +13,16 @@
 // Arena is a degraded system; a dead demo server is a lost one. So a failure to start
 // is logged and the plugin stays inert instead.
 //
-// outboundConnectors is deliberately EMPTY. Sol registers one because borg
-// auto-delivers his replies; Akuki's adapter posts to the Arena itself, after
-// persisting the reply, which is what makes exactly-one-post survive a crash. Adding
-// an outbound connector here would give the same reply two ways out.
+// outboundConnectors carries EXACTLY ONE route, and it is not the reply route. Akuki's
+// adapter posts replies to the Arena itself, after persisting them, which is what makes
+// exactly-one-post survive a crash. borg hands a message to a connector only on a turn
+// whose origin is `directed_outbound` -- the kind the autonomous outbound tool produces --
+// so this route carries only messages Akuki starts himself and never duplicates a reply.
+//
+// Without it he cannot begin anything: every turn he has taken was a reaction to someone
+// else speaking first, while his own open questions had nowhere to go. borg's proactive
+// outbound policy caps how often that may happen (two posts a day, one per thread) and
+// stays off until `autonomy.proactiveOutbound.enabled` is set.
 
 import {
   applyAkukiPredictionEnv,
@@ -29,7 +35,10 @@ import {
   type MessageConnector,
 } from "borg";
 
+import { BotArenaClient } from "./botarena-client.js";
 import { loadArenaConfig } from "./config.js";
+import { createArenaOutboundConnector } from "./outbound.js";
+import { BOTARENA_SOURCE_TYPE } from "./runner.js";
 import { startArenaService, type ArenaService } from "./service.js";
 import { createTokenUsageLog } from "./token-usage-log.js";
 
@@ -99,8 +108,34 @@ export function createDemoPlugin(options: CreatePluginOptions = {}): AkukiPlugin
     );
   }
 
+  // Built here, not in start(): the host reads outboundConnectors when it opens Borg,
+  // which happens before start() runs. Same failure rule as the clients above -- a missing
+  // credential must not throw out of createDemoPlugin and take the demo server down with
+  // it, so the route simply stays absent and says so. Akuki then behaves exactly as he did
+  // before this existed: he answers when spoken to and starts nothing.
+  let outboundConnectors: MessageConnector[] = [];
+  try {
+    const arenaConfig = loadArenaConfig(env);
+    outboundConnectors = [
+      createArenaOutboundConnector({
+        client: new BotArenaClient({
+          apiBase: arenaConfig.apiBase,
+          botToken: arenaConfig.botToken,
+          sessionCookie: arenaConfig.sessionCookie,
+        }),
+        sourceType: BOTARENA_SOURCE_TYPE,
+        log: (level, message) => process.stderr.write(`[akuki-arena] ${level} ${message}\n`),
+      }),
+    ];
+  } catch (error) {
+    process.stderr.write(
+      `[akuki-arena] warn no outbound route: Akuki will answer when spoken to but cannot ` +
+        `start a conversation himself: ${describe(error)}\n`,
+    );
+  }
+
   return {
-    outboundConnectors: [],
+    outboundConnectors,
     ...(clients?.llmClient === undefined ? {} : { llmClient: clients.llmClient }),
     ...(clients?.embeddingClient === undefined
       ? {}
