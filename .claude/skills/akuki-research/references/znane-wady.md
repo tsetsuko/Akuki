@@ -263,3 +263,42 @@ identyczne od początku — porównanie z wymuszonym `LC_ALL=C sort` po obu stro
 niezależnym od ustawień językowych sortowaniu**: `LC_ALL=C sort` na obu plikach przed `diff`.
 Dotyczy to także procedury odtwarzania po awarii w `akuki-backup-odtworzenie.md` — tam ten fałszywy
 alarm trafiłby w najgorszy moment, bo zatrzymałby odtwarzanie sprawnej kopii.
+
+---
+
+## 12. Parametr zasiewu bez czytelnika, i czytelnik zbudowany w dwoch miejscach
+
+**Co sie stalo.** Zosia poprosila o empatie i optymizm jako cechy Akukiego. Wczesniejsza
+notatka o zaparkowanych dzwigniach mowila, ze empatia nie ma kandydata na czytelnika, wiec
+parametr by sie nie oplacil. Bylo to za szybkie: borg mial czytelnika od poczatku. Mieszanie
+nastroju wazy afektywny odczyt cudzej wypowiedzi liczba `incomingMoodWeight`, a ostroznosc
+w sygnale powsciagliwosci podbija sie wylacznie przy ujemnym nastroju. Empatia nie wymagala
+zadnego nowego mechanizmu -- wymagala tego, zeby temperament przejal istniejaca stala.
+Optymizm wymagal jednej zmiany: nastroj zanikal przez mnozenie, czyli do zera, a teraz zanika
+do zadanego punktu spoczynku.
+
+**Regula pierwsza.** Zanim powiesz, ze proponowana cecha nie ma czytelnika, przeszukaj stale
+konfiguracyjne borga, a nie tylko liste wlasnych mechanizmow. Wiekszosc cech temperamentu, ktore
+brzmia jak nowy podsystem, jest w rzeczywistosci istniejaca waga, ktorej nikt jeszcze nie nazwal.
+"Nie ma czytelnika" to wniosek z przeszukania, nie z pamieci.
+
+**Co sie stalo dalej.** Nowy klucz konfiguracji zostal podpiety w `borg/repositories.ts` i test
+przeszedl na zielono, bo dotyczyl czegos innego. Test napisany wprost pod nowe zachowanie odczytal
+zero: zaplecze testowe (`offline/test-support.ts`) buduje wlasna kopie repozytorium nastroju
+i przekazuje jej wylacznie te opcje, ktore ktos kiedys wpisal recznie. Klucz wygladal na
+podpiety w calym systemie, a byl podpiety w jednym z dwoch miejsc, ktore go tworza.
+
+**Regula druga.** Po dodaniu opcji do komponentu policz, ile miejsc w repozytorium wola jego
+konstruktor, i podepnij ja w kazdym. Jedno `grep -rn "new NazwaRepository("` przed napisaniem
+testu oszczedza pomiar, ktory mierzy domyslna wartosc zamiast zadanej. To ta sama rodzina co
+regula 8: **brakujace wejscie psuje temat pomiaru**, tylko tutaj wejscie gubi sie w drugiej
+sciezce budowania, a nie w pustej zmiennej srodowiskowej.
+
+**Regula trzecia, o powadze.** Empatii ani optymizmu nie ma na liscie sklonnosci, ktore
+`akuki_child_psychology_research.md` par. 18 pozwala zasiac. Empatia pada w calym dokumencie
+raz, w par. 15, jako pytanie do zbadania. Oba parametry zostaly wiec wpisane z jawna adnotacja,
+ze sa **wyborem tworczym bez oparcia w badaniach** -- tak samo jak progi retencji imitacji.
+Precedens z par. 16 (przywiazanie wyciete z bramki powsciagliwosci) mowi, zeby w takiej sytuacji
+mechanizm ciac. Tutaj nie zostal przyciety, bo autorka projektu podjela swiadoma decyzje. To jest
+dopuszczalne wylacznie dopoty, dopoki adnotacja stoi w pliku: wybor tworczy nie moze pozyczac
+powagi od literatury.
