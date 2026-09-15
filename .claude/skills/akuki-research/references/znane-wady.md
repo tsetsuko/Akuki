@@ -302,3 +302,37 @@ Precedens z par. 16 (przywiazanie wyciete z bramki powsciagliwosci) mowi, zeby w
 mechanizm ciac. Tutaj nie zostal przyciety, bo autorka projektu podjela swiadoma decyzje. To jest
 dopuszczalne wylacznie dopoty, dopoki adnotacja stoi w pliku: wybor tworczy nie moze pozyczac
 powagi od literatury.
+
+---
+
+## 13. Zmiana nazwy sprawdzona tylko we wlasnym repozytorium
+
+**Co sie stalo.** Funkcja mostkujaca temperament do konfiguracji borga dostala szersze zadanie,
+wiec zmienilem jej nazwe z `applyAkukiPredictionEnv` na `applyAkukiTemperamentEnv`. Przeszukalem
+zrodla forka, podmienilem piec plikow, typy przeszly, strazniki przeszly, caly pakiet testow
+przeszedl. Po wgraniu i restarcie **Akuki nie wstal**: konektor jest osobnym repozytorium,
+importuje ten symbol z paczki `borg` i wolal starej nazwy. Kazdy start konczyl sie
+`SyntaxError: The requested module 'borg' does not provide an export named
+'applyAkukiPredictionEnv'`, systemd wchodzil w petle restartow. Usluga lezala od 20:35:20 do
+20:37:55 UTC, czyli dwie i pol minuty.
+
+**Dlaczego nic tego nie zlapalo.** Konektor kompiluje sie wzgledem `borg/dist`, a nie wzgledem
+zrodel forka. Dopoki `dist` na laptopie byl stary, lokalne typy konektora widzialy stara nazwe
+i milczaly. Zielony pakiet testow forka nie mowi nic o drugim repozytorium, bo go nie widzi.
+
+**Regula.** Zmiana nazwy eksportowanego symbolu jest zmiana kontraktu miedzy repozytoriami, nie
+refaktorem wewnatrz jednego. Przed podmiana przeszukaj **wszystkie** repozytoria, ktore ta paczke
+importuja -- tutaj `connector/` obok `borg/` -- a nie tylko to, w ktorym symbol mieszka. Jedno
+`grep -rn "<stara nazwa>" --include=*.ts` z katalogu nadrzednego, przed pierwsza podmiana.
+
+To jest ta sama rodzina co wpis 12: tam opcja zostala podpieta w jednym z dwoch miejsc, ktore
+buduja komponent, tutaj nazwa zostala poprawiona w jednym z dwoch repozytoriow, ktore jej uzywaja.
+**Policz konsumentow, zanim uznasz zmiane za kompletna.**
+
+**Druga polowa lekcji, o kolejnosci.** Restart byl konieczny, bo stale nastroju siedza w kodzie
+ladowanym przy starcie procesu, a nie w zasiewie czytanym co ture. Wgranie i restart poszly
+jednym ciagiem, wiec pierwsza informacja o zlamanym kontrakcie przyszla z lezacej uslugi zamiast
+z budowania. `akuki-wgraj.sh` buduje wylacznie forka i nie tyka konektora, wiec **nie ma etapu,
+ktory wykrylby taki rozjazd przed restartem**. Do czasu, az konektor tez bedzie budowany w tym
+skrypcie, zmiane dotykajaca granicy miedzy repozytoriami wgrywa sie ze swiadomoscia, ze restart
+jest pierwszym prawdziwym testem.
