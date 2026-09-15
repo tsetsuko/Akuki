@@ -27,7 +27,7 @@
 // message.
 
 import { Borg } from "borg";
-import { applyAkukiPredictionEnv } from "borg";
+import { applyAkukiTemperamentEnv } from "borg";
 import { applyAkukiSeed } from "borg";
 import { buildAkukiClients } from "borg";
 import { BotArenaAdapter, type ArenaLog } from "./adapter.js";
@@ -228,7 +228,7 @@ async function openAkukiBorg(
   const clients = buildAkukiClients({ env, ...(usageSink === undefined ? {} : { usageSink }) });
   // Temperament-driven M2 prediction parameters have to be in the env before
   // Borg.open reads the config.
-  applyAkukiPredictionEnv(env);
+  applyAkukiTemperamentEnv(env);
   return Borg.open({
     dataDir,
     env,

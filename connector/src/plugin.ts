@@ -25,7 +25,7 @@
 // stays off until `autonomy.proactiveOutbound.enabled` is set.
 
 import {
-  applyAkukiPredictionEnv,
+  applyAkukiTemperamentEnv,
   applyAkukiSeed,
   buildAkukiClients,
   loadConfig,
@@ -73,7 +73,7 @@ export function createDemoPlugin(options: CreatePluginOptions = {}): AkukiPlugin
   const seed = options.seed ?? applyAkukiSeed;
 
   const buildClients = options.buildClients ?? buildAkukiClients;
-  const prepareEnv = options.prepareEnv ?? applyAkukiPredictionEnv;
+  const prepareEnv = options.prepareEnv ?? applyAkukiTemperamentEnv;
   const resolveConfig = options.resolveConfig ?? loadConfig;
 
   let service: ArenaService | null = null;
