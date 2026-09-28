@@ -10,6 +10,14 @@ znaczyło TRZY różne rzeczy, na trzech różnych warstwach:
 Objaw nie jest diagnozą, więc ten skrypt nie odpowiada "działa / nie działa", tylko
 mówi, KTÓRA warstwa stoi. Kolejność sprawdzeń jest od najtańszej do najdroższej.
 
+TRZECIA WARSTWA, ODKRYTA 2026-09-28: aiproxy przepuszcza żądanie do opusa i sonneta TYLKO
+wtedy, gdy blok `system` zaczyna się dokładnie prefiksem Claude Code. Bez niego — i z blokiem
+`system` o innej treści — wraca HTTP 429 `rate_limit_error` o wysyconej puli, czyli komunikat
+mówiący o limicie, którego nie ma. Ten skrypt wysyłał żądania bez `system` i przez tydzień
+raportował „limit tieru" dla modeli, które były dostępne. Prefiks jest teraz częścią żądania
+i nie wolno go stąd usunąć ani przepisać własnymi słowami: rozstrzyga jego TREŚĆ, znak w znak
+(zmierzone trzema żądaniami w tej samej minucie, tym samym tokenem, na claude-opus-5).
+
 Dwie rzeczy, które ten skrypt robi celowo, a curl nie:
 
 1. Wypisuje `model` ZWRÓCONY przez API, nie ten wysłany w żądaniu. "claude-sonnet-5"
@@ -60,6 +68,13 @@ MODEL_KONTROLNY = "claude-haiku-4-5-20251001"
 # bardzo niskim limicie odpowiedź może skończyć się na `max_tokens` jeszcze w fazie myślenia
 # i wrócić bez tekstu. Dla testu osiągalności to nadal sukces, ale czytałoby się jak awaria.
 MAX_TOKENS = 64
+
+# Bez tego prefiksu aiproxy odrzuca opusa i sonneta z HTTP 429 "All pool tokens are currently
+# rate-limited", czyli komunikatem o limicie, którego nie ma. Treść jest dosłowna i sprawdzona:
+# ten sam token, ta sama minuta, model claude-opus-5 -> z tym prefiksem HTTP 200, bez bloku
+# `system` HTTP 429, z blokiem `system` o innej treści też HTTP 429. Rozstrzyga TREŚĆ, nie
+# obecność bloku, więc nie przepisywać własnymi słowami. Zapis w references/conventions.md.
+SYSTEM_PREFIX = "You are Claude Code, Anthropic's official CLI for Claude."
 
 TIMEOUT_S = 30
 
@@ -149,6 +164,7 @@ def sprobuj_model(base_url: str, token: str, model: str, max_tokens: int = MAX_T
         {
             "model": model,
             "max_tokens": max_tokens,
+            "system": [{"type": "text", "text": SYSTEM_PREFIX}],
             "messages": [{"role": "user", "content": "odpowiedz jednym slowem: dziala"}],
         }
     ).encode()

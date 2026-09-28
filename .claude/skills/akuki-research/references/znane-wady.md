@@ -336,3 +336,42 @@ z budowania. `akuki-wgraj.sh` buduje wylacznie forka i nie tyka konektora, wiec 
 ktory wykrylby taki rozjazd przed restartem**. Do czasu, az konektor tez bedzie budowany w tym
 skrypcie, zmiane dotykajaca granicy miedzy repozytoriami wgrywa sie ze swiadomoscia, ze restart
 jest pierwszym prawdziwym testem.
+
+---
+
+## 14. Sonda dostępności modelu bez prefiksu Claude Code — tydzień fałszywej niedostępności
+
+**Co się stało.** Sprawdzałem 2026-09-21 i 2026-09-28, czy aiproxy przepuszcza opusa i sonnet.
+Oba razy wyszło HTTP 429 `rate_limit_error: All pool tokens are currently rate-limited`, więc
+napisałem, że pula jest wyczerpana — najpierw curlem, potem, po uwadze Zosi, „właściwym"
+narzędziem `akuki/diag_model.py`, które dało ten sam wynik i utwierdziło mnie w błędzie.
+Na tej podstawie doradzałem zejście z ról modeli na haiku i nie podnosiłem usługi.
+
+Wszystko to było fałszywe. Zosia podała obowiązujący kształt żądania: aiproxy przepuszcza opusa
+i sonnet tylko wtedy, gdy PIERWSZY blok `system` jest dokładnie prefiksem Claude Code
+(„You are Claude Code, Anthropic's official CLI for Claude."). Ani curl, ani `diag_model.py`
+nie wysyłały bloku `system` w ogóle. Po dodaniu prefiksu `claude-opus-5` odpowiada w tej samej
+minucie, w której bez niego zwracał 429.
+
+**Dlaczego trwało tydzień.** Komunikat odmowy mówi o limicie, którego nie ma, i jest nie do
+odróżnienia po treści od prawdziwego wyczerpania puli. Miałem model kontrolny (haiku), więc
+wiedziałem, że sieć i token są sprawne — ale kontrola z INNEGO tieru potwierdza tylko to, że
+awaria jest specyficzna dla tieru, a nie to, że leży po stronie proxy. Brakującym testem było
+powtórzenie tego samego żądania w innym KSZTAŁCIE, nie na innym modelu.
+
+**Reguła pierwsza.** Kiedy usługa odmawia, zmieniaj po kolei obie osie: model i kształt żądania.
+Odmowa powtarzalna na jednej osi nie jest dowodem przyczyny, dopóki druga oś stoi nieruszona.
+
+**Reguła druga, o narzędziu.** „Użyłem narzędzia projektu" nie jest dowodem poprawności pomiaru.
+`diag_model.py` powielał dokładnie ten sam błąd co mój curl, tylko ładniej go opisywał —
+klasyfikacja warstw nazwała to „limitem", bo tak brzmiał komunikat. Narzędzie dziedziczy
+założenia autora; jeśli wynik jest zaskakujący, sprawdza się, co narzędzie NAPRAWDĘ wysyła,
+zanim się je zacytuje jako dowód.
+
+**Reguła trzecia.** Kształt żądania do aiproxy jest ustalony i spisany w `references/conventions.md`
+razem z tabelą wariantów i powodem każdego pola. Przed jakimkolwiek pomiarem po stronie proxy
+czyta się ten plik.
+
+Naprawione 2026-09-28: `akuki/diag_model.py` wysyła teraz prefiks (stała `SYSTEM_PREFIX`),
+a bieg na `claude-opus-4-8` kończy się kodem 0. Borg nie wymagał zmiany — w trybie `oauth` sam
+wstawia ten blok jako pierwszy (`borg/src/llm/index.ts:34` i `:1983-1997`).

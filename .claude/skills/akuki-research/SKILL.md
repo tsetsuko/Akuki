@@ -188,6 +188,10 @@ evidence-gated action menu without reading that reference first.
   (artificial developmental pressure, the evidence-expanded action space, the evolutionary layer,
   the perceived-agency contingency threshold), each with the reason it was parked and the condition
   for revisiting. Read before proposing any of them again.
+- `references/conventions.md` — fixed shapes that must not be reinvented. Currently the model
+  availability probe against aiproxy: use `python -m akuki.diag_model`, never curl in a loop —
+  it names the failing layer and logs to `data/diag/cognition-probe.jsonl`. **Read before
+  measuring anything against the proxy.**
 - `references/znane-wady.md` — standing instructions already given once, and the recurring
   mistakes they came from. **Read before writing any message the user will send** (Tomek, IT — the
   structure is fixed and must not be restyled) and before stating a cause, a third-party API
