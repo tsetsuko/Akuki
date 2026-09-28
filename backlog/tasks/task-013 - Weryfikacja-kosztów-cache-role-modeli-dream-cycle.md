@@ -4,7 +4,7 @@ title: 'Weryfikacja kosztów: cache, role modeli, dream cycle'
 status: In Progress
 assignee: []
 created_date: '2026-08-20 14:28'
-updated_date: '2026-09-04 10:36'
+updated_date: '2026-09-21 13:35'
 labels: []
 dependencies: []
 priority: high
@@ -189,6 +189,7 @@ TokenUsageEvent (borg/src/llm/index.ts:413-423) niesie oprócz modelu pole `budg
 
 Czyli zamknięcie AC #2 wymaga najpierw rozstrzygnięcia, czy atrybucja ma iść po roli (trzeba wtedy przenieść nazwę slotu do zdarzenia usage), czy po `budget` (wtedy AC trzeba przeformułować na etykiety miejsc wywołania). To nie jest sam pomiar — to najpierw mała zmiana w instrumentacji.
 ---
+
 author: claude
 created: 2026-09-09 14:20
 ---
@@ -212,5 +213,35 @@ GRANICA PAKIETU. `boundary.test.ts` pilnuje, że sześć plików transportu nie 
 DOWÓD. Konektor: 119 testów zielonych, typecheck czysty. Fork: `src/akuki/token-usage.test.ts` 4/4 po dopisaniu testu rozdzielającego dwa miejsca wywołania na jednym modelu. Trzy nowe testy telemetrii: zapis linii z zerem w brakującym liczniku, ostrzeżenie przy braku ścieżki, przeżycie awarii zapisu z jednym zgłoszeniem.
 
 CZEGO TO JESZCZE NIE DAJE, żeby nie przeciągać wniosku. To jest przyrząd, nie pomiar. Ani jedna liczba nie została jeszcze zebrana z żywego procesu, więc AC #2, #6 i #9 zostają otwarte. Następny krok jest pomiarowy: uruchomić z ustawioną zmienną, wykonać kilka tur i zagregować plik — najpierw z wyłączonym maintenance, potem z pojedynczo włączanymi procesami, zgodnie z planem canary z opisu.
+---
+
+author: claude
+created: 2026-09-21 13:35
+---
+PIERWSZY POMIAR Z ŻYWEGO PROCESU, 2026-09-21 — przyrząd z 2026-09-09 zebrał dane.
+
+`/var/lib/akuki/token-usage.jsonl` na VPS-ie: 1915 wywołań z 2026-09-15..17, razem 21 902 333 tokeny (input + output + cache-read + cache-creation). 105 tur Areny, około 205-226 tys. tokenów na turę. Wszystkie wywołania na `claude-opus-4-8`.
+
+ROZKŁAD WEDŁUG ETYKIETY MIEJSCA WYWOŁANIA (`byBudget`, czyli oś dopisana w 2026-09-09):
+
+- shared-state-compiler 4 769 178 (21,8%)
+- cognition-system-2 3 481 884 (15,9%)
+- cognition-system-1 3 276 066 (15,0%)
+- cognition-plan 2 664 025 (12,2%)
+- reflection 1 491 763 (6,8%)
+- dwanaście ekstraktorów i klasyfikatorów na turę: około 5,6 mln (25%)
+- wszystkie procesy maintenance razem (`offline-*` plus review-resolver i semantic-extraction): około 396 tys., czyli 1,8%
+
+CO TO ROZSTRZYGA DLA AC #3. Pytanie brzmiało, czy wyłączyć procesy dream, których nie badamy. Pomiar mówi, że cały maintenance to 1,8% zużycia, więc jego wyłączenie nie jest dźwignią kosztową. Decyzja Zosi z 2026-09-21: maintenance zostaje włączony, budżety 60k/200k bez zmian. AC #3 nie zostaje odhaczone — zostaje świadomie otwarte z tą decyzją w tle, bo kryterium mówi o wyłączaniu procesów niebadanych, a to teraz decyzja badawcza, nie kosztowa.
+
+CO TO ROZSTRZYGA DLA AC #2. Atrybucja poszła po `budget`, nie po roli modelu — zgodnie z rozpoznaniem z komentarza z 2026-09-04, że wszystkie role wskazywały ten sam identyfikator modelu i `byModel` zwija je do jednego kubełka. Rozbicie per rola stało się czytelne dopiero przez mapowanie etykiet na role w kodzie: shared-state-compiler i recall-expansion chodzą na roli recallExpansion (`retrieval-phase.ts:2213`), rodzina ekstraktorów na extraction, procesy offline na background.
+
+DLACZEGO ZUŻYCIE BYŁO TAK WYSOKIE. `/etc/akuki/akuki.env` miał wszystkie pięć ról ustawione na `claude-opus-4-8`. Punkt 2 opisu tego zadania (tanie modele na role wolumenowe) nigdy nie został wykonany. Praca wydzielona do TASK-042.
+
+STAN PULI W AIPROXY, zmierzony przy okazji 2026-09-21: `claude-opus-4-8`, `claude-opus-5`, `claude-sonnet-4-6` i `claude-sonnet-5` zwracają HTTP 429 („All pool tokens are currently rate-limited”), `claude-haiku-4-5-20251001` odpowiada HTTP 200. To jest dokładnie ten warunek przerwania, który opis nazywa „szybszym wyczerpaniem bieżących limitów”.
+
+Usługa `akuki` jest nieaktywna od 2026-09-15 20:37 UTC, więc pomiar obejmuje ostatni okres, w którym Akuki faktycznie chodził.
+
+Dalsze prace: TASK-042 (rozdzielenie ról), TASK-043 (cache przy rzadkim ruchu), TASK-044 (shared-state-compiler).
 ---
 <!-- COMMENTS:END -->
