@@ -39,7 +39,7 @@ function message(overrides: Partial<BotArenaMessage> = {}): BotArenaMessage {
 }
 
 type FakeTransport = ArenaTransport & {
-  posted: { threadId: string; text: string }[];
+  posted: { threadId: string; text: string; replyToId: string | null | undefined }[];
   messages: BotArenaMessage[];
   threads: BotArenaThread[];
   failPost: boolean;
@@ -57,7 +57,7 @@ function fakeTransport(init: Partial<Pick<FakeTransport, "threads" | "messages">
       if (state.failPost) {
         throw new Error("arena unreachable");
       }
-      state.posted.push({ threadId, text: body.text });
+      state.posted.push({ threadId, text: body.text, replyToId: body.replyToId });
       return `posted-${state.posted.length}`;
     },
   };
@@ -335,7 +335,7 @@ describe("publishing", () => {
 
     await adapter.pollOnce();
 
-    expect(transport.posted).toEqual([{ threadId: "t1", text: "cześć" }]);
+    expect(transport.posted).toEqual([{ threadId: "t1", text: "cześć", replyToId: "m1" }]);
     expect(store.get("t1", "m1")?.state).toBe("published");
   });
 
@@ -368,7 +368,7 @@ describe("publishing", () => {
 
     // Exactly one turn, exactly one post: the stored text was re-sent, not re-thought.
     expect(runner.seen).toHaveLength(1);
-    expect(transport.posted).toEqual([{ threadId: "t1", text: "jedna odpowiedź" }]);
+    expect(transport.posted).toEqual([{ threadId: "t1", text: "jedna odpowiedź", replyToId: "m1" }]);
     expect(store.get("t1", "m1")?.state).toBe("published");
   });
 
@@ -437,7 +437,7 @@ describe("restart recovery", () => {
 
     await adapter.recoverAfterRestart();
 
-    expect(transport.posted).toEqual([{ threadId: "t1", text: "napisane przed awarią" }]);
+    expect(transport.posted).toEqual([{ threadId: "t1", text: "napisane przed awarią", replyToId: "m1" }]);
     expect(runner.seen).toHaveLength(0);
     expect(store.get("t1", "m1")?.state).toBe("published");
   });
@@ -478,7 +478,7 @@ describe("floor", () => {
     // A failed turn is abandoned, and abandoned is terminal, so the floor is free
     // to move past both -- the later message is not held hostage by the earlier one.
     expect(runner.seen.map((m) => m.messageId)).toEqual(["stuck", "ok"]);
-    expect(transport.posted).toEqual([{ threadId: "t1", text: "ok" }]);
+    expect(transport.posted).toEqual([{ threadId: "t1", text: "ok", replyToId: "ok" }]);
     expect(store.getFloor("t1")).toBe(Date.parse("2026-09-04T10:05:00.000Z"));
   });
 
@@ -500,7 +500,7 @@ describe("floor", () => {
       if (posts > 2) {
         throw new Error("arena unreachable");
       }
-      transport.posted.push({ threadId, text: body.text });
+      transport.posted.push({ threadId, text: body.text, replyToId: body.replyToId });
       return `posted-${posts}`;
     };
 

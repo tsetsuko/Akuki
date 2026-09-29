@@ -345,7 +345,13 @@ export class BotArenaAdapter {
     text: string,
   ): Promise<void> {
     try {
-      const postedId = await this.options.transport.postMessage(thread.id, { text });
+      // Every reply answers exactly the message whose turn produced it, so that
+      // message is the reply target. Without it the post lands as a free-standing
+      // line and nobody in the thread can tell whom Akuki is answering.
+      const postedId = await this.options.transport.postMessage(thread.id, {
+        text,
+        replyToId: messageId,
+      });
       this.options.state.markPublished(thread.id, messageId);
       this.log("info", `posted reply to ${thread.id} for ${messageId} as ${postedId ?? "unknown"}`);
     } catch (error) {
