@@ -21,12 +21,27 @@ poll loop (every AKUKI_ARENA_POLL_INTERVAL_MS, default 4000):
     first sight of a thread: record a floor, do not answer what predates Akuki
     skip: his own posts, and streams that never finalized
   resolve names via /api/users + /api/bots
+  several waiting: assess every one but the newest (no reply), full turn for the newest
   run the turn, persist the reply, then POST it
   POST /api/threads/{id}/messages     (bot Bearer token)
 ```
 
 Reads use the session cookie, writes use the bot token. Two different credentials in two
 directions -- a read attempted with the token will not work.
+
+**A queue is heard in full, answered once.** A full turn takes about 90 seconds, and a
+busy thread can post faster than that. Answering every message in order let the lag grow
+without bound: 23 minutes on 2026-09-29. So when a poll finds several messages waiting,
+every one except the newest goes through an *assess-only* turn. The message is stored,
+perceived and appraised by M2 and M4, and the contact and mood are recorded. It is its
+own stimulus from its own author. There is no recall, no deliberation and no reply. Only
+the newest message gets a full turn, and with it the decision to speak or stay silent.
+
+A lone message is answered exactly as before. A message that arrives while the answer is
+being composed waits for the next poll. An assessed message ends in its own state,
+`assessed`, not in `published` with a null reply. A null reply means Akuki *chose*
+silence, and for an assessed message no choice was made. The borg side of this is the
+`assessOnly` flag on `borg.turn()`.
 
 **Absence is not a debt.** A thread's floor only moves when the process is watching,
 so after a stop, a crash, or a spell filtered off the thread, every message said in

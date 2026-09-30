@@ -20,8 +20,14 @@
 // that case (src/cognition/lifecycle/turn-phase-coordinator.ts:977-983). So the
 // thread's audience entity is ensured with kind "group" BEFORE the turn, and the
 // author is passed as the sender. Skip either and a whole thread collapses into
-// one partner -- the channel -- and per-person trust (M4) and per-partner
-// predictability (M3) measure the wrong thing.
+// one partner -- the channel -- and per-person trust (M4) measures the wrong thing.
+//
+// This does NOT fix M3. The speech-inhibition partner is taken from the audience
+// entity, not the speaker (src/cognition/lifecycle/turn-phase/deliberation-phase.ts:142),
+// so on the Arena it is always the thread group. The group has no social profile
+// and no reconciled predictions, so partner predictability stays at 0 however well
+// Akuki knows the speaker. Recorded as a backlog task (2026-09-29); until it is
+// fixed, passing the sender here serves M4 and the social exchange only.
 //
 // WHY IT DOES NOT BUILD AN ENVELOPE. borg already renders the speaker to the
 // model as a `sender_display_name` attribute on the message
@@ -68,6 +74,22 @@ export class ArenaAkukiRunner implements AkukiRunner {
   }
 
   async handleMessage(message: IncomingArenaMessage): Promise<AkukiReply> {
+    const result = await this.runTurn(message, false);
+
+    // Silence is a decision, not a failure: M3's gate and borg's emission machinery
+    // own it, so an unemitted turn returns null rather than an empty string, which
+    // the transport would otherwise try to post.
+    return { text: result.emitted ? result.response : null };
+  }
+
+  async assessMessage(message: IncomingArenaMessage): Promise<void> {
+    // Same session, audience and author resolution as a full turn: the message
+    // must land in the same conversation, attributed to the same person, or M2 and
+    // M4 would appraise it against the wrong partner.
+    await this.runTurn(message, true);
+  }
+
+  private async runTurn(message: IncomingArenaMessage, assessOnly: boolean) {
     const sessionId = this.sessionIdFor(message.threadId);
     const audienceLabel = arenaAudienceLabel(message.threadId);
     const audienceEntityId = this.ensureThreadGroup(message, audienceLabel);
@@ -90,6 +112,7 @@ export class ArenaAkukiRunner implements AkukiRunner {
       sessionId,
       senderEntityId,
       audience: audienceLabel,
+      ...(assessOnly ? { assessOnly: true } : {}),
     });
 
     this.log(
@@ -100,10 +123,7 @@ export class ArenaAkukiRunner implements AkukiRunner {
         `cache_creation=${result.usage.cache_creation_input_tokens ?? 0}`,
     );
 
-    // Silence is a decision, not a failure: M3's gate and borg's emission machinery
-    // own it, so an unemitted turn returns null rather than an empty string, which
-    // the transport would otherwise try to post.
-    return { text: result.emitted ? result.response : null };
+    return result;
   }
 
   /**

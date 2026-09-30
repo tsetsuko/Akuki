@@ -47,4 +47,10 @@ export type AkukiReply = {
 
 export type AkukiRunner = {
   handleMessage(message: IncomingArenaMessage): Promise<AkukiReply>;
+  /**
+   * Take the message in without answering it: stored, perceived and appraised,
+   * but no reply and no decision to stay silent. The adapter uses this for every
+   * message in a queue except the newest, which gets handleMessage.
+   */
+  assessMessage(message: IncomingArenaMessage): Promise<void>;
 };

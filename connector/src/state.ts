@@ -10,6 +10,7 @@
 //
 //   received -> reply_ready(text|null) -> published
 //           |                        \-> abandoned
+//           |-> assessed
 //           |-> skipped
 //           \-> abandoned
 //
@@ -40,16 +41,20 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
-// The four resting places a message can reach, kept distinct because each one
+// The five resting places a message can reach, kept distinct because each one
 // answers a different operational question:
 //   published -- the outbound decision was carried out. A null reply_text here
 //                means Akuki chose silence, which is a real, handled outcome.
+//   assessed  -- Akuki took the message in but was not asked to answer it,
+//                because a newer message was waiting behind it. Not a silence:
+//                no decision to speak was made for it at all.
 //   skipped   -- no turn was ever intended (Akuki's own post, a dead stream).
 //   abandoned -- a turn WAS in flight and did not finish. Never retried.
 export type ArenaMessageState =
   | "received"
   | "reply_ready"
   | "published"
+  | "assessed"
   | "skipped"
   | "abandoned";
 
@@ -63,7 +68,12 @@ export type ArenaMessageRecord = {
 };
 
 /** A state a message can never leave: the floor may advance past it. */
-const TERMINAL_STATES: readonly ArenaMessageState[] = ["published", "skipped", "abandoned"];
+const TERMINAL_STATES: readonly ArenaMessageState[] = [
+  "published",
+  "assessed",
+  "skipped",
+  "abandoned",
+];
 
 export function isTerminalState(state: ArenaMessageState): boolean {
   return TERMINAL_STATES.includes(state);
@@ -236,6 +246,14 @@ export class ArenaStateStore {
 
   markPublished(threadId: string, messageId: string): void {
     this.transition(threadId, messageId, "published", ["reply_ready"]);
+  }
+
+  /**
+   * Retire a message whose assess-only turn finished. Straight from `received`:
+   * there is no reply to commit, so there is nothing a restart would need to post.
+   */
+  markAssessed(threadId: string, messageId: string): void {
+    this.transition(threadId, messageId, "assessed", ["received"]);
   }
 
   /**

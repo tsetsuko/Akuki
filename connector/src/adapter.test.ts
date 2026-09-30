@@ -64,15 +64,27 @@ function fakeTransport(init: Partial<Pick<FakeTransport, "threads" | "messages">
   return state;
 }
 
-type FakeRunner = AkukiRunner & { seen: IncomingArenaMessage[] };
+type FakeRunner = AkukiRunner & {
+  seen: IncomingArenaMessage[];
+  assessed: IncomingArenaMessage[];
+};
 
-function fakeRunner(reply: (m: IncomingArenaMessage) => AkukiReply | Promise<AkukiReply>): FakeRunner {
+function fakeRunner(
+  reply: (m: IncomingArenaMessage) => AkukiReply | Promise<AkukiReply>,
+  assess: (m: IncomingArenaMessage) => void | Promise<void> = () => {},
+): FakeRunner {
   const seen: IncomingArenaMessage[] = [];
+  const assessed: IncomingArenaMessage[] = [];
   return {
     seen,
+    assessed,
     handleMessage: async (incoming) => {
       seen.push(incoming);
       return reply(incoming);
+    },
+    assessMessage: async (incoming) => {
+      assessed.push(incoming);
+      await assess(incoming);
     },
   };
 }
@@ -229,7 +241,7 @@ describe("catch-up window", () => {
 });
 
 describe("routing", () => {
-  it("hands every final foreign message to the runner without inspecting content", async () => {
+  it("hands every final foreign message to Akuki without inspecting content", async () => {
     const transport = fakeTransport();
     const runner = fakeRunner(() => ({ text: "ok" }));
     const adapter = build(transport, runner, { catchUpBacklog: true });
@@ -242,11 +254,10 @@ describe("routing", () => {
 
     await adapter.pollOnce();
 
-    expect(runner.seen.map((m) => m.messageId)).toEqual([
-      "no-mention",
-      "from-a-bot",
-      "mentioning",
-    ]);
+    // All three reach him. The queue order decides which is answered (the newest);
+    // nothing about who wrote it or whether he was mentioned does.
+    expect(runner.assessed.map((m) => m.messageId)).toEqual(["no-mention", "from-a-bot"]);
+    expect(runner.seen.map((m) => m.messageId)).toEqual(["mentioning"]);
   });
 
   it("never runs a turn for Akuki's own post", async () => {
@@ -465,31 +476,36 @@ describe("floor", () => {
     const first = message({ id: "stuck", createdAt: "2026-09-04T10:00:00.000Z" });
     const second = message({ id: "ok", createdAt: "2026-09-04T10:05:00.000Z" });
     const transport = fakeTransport({ messages: [first, second] });
-    const runner = fakeRunner((incoming) => {
-      if (incoming.messageId === "stuck") {
-        throw new Error("only this one fails");
-      }
-      return { text: "ok" };
+    const runner = fakeRunner(
+      () => ({ text: "ok" }),
+      (incoming) => {
+        if (incoming.messageId === "stuck") {
+          throw new Error("only this one fails");
+        }
+      },
+    );
+    const logged: string[] = [];
+    const adapter = build(transport, runner, {
+      catchUpBacklog: true,
+      log: (_level, text) => logged.push(text),
     });
-    const adapter = build(transport, runner, { catchUpBacklog: true });
 
     await adapter.pollOnce();
 
     // A failed turn is abandoned, and abandoned is terminal, so the floor is free
     // to move past both -- the later message is not held hostage by the earlier one.
-    expect(runner.seen.map((m) => m.messageId)).toEqual(["stuck", "ok"]);
+    expect(runner.assessed.map((m) => m.messageId)).toEqual(["stuck"]);
+    expect(logged.some((line) => line.startsWith("abandoned t1/stuck"))).toBe(true);
+    expect(runner.seen.map((m) => m.messageId)).toEqual(["ok"]);
     expect(transport.posted).toEqual([{ threadId: "t1", text: "ok", replyToId: "ok" }]);
     expect(store.getFloor("t1")).toBe(Date.parse("2026-09-04T10:05:00.000Z"));
   });
 
   it("prunes rows strictly below the floor and keeps the boundary and the unfinished", async () => {
-    const transport = fakeTransport({
-      messages: [
-        message({ id: "oldest", createdAt: "2026-09-04T10:00:00.000Z" }),
-        message({ id: "at-floor", createdAt: "2026-09-04T10:05:00.000Z" }),
-        message({ id: "unfinished", createdAt: "2026-09-04T10:10:00.000Z" }),
-      ],
-    });
+    const oldest = message({ id: "oldest", createdAt: "2026-09-04T10:00:00.000Z" });
+    const atFloor = message({ id: "at-floor", createdAt: "2026-09-04T10:05:00.000Z" });
+    const unfinished = message({ id: "unfinished", createdAt: "2026-09-04T10:10:00.000Z" });
+    const transport = fakeTransport({ messages: [oldest] });
     const runner = fakeRunner(() => ({ text: "ok" }));
     const adapter = build(transport, runner, { catchUpBacklog: true });
 
@@ -504,6 +520,11 @@ describe("floor", () => {
       return `posted-${posts}`;
     };
 
+    // One message per poll, so each is the newest when it is seen and gets a reply.
+    await adapter.pollOnce();
+    transport.messages = [oldest, atFloor];
+    await adapter.pollOnce();
+    transport.messages = [oldest, atFloor, unfinished];
     await adapter.pollOnce();
 
     expect(store.getFloor("t1")).toBe(Date.parse("2026-09-04T10:05:00.000Z"));
@@ -561,8 +582,91 @@ describe("floor", () => {
 
     await adapter.pollOnce();
 
-    expect(runner.seen.map((m) => m.messageId)).toEqual(["same-1", "same-2"]);
-    expect(transport.posted).toHaveLength(2);
+    // Both are handled and neither is lost to the tie; the later one in the
+    // sorted order is answered.
+    expect(runner.assessed.map((m) => m.messageId)).toEqual(["same-1"]);
+    expect(runner.seen.map((m) => m.messageId)).toEqual(["same-2"]);
+    expect(transport.posted).toHaveLength(1);
+    expect(store.getFloor("t1")).toBe(Date.parse("2026-09-04T10:00:00.000Z"));
+  });
+});
+
+describe("a queue is heard in full and answered once", () => {
+  it("assesses every waiting message but the newest, which gets the only full turn", async () => {
+    const transport = fakeTransport({
+      messages: [
+        message({ id: "a", senderId: "bot-sol", createdAt: "2026-09-04T10:00:00.000Z" }),
+        message({ id: "b", senderId: "bot-terra", createdAt: "2026-09-04T10:01:00.000Z" }),
+        message({ id: "c", senderId: "u-zosia", createdAt: "2026-09-04T10:02:00.000Z" }),
+      ],
+    });
+    const runner = fakeRunner(() => ({ text: "answer" }));
+    const logged: string[] = [];
+    const adapter = build(transport, runner, {
+      catchUpBacklog: true,
+      log: (_level, text) => logged.push(text),
+    });
+
+    await adapter.pollOnce();
+
+    // Each earlier message still reaches Akuki, with its own author.
+    expect(runner.assessed.map((m) => [m.messageId, m.authorId])).toEqual([
+      ["a", "bot-sol"],
+      ["b", "bot-terra"],
+    ]);
+    expect(runner.seen.map((m) => m.messageId)).toEqual(["c"]);
+    expect(transport.posted).toEqual([{ threadId: "t1", text: "answer", replyToId: "c" }]);
+    expect(logged.filter((line) => line.includes(": assessed,"))).toHaveLength(2);
+    // Assessed is terminal, so the floor moves past the whole queue.
+    expect(store.getFloor("t1")).toBe(Date.parse("2026-09-04T10:02:00.000Z"));
+  });
+
+  it("answers the newest message that gets a turn, not a newer post of Akuki's own", async () => {
+    const transport = fakeTransport({
+      messages: [
+        message({ id: "first", createdAt: "2026-09-04T10:00:00.000Z" }),
+        message({ id: "question", createdAt: "2026-09-04T10:01:00.000Z" }),
+        message({ id: "own", senderId: AKUKI_BOT_ID, createdAt: "2026-09-04T10:02:00.000Z" }),
+      ],
+    });
+    const runner = fakeRunner(() => ({ text: "answer" }));
+    const adapter = build(transport, runner, { catchUpBacklog: true });
+
+    await adapter.pollOnce();
+
+    expect(runner.assessed.map((m) => m.messageId)).toEqual(["first"]);
+    expect(runner.seen.map((m) => m.messageId)).toEqual(["question"]);
+    expect(store.get("t1", "own")?.state).toBe("skipped");
+  });
+
+  it("gives a lone message a full turn, exactly as before", async () => {
+    const transport = fakeTransport({ messages: [message({ id: "only" })] });
+    const runner = fakeRunner(() => ({ text: "answer" }));
+    const adapter = build(transport, runner, { catchUpBacklog: true });
+
+    await adapter.pollOnce();
+
+    expect(runner.assessed).toEqual([]);
+    expect(runner.seen.map((m) => m.messageId)).toEqual(["only"]);
+  });
+
+  it("leaves a message that arrives during the answer for the next poll", async () => {
+    const transport = fakeTransport({
+      messages: [message({ id: "first", createdAt: "2026-09-04T10:00:00.000Z" })],
+    });
+    const late = message({ id: "late", createdAt: "2026-09-04T10:01:00.000Z" });
+    const runner = fakeRunner(() => {
+      transport.messages = [...transport.messages, late];
+      return { text: "answer" };
+    });
+    const adapter = build(transport, runner, { catchUpBacklog: true });
+
+    await adapter.pollOnce();
+    expect(runner.seen.map((m) => m.messageId)).toEqual(["first"]);
+    expect(store.get("t1", "late")).toBeUndefined();
+
+    await adapter.pollOnce();
+    expect(runner.seen.map((m) => m.messageId)).toEqual(["first", "late"]);
   });
 });
 

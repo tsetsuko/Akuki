@@ -21,6 +21,15 @@
 // judgement about content, so the cardinal rule above still holds -- but be honest
 // about the cost: those messages never reach him at all.
 //
+// A QUEUE IS HEARD IN FULL, ANSWERED ONCE. A full turn takes about 90 s and a busy
+// thread can post faster than that, so answering every message in order lets the
+// lag grow without bound (23 minutes on 2026-09-29). When a poll finds several
+// messages waiting, every one but the newest goes through an assess-only turn:
+// stored, perceived, appraised by M2 and M4, contact and mood recorded -- each its
+// own stimulus from its own author. Only the newest gets a full turn, and with it
+// the decision to speak or stay silent. A lone message is answered exactly as
+// before. This is ordering by arrival, not by content, so the cardinal rule holds.
+//
 // ATTACHMENTS: counted and logged, never passed on. Akuki's isolation comes from
 // borg exposing only memory tools, and pulling attachment bytes would widen that
 // input surface. The log line is what keeps the omission observable (AC #8).
@@ -167,15 +176,19 @@ export class BotArenaAdapter {
       return;
     }
 
-    for (const message of messages) {
-      const tsMs = this.tsOf(message);
-      if (floor !== null && tsMs < floor) {
-        continue;
-      }
-      if (this.options.state.get(thread.id, message.id) !== undefined) {
-        continue;
-      }
-      await this.handle(thread, message, tsMs, newestTs);
+    const pending = messages.filter(
+      (message) =>
+        !(floor !== null && this.tsOf(message) < floor) &&
+        this.options.state.get(thread.id, message.id) === undefined,
+    );
+    // The newest message that will actually get a turn is the one answered; every
+    // earlier one is assessed. Messages arriving during that turn wait for the next
+    // poll, so a busy thread cannot keep pushing the answer out of reach.
+    const answered = pending.filter((message) => this.getsTurn(message)).at(-1);
+
+    for (const message of pending) {
+      const mode = message.id === answered?.id ? "answer" : "assess";
+      await this.handle(thread, message, this.tsOf(message), newestTs, mode);
     }
 
     if (!this.dryRun) {
@@ -183,11 +196,25 @@ export class BotArenaAdapter {
     }
   }
 
+  /**
+   * Whether handle() would run a turn for this message rather than retire it.
+   * Mirrors the three early exits in handle(); used only to pick which pending
+   * message is the one answered.
+   */
+  private getsTurn(message: BotArenaMessage): boolean {
+    return (
+      message.status === "final" &&
+      message.senderId !== this.options.botId &&
+      !(this.maxCatchUpAgeMs !== null && this.now() - this.tsOf(message) > this.maxCatchUpAgeMs)
+    );
+  }
+
   private async handle(
     thread: BotArenaThread,
     message: BotArenaMessage,
     tsMs: number,
     newestTs: number,
+    mode: "answer" | "assess",
   ): Promise<void> {
     if (message.status !== "final") {
       if (newestTs - tsMs > STALE_STREAMING_MS) {
@@ -234,8 +261,8 @@ export class BotArenaAdapter {
     if (this.dryRun) {
       this.log(
         "info",
-        `[dry-run] would run a turn for ${thread.id}/${message.id} from ${message.senderId} ` +
-          `(${message.text.length} chars)`,
+        `[dry-run] would ${mode === "answer" ? "run a turn" : "assess"} for ` +
+          `${thread.id}/${message.id} from ${message.senderId} (${message.text.length} chars)`,
       );
       return;
     }
@@ -245,6 +272,24 @@ export class BotArenaAdapter {
     }
 
     const incoming = await this.normalize(thread, message, tsMs);
+
+    if (mode === "assess") {
+      try {
+        await this.options.runner.assessMessage(incoming);
+      } catch (error) {
+        // Same policy as a full turn: borg may already hold part of it.
+        this.options.state.markAbandoned(thread.id, message.id);
+        this.log(
+          "error",
+          `abandoned ${thread.id}/${message.id}: the assess turn failed and is not retried, ` +
+            `because borg may already hold part of it: ${describe(error)}`,
+        );
+        return;
+      }
+      this.options.state.markAssessed(thread.id, message.id);
+      this.log("info", `thread ${thread.id}/${message.id}: assessed, a newer message is answered`);
+      return;
+    }
 
     let replyText: string | null;
     try {
