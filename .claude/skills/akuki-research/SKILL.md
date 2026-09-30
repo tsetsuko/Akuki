@@ -186,8 +186,10 @@ evidence-gated action menu without reading that reference first.
   use.
 - `references/future-development.md` — designs deliberately **not** built for generation 1
   (artificial developmental pressure, the evidence-expanded action space, the evolutionary layer,
-  the perceived-agency contingency threshold), each with the reason it was parked and the condition
-  for revisiting. Read before proposing any of them again.
+  the perceived-agency contingency threshold, and since 2026-09-29 the measured turn-speed levers,
+  a lighter per-turn memory, the deliberative-path frequency paradox, energy points, and message
+  priority in a queue), each with
+  the reason it was parked and the condition for revisiting. Read before proposing any of them again.
 - `references/conventions.md` — fixed shapes that must not be reinvented. Currently the model
   availability probe against aiproxy: use `python -m akuki.diag_model`, never curl in a loop —
   it names the failing layer and logs to `data/diag/cognition-probe.jsonl`. **Read before

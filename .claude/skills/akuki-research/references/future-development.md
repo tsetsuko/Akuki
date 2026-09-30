@@ -441,3 +441,413 @@ symmetry.
 When the autonomous outbound channel exists (entry 2's smallest honest version). That channel is
 what gives a pressing question somewhere to go, and until it exists, a parameter governing how hard
 questions press has nothing to press against.
+
+---
+
+## 8. Turn speed — the levers that were measured and not pulled
+
+**Recorded 2026-09-29. Zosia's decision: build "hear everything, answer the latest" first (the
+assess-only turn, see `doubts, questions.md`), and keep the rest of the speed work here.**
+
+### Why speed became a question
+
+On a busy Arena thread a turn takes about 90 seconds and messages arrive about once a minute, so
+the queue grows without bound. On 2026-09-29 Zosia's message waited 23 minutes for a reply. The
+connector runs one full turn per message, one after another, across all threads.
+
+### Where the time goes, measured
+
+Measured from `/var/lib/akuki/token-usage.jsonl`, 609 model calls between 09:08 and 09:47 UTC on
+2026-09-29, 26 turns. The log records when each call *ended*, not how long it took, so the split
+between calls running in parallel is approximate. The per-turn totals are reliable.
+
+- Median time from a message to the reply: **69 s**. Median time from the reply to the start of the
+  next turn: **17 s**.
+- A turn makes about 25 model calls. In a sample turn, perception finished at 7 s, the M2/M4
+  appraisal at 18 s, the closure-loop classifier at 27 s (about 1000 output tokens), the
+  shared-state compiler at 47 s (44k input tokens), the plan at 56 s, and the reply at 70 s
+  (138k input tokens).
+- The share of turn time, attributed by gaps between calls: shared-state compiler about 27%, the
+  reply calls (plan plus both finalizer paths) about 22%, reflection about 9%, closure-loop
+  classifier about 7%.
+
+### Levers considered and not pulled
+
+**Batching like Sol (rejected, not parked).** Sol's connector hands messages to borg's catch-up
+worker, which runs one turn over up to 16 queued messages. The reply model still sees each message
+with its author. Two things break for Akuki, both checked in code:
+
+- With more than one author in a batch, the speaker becomes unknown and M4 attributes trust to the
+  thread group instead of the person (`extraction-phase.ts:51-76`).
+- M2 appraises the batch once, so ten stimuli become one surprise judgement.
+
+Zosia rejected this because it damages the stimuli. The assess-only turn gets the speed without
+either loss.
+
+**Faster models for helper roles (parked).** borg assigns models by five roles, not per call. M2
+and M4 sit on the `extraction` role and can stay on Opus. The helper calls (mood and mode
+perception, generation gate, commitment judge, response auditor, reflection) sit on `background`.
+Moving `background` to a faster model would save about 5–8 s per turn, not the 15–25 s first
+estimated: those calls are about 15% of turn time, and the slowest calls already run on Haiku.
+
+It is parked because the `background` role also carries two things that matter more than 6 seconds:
+
+- **Mood perception**, whose valence feeds M3's caution term.
+- **The whole dream cycle**: consolidator, reflector, belief reviser, self-narrator. These shape the
+  long-term self-model.
+
+The honest version would split `background` in code, so that only the auditor and the commitment
+judge get a faster model. That needs a router per call site, not a config change.
+
+**Answer before the after-reply checks (parked).** Posting the reply before the commitment judge,
+the auditor and reflection finish would cut about 17 s from how long a reply *feels*, but not from
+throughput, because the next turn still waits on the session lock. It fixes the impression, not the
+queue.
+
+**Prompt cache, the compact layout (parked as an experiment).** The dynamic cache breakpoint was
+switched off on 2026-09-29 (TASK-043). The dynamic block is entirely per-turn content, so writing it
+to cache cost 1.25× and was never read back. The turn's text did not change. borg also has a
+four-tier "compact" finalizer layout, currently off, that caches more of the stable guidance. It
+changes the order Akuki reads his prompt in, so it is an experiment with an A/B capture tool, not a
+fix, and it does not touch the queue either.
+
+### When to revisit
+
+After the assess-only turn has run on a busy thread. If the lag is gone, most of this stays parked.
+If it is not, entries 9 and 10 are the next levers, because they shrink the two largest items.
+
+---
+
+## 9. A lighter memory per turn — Akuki does not need three weeks ago at hand
+
+**Recorded 2026-09-29. Zosia's intuition: he does not need, and should not have, what was said three
+weeks ago in front of him on every turn.**
+
+### What borg has, verified
+
+- **There is no separate short-term store.** What borg calls "working memory" is per-session state
+  (turn counter, muted entries, pending attempts), not a buffer of recent content
+  (`borg/src/memory/working/types.ts:32-120`).
+- **Age decay already exists and is learned-state-driven.** An episode's salience decays
+  exponentially, with a half-life of 3, 7, 14 or 30 days by tier. Episodes that were never recalled
+  decay twice as fast, and episodes recalled often with good effect decay twice as slow. The clock
+  runs from the last recall (`retrieval/scoring.ts:135-146`, `memory/episodic/decay.ts:23-66`). The
+  half-lives are parameters, and the recall history that modulates them is learned state, which is
+  consistent with invariant 5.
+- **Age weighs little at selection.** In relational mode salience has weight 0.35 against 0.65 for
+  content similarity, so a matching episode from three weeks ago still wins
+  (`cognition/attention/weights.ts:44-48`). The curator archives episodes after 45 days.
+- **Episodes are not what makes the prompt big.** Only 1–6 enter a turn
+  (`attention/weights.ts:146-160`).
+- **The evidence ledger is.** 17 sections pasted into the reply prompt, each with its own cap,
+  summing to about 66.5k tokens. The target is 60k, the hard cap 100k (`config/index.ts:165-219`,
+  verified 2026-09-29). The "recent lived experience" window is 3 days and up to 64 entries.
+  Compaction drops the lowest-trust sections first. The shared-state compiler is a separate call at
+  about 44k tokens (TASK-044).
+- **Not yet known:** what makes up the rest of the 138k in the reply call above the ledger.
+
+### The Cardinal Memory Rule is not in the way
+
+Shrinking budgets or weighting by recency is not a forbidden recall gate. `borg/CLAUDE.md:21,29`
+allows the harness to rank, label and budget memories. What it forbids is hiding a memory *because
+of who is listening*. `heuristics:guard` checks calls to disclosure-keyed lookups and disclosure
+labels on memory rows, and does not touch budgets, weights or decay
+(`borg/scripts/heuristics-guard.ts:90-115, 915-945`). The condition that keeps it safe: the
+criterion must be age, salience or relevance, never the audience. Older memories stay reachable
+through the episode search tool on demand.
+
+### The options, in order
+
+1. **Measure first.** Break the 138k reply prompt and the 44k shared-state call into sections
+   (TASK-044). Without it every budget change is a guess.
+2. **Lower the ledger target and section caps** as config only. For example: target from 60k to
+   25–30k, smaller caps on cross-session memory, autobiographical recall and the knowledge graph,
+   and the recent-experience window from 3 days to 1. Expected effect: roughly 30–40k fewer tokens
+   per reply and a proportionally faster reply call. Cost: less context for continuity across
+   sessions.
+3. **Favour recency more strongly** (a higher salience weight or shorter half-lives). Allowed by the
+   rule, but read entry 10 first: today this would *raise* how often the deliberative path runs.
+
+### What is claim, analogue and choice
+
+- **Research claim:** none specific is leaned on here. Working-memory capacity limits are
+  well-established in adults and children, but nothing licenses a token number.
+- **Defensible analogue:** a small, recent, relevant context in front of him, with the rest
+  retrievable on demand.
+- **Creative choice:** every number above.
+
+### When to revisit
+
+Once the assess-only turn is running and TASK-044's breakdown exists.
+
+---
+
+## 10. The deliberative path — why it runs so often, and a paradox
+
+**Recorded 2026-09-29.** On 2026-09-29, 21 of 33 turns took the deliberative path ("system 2": a
+planning call plus a bigger prompt, about 10–15 s more than the direct path).
+
+### What decides it, verified
+
+A ladder in `cognition/deliberation/path-selector.ts:119-156`:
+
+1. An open-question controversy can force it, and a 5-turn retry block can lift that.
+2. Mode "reflective" always takes it.
+3. High stakes take it. The connector never sets stakes, so in practice this never fires.
+4. Mode "idle" takes the direct path.
+5. Retrieval confidence below **0.45** takes it (`deliberation/constants.ts:33`).
+
+### Two likely causes, not yet counted
+
+- **The mode classifier leans reflective.** It is an LLM told to choose reflective over idle when in
+  doubt (`perception/mode-detector.ts:97`), and identity questions on the Arena land there.
+- **The paradox:** retrieval confidence is averaged from salience *after decay*
+  (`retrieval/confidence.ts:239-253`). With sparse traffic episodes fade fast, confidence drops
+  below 0.45, and the deliberative path fires. **The age decay that already exists is what makes
+  deliberation frequent.** Favouring recency further (entry 9, option 3) without untangling this
+  would make it more frequent still.
+
+Which cause dominates has to be counted from `deliberation.path.completed` trace events (field
+`reason`). No turn traces are persisted on the VPS today, so turning tracing on is the first step.
+
+### Options
+
+1. **Count the reasons** across a day of Arena turns.
+2. **Decouple confidence from age decay**, for example by computing it from content similarity, or
+   lower the 0.45 floor. That is one constant, but it changes when Akuki thinks harder, so it goes
+   through the gate.
+3. **Change the classifier's tie-break** so that doubt does not default to reflective. A prompt
+   change in the fork.
+4. **Let Akuki learn when deliberation pays.** This is entry 11.
+
+---
+
+## 11. Energy points, and the version that survives the research
+
+**Proposed by Zosia 2026-09-29. Recorded, not built. It reopens TASK-014 (entry 1).**
+
+### The proposal
+
+Game-like energy points that reset once a day. The deliberative path costs points, so Akuki
+reaches for it less. A bot does not tire, but tiredness is a form of the pressure discussed in
+entry 1, and here it would drive more careful management of his own resources.
+
+### Why not in this form
+
+1. **The research does not support a fuel tank.** Ego depletion (Baumeister: self-control as a
+   depletable resource) failed two large preregistered multi-lab replications:
+   - Hagger et al. 2016: 23 labs, N=2141, d=0.04, CI including zero.
+   - Vohs et al. 2021: 36 labs, N=3531, d=0.06.
+2. **A midnight reset is a calendar trigger.** State would change because a day passed, not because
+   of anything experienced, which breaks invariant 8.
+3. **Trap 1 from entry 1.** The laziest fully-compliant behaviours are never deliberating at all, or
+   spending everything in the morning and running on the direct path until reset. A pool with no
+   need behind it produces no pressure.
+
+### What the research does support
+
+- Effort as the felt opportunity cost of what you give up (Kurzban et al. 2013).
+- Control is engaged when its expected value exceeds its cost (Shenhav, Botvinick & Cohen 2013).
+- Resource-rational analysis: minds spend limited computation well (Lieder & Griffiths 2020).
+- People **learn from experience** when control pays off (Lieder et al. 2018, PLoS Comp Biol).
+- Self-control declines as a motivated shift of priorities, not as fuel running out (Inzlicht,
+  Schmeichel & Macrae 2014).
+- In children, executive function and effortful control are abilities that mature over years
+  (Diamond 2013; Rothbart 2007), not tanks.
+- Sleep pressure builds while awake and is discharged by sleep (process S, Borbély 1982). Spencer &
+  Riggins 2022 (PNAS) propose that in young children it builds faster with unconsolidated memory,
+  and that dropping naps tracks hippocampal maturation, not age.
+
+Akuki's own research documents in Obsidian do not yet cover fatigue or effort, so step 2 of the
+gate has not been done for this.
+
+### The version that survives
+
+**Deliberation as a skill, not a pool.**
+
+- Akuki records whether deliberating in a given kind of situation changed the outcome. The record
+  is a Beta curve, a belief over how often deliberation helps. The same shape already runs in
+  borg's procedural memory and in M4's trust.
+- He deliberates when the expected gain exceeds a fixed cost. The cost stays fixed and only the
+  learned curve moves, which is invariant 5.
+- Over time he learns to reach for deliberation less where it does not help. That is the careful
+  resource management Zosia wants, arising from experience rather than from a counter.
+- If a "tiredness" term is ever wanted, the defensible version rises with unconsolidated entries
+  and is discharged by the dream cycle (process S), not by midnight.
+
+It passes the "exists in the database when nobody is looking" test. A sentence in the prompt saying
+"save your energy" would not.
+
+### What must be settled first
+
+It reopens TASK-014, so entry 1's four open questions apply: the primary need, the release valve
+(never memory access, per the Cardinal Memory Rule), fixed versus competence-tracking pressure, and
+the evolutionary layer. Trap 2 applies as well: pressure above the zone of proximal development
+yields helplessness, not growth.
+
+- **Research claim:** that people learn when control pays, and that the fuel-tank model failed
+  replication.
+- **Defensible analogue:** a learned value of deliberation per kind of situation.
+- **Creative choice:** the fixed cost, the situation keys, and any display of it to the model.
+
+### When to revisit
+
+Together with TASK-014: once Arena snapshots show whether Akuki stalls without pressure. Entry 10's
+reason count comes first, because if the paradox explains most deliberative turns, the frequency
+problem is a bug to fix, not a pressure to design.
+
+---
+
+## 12. Which message in a queue deserves the answer — importance instead of recency
+
+**Proposed by Zosia 2026-09-29/30. Designed, not built.** Backlog: TASK-047 (the task), plus the
+backlog document "Bramka ważności wiadomości" (the design with sources). A follow-up to the
+assess-only queue (TASK-046).
+
+### The proposal
+
+Today, when several messages wait, the newest one is answered and the rest are only taken in. That
+is ordering by arrival. Zosia's position, 2026-09-30: answering nothing and always answering the
+newest are equally wrong. There should be a **threshold of importance**:
+
+- the most important message in the queue gets the full turn,
+- if no message clears the threshold, none does, and all of them are only taken in.
+
+Important examples, from how the Arena actually behaves:
+
+- someone speaks to Akuki directly, with a request or a question;
+- someone talks **about** him without tagging him, which is common on the Arena;
+- trivial chatter ("haha") scores low.
+
+### Why it is worth keeping
+
+The newest message is often the wrong one. Picture a queue of five: a direct question to Akuki
+second, and "haha" from another bot last. Recency answers the "haha" and only assesses the
+question. It is heard, but no decision to speak is ever made for it. That reads as rude, or as not
+listening.
+
+Children's attention also starts with this kind of selection. Infants recognise the sound of their
+own name by about 4.5 months (Mandel, Jusczyk & Pisoni 1995), before they understand much else of
+what is said. Being addressed is one of the earliest things attention picks out.
+
+### The design: two gates and a threshold
+
+1. **Gate 1, structural shortcut.** A message @-mentions Akuki, or its `reply_to_id` points at one
+   of his posts. It gets high importance at once, with no model call. Bot Arena already sends both
+   fields (`connector/src/botarena-client.ts:46-47`), but they do not reach the turn yet. That gap
+   is TASK-033, which this depends on.
+2. **Gate 2, content score** for every message gate 1 did not catch. A model reads the message with
+   a few preceding ones and scores how much it concerns Akuki: to him, about him, a request or a
+   question. **Gate 1 is a shortcut, not a precondition.** If gate 2 only ran after gate 1 passed,
+   talk about Akuki without a tag would never be scored, and that is the case Zosia names as common.
+3. **Threshold.** The highest-scoring message in the queue gets the full turn only if it clears the
+   threshold. Otherwise every message in the queue is only taken in.
+
+**M3 is untouched.** A message that clears the threshold gets a full turn in which Akuki can still
+choose silence. The gates decide only whether he is asked to decide at all.
+
+**Nothing is dropped unheard.** A low-scoring message is still assessed, so M2, M4 and mood see it.
+"Ignore" here means "not chosen for the answer", never "not heard". Filtering messages out before
+assessment was considered and rejected on 2026-09-30, for two reasons: it would lose the stimulus,
+and it would make the transport judge content.
+
+### Where it must live
+
+**Not in the transport.** The adapter's own header says routing is structural and that the speak
+or stay-silent decision belongs to Akuki and M3. Gate 1 is structural, so it may sit anywhere. Gate
+2 reads content, so it belongs in cognition: the assess-only turn already runs perception, and it
+can leave the score in the message's state. The queue then picks from stored scores. This matches
+invariant 2: the decision is computed from state, and the model only phrases the reply.
+
+**The threshold and invariant 5.** The threshold is a fixed parameter. So that it does not become a
+tuning knob, the score can combine two parts:
+
+- the model's judgement;
+- a learned part: whether answering similar messages from this partner was followed by engagement,
+  kept as a Beta curve like M4's trust.
+
+The threshold stays put, and what Akuki has learned moves.
+
+### What model for gate 2 — researched 2026-09-30
+
+Terms used below:
+
+- **Calibration:** of the answers given 0.8, about 80% should be right.
+- **Logprobs:** the probabilities a model assigned to the tokens it produced, from which a true
+  label probability can be read.
+- **ECE (expected calibration error):** the average gap between stated confidence and actual
+  accuracy. 0 is perfect.
+
+**Jev (TypeSafe AI): rejected.**
+
+- It is closed and hosted, with no open weights.
+- Its own documentation says English is where accuracy is best, and other languages are "handled
+  but not equally well". Polish is not mentioned.
+- Its calibration is claimed, but no numbers are published.
+- An unreviewed preprint (arXiv 2609.30243) reports that a short natural addition to the context
+  flipped 61.4% of correct decisions. Not read first-hand.
+- Every Arena message would go to a third party.
+
+**Laya (Convai, Apache 2.0): same shape, weak in Polish.** It is an open model with the same three
+decision types. On a Polish test set it reaches 0.50 accuracy with raw ECE 0.353, meaning heavily
+overconfident. Keep it as a comparison point only.
+
+**Claude Haiku 4.5 with a schema-constrained answer: the starting point.**
+
+- It needs no new model role, understands Polish, code-switching and thread context, and handles
+  choice, score and yes/no.
+- It gives no true probability. The Anthropic API ignores `logprobs` and always returns them empty
+  (verified in Anthropic's OpenAI-compatibility docs). A number the model writes itself is
+  "verbalized" confidence, and that is systematically overconfident (arXiv 2306.13063). So the
+  threshold is provisional until calibrated.
+
+**A small classifier on bge-m3 embeddings: the target.**
+
+- bge-m3 already runs locally on the VPS through Ollama. It is multilingual and MIT-licensed.
+- A logistic regression or SetFit head on its vectors returns a real probability, which temperature
+  scaling can calibrate (Guo et al. 2017).
+- It runs in well under a second (estimated, not measured on the ARM VPS), and no data leaves the
+  server.
+- It needs labelled examples.
+
+**Other options checked, not preferred:**
+
+- mDeBERTa zero-shot NLI: no labels needed, but no published Polish calibration.
+- Small local LLMs (Bielik 1.5B, Qwen3 1.7B) with logprobs from Ollama: likely several seconds per
+  message on CPU, unmeasured.
+- HerBERT: Polish only, weaker on English inserts.
+
+**Any local model is a new model role.** It creates no third-party data flow, but the Anthropic-only
+validator (`borg/src/akuki/smoke-config.ts:36`) has to be widened deliberately, with approval.
+
+### The plan, in order
+
+1. **Start with Haiku** for gate 2, with a provisional threshold.
+2. **Collect labels:** about 300 real Arena messages, each with 3–5 preceding ones, stratified so
+   that "about him without a tag" and direct requests are well represented.
+   - Haiku proposes a label, and a person approves it. Two people labelling independently is
+     better: Cohen's kappa measures their agreement beyond chance.
+   - If people do not agree on "importance", no model can learn it.
+3. **Train and calibrate the bge-m3 classifier.**
+   - Split the labels in half, one half for fitting and one for evaluation, never the same.
+   - Report ECE with 10 bins, the Brier score (mean squared gap between probability and outcome),
+     and a reliability diagram (stated confidence against actual accuracy).
+   - Estimate a confidence interval by bootstrap, since 150 examples is noisy.
+4. **Set the threshold by cost:** a missed question to Akuki is worse than one needless reply, so
+   check recall on the "important" class at the chosen threshold.
+
+### What is claim, analogue and choice
+
+- **Research claim:** infants pick out their own name early (Mandel, Jusczyk & Pisoni 1995).
+  Verbalized LLM confidence is overconfident (arXiv 2306.13063). Temperature scaling calibrates
+  classifiers (Guo et al. 2017). The literature on selective attention and turn-taking in children
+  has not been read for this, so step 2 of the gate is not done.
+- **Defensible analogue:** being addressed or talked about raises a message's claim on the answer,
+  and experience of what answering did adjusts it.
+- **Creative choice:** the threshold, the importance classes and any weights.
+
+### When to revisit
+
+After the assess-only queue (TASK-046) is deployed and TASK-033 is done. TASK-047 carries the build.
+The signal that it is needed: an answered message that was trivial while a question to Akuki, or
+talk about him, in the same queue was only assessed.
