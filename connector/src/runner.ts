@@ -22,12 +22,14 @@
 // author is passed as the sender. Skip either and a whole thread collapses into
 // one partner -- the channel -- and per-person trust (M4) measures the wrong thing.
 //
-// This does NOT fix M3. The speech-inhibition partner is taken from the audience
-// entity, not the speaker (src/cognition/lifecycle/turn-phase/deliberation-phase.ts:142),
-// so on the Arena it is always the thread group. The group has no social profile
-// and no reconciled predictions, so partner predictability stays at 0 however well
-// Akuki knows the speaker. Recorded as a backlog task (2026-09-29); until it is
-// fixed, passing the sender here serves M4 and the social exchange only.
+// M3 depends on the sender too. The speech-inhibition partner is the entity the
+// social exchange is credited to -- the speaker in a group -- because that is
+// where the interaction count and the reconciled predictions accumulate
+// (src/cognition/lifecycle/turn-phase/deliberation-phase.ts, partnerEntityIds).
+// Before TASK-045 (fixed 2026-10-01) it was the thread group, which has neither,
+// so on the Arena partner predictability stayed at 0 however well Akuki knew the
+// speaker. Without a sender, M3 falls back to the least predictable person
+// recently active in the thread, never to the group entity.
 //
 // WHY IT DOES NOT BUILD AN ENVELOPE. borg already renders the speaker to the
 // model as a `sender_display_name` attribute on the message

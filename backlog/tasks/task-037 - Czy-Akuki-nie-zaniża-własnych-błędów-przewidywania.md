@@ -1,9 +1,12 @@
 ---
 id: TASK-037
-title: 'Czy Akuki nie zaniża własnych błędów przewidywania — wejście do M3 może być zawyżone'
+title: >-
+  Czy Akuki nie zaniża własnych błędów przewidywania — wejście do M3 może być
+  zawyżone
 status: In Progress
 assignee: []
 created_date: '2026-09-09 16:15'
+updated_date: '2026-10-01 15:49'
 labels:
   - akuki
   - M2
@@ -202,4 +205,10 @@ Zaden nie dotyka predykcji; sprawdzone osobno przed zmiana logiki.
   zamontowany na tej maszynie.
 - Prompt ekstraktora predykcji zmienil sie, wiec jego wlasny cache statyczny wygasa raz po
   wdrozeniu i odbudowuje sie na nastepnej turze.
+
+### Stan 2026-10-01
+
+- Wdrozone: commit 270a4a30 jest przodkiem HEAD na VPS (`/opt/akuki/app`). 376 z 413 oczekiwan ma `formed_turn_counter`; 37 bez numeru to wiersze sprzed migracji, zgodnie z przewidywaniem. Rozliczenia maja null zgodnie z projektem.
+- Wyjasnienie dopisane do `doubts, questions.md` (vault jest pod `/home/zosia/Obsidian Vault/obsidians/...`, nie `~/obsidians`).
+- NIE zmierzone: czy po wdrozeniu spadl udzial przewidywan o wlasnej odpowiedzi i hurtowych rozliczen. Porownanie przed/po wymaga odczytu bazy produkcyjnej; odczyt zablokowany przez kontrole uprawnien sesji, czeka na decyzje Zosi.
 <!-- SECTION:NOTES:END -->

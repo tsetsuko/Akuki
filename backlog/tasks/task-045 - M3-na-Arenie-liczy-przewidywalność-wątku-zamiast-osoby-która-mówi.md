@@ -1,9 +1,10 @@
 ---
 id: TASK-045
 title: 'M3 na Arenie liczy przewidywalność wątku zamiast osoby, która mówi'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-29 10:50'
+updated_date: '2026-10-01 15:49'
 labels:
   - M3
   - arena
@@ -44,9 +45,39 @@ Powiązane: w paczkach (stream_backlog) od kilku nadawców M4 też traci mówcę
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Partner M3 w wątku grupowym to rozwiązany mówca, nie encja grupy
-- [ ] #2 Zachowanie przy turze bez jednego mówcy rozstrzygnięte i zapisane
-- [ ] #3 Test: dwie tury od znanego mówcy w grupie dają przewidywalność > 0
+- [x] #1 Partner M3 w wątku grupowym to rozwiązany mówca, nie encja grupy
+- [x] #2 Zachowanie przy turze bez jednego mówcy rozstrzygnięte i zapisane
+- [x] #3 Test: dwie tury od znanego mówcy w grupie dają przewidywalność > 0
 - [ ] #4 Pomiar na żywej Arenie po wdrożeniu: przewidywalność partnera różna od 0 dla Sola/Lunarii
-- [ ] #5 Komentarz w connector/src/runner.ts zaktualizowany po naprawie
+- [x] #5 Komentarz w connector/src/runner.ts zaktualizowany po naprawie
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+### Naprawa (2026-10-01), zatwierdzona przez Zosie
+
+Partner M3 = ta sama encja, ktorej borg zalicza wymiane spoleczna w tej turze (`socialInteractionEntityId`): w grupie autor wiadomosci, 1:1 rozmowca. Licznik znajomosci i rozliczone przewidywania leza wlasnie tam, wiec M3 czyta znajomosc z miejsca, w ktorym jest zapisywana.
+
+- `borg/src/cognition/inhibition/inhibition-context.ts` -- `partnerEntityId` zastapione przez `partnerEntityIds`; przewidywalnosc = minimum po liscie, pusta lista = obcy (0).
+- `borg/src/cognition/lifecycle/turn-phase/deliberation-phase.ts` -- nowe wejscie `socialInteractionEntityId`; gdy null, partnerami sa aktywni uczestnicy bez roli `audience` (czyli nigdy encja grupy).
+- `borg/src/cognition/lifecycle/turn-phase-coordinator.ts` -- przekazuje juz policzone `socialInteractionEntityId`.
+- `connector/src/runner.ts` -- komentarz zaktualizowany (AC #5).
+
+AC #2, tura bez jednego autora: decyzja Zosi 2026-10-01 -- opcja (b), agregat po obecnych, wariant NAJMNIEJ ZNANY (minimum). WYBOR TWORCZY bez oparcia w badaniach, oznaczony w komentarzu w kodzie. Uzasadnienie: jeden obcy w watku wystarcza do ostroznosci, a liczba zawsze daje sie przypisac jednej nazwanej osobie.
+
+Znane ograniczenie, nie zmieniane: w paczce od kilku nadawcow `socialInteractionEntityId` bierze `turnInput.senderEntityId`, tak jak wymiana spoleczna; M4 w tym samym przypadku traci mowce (`extraction-phase.ts`, currentMessageSpeaker). Na Arenie po TASK-046 kazda tura to jedna wiadomosc, wiec to nie wystepuje.
+
+### Testy
+
+- `inhibition-context.test.ts`: nowy przypadek -- jeden obcy obok znajomego przywraca prog bazowy 0,75.
+- `deliberation-phase.test.ts`: trzy nowe -- mowca w grupie daje powsciagliwosc < 0,75 (przewidywalnosc > 0, AC #3); bez mowcy decyduje najmniej przewidywalny; encja grupy nie jest liczona jako osoba. Dowod na czerwone: po przywroceniu starego podlaczenia (`audienceEntityId`) dwa z nich padaja.
+- `npx tsc --noEmit` czysto, `npm run heuristics:guard` czysto.
+- `npx vitest run src/cognition src/borg`: 1775 zdanych, 2 nieudane -- `evidence-ledger/builder.test.ts` (limit 15 s, pada tez bez zmiany) i `turn-orchestrator.test.ts` (przechodzi w osobnym biegu, z i bez zmiany; obciazenie).
+- Wyjasnienie dopisane do `doubts, questions.md`.
+
+### Czego jeszcze nie zrobiono
+
+- Brak commita i wdrozenia. Restart uslugi potrzebny (kod, nie zasiew).
+- AC #4 (pomiar na zywej Arenie) wymaga odczytu bazy produkcyjnej.
+<!-- SECTION:NOTES:END -->
