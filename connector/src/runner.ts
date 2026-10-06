@@ -75,8 +75,11 @@ export class ArenaAkukiRunner implements AkukiRunner {
     this.log = options.log ?? (() => {});
   }
 
-  async handleMessage(message: IncomingArenaMessage): Promise<AkukiReply> {
-    const result = await this.runTurn(message, false);
+  async handleMessage(
+    message: IncomingArenaMessage,
+    onReply?: (text: string) => Promise<void>,
+  ): Promise<AkukiReply> {
+    const result = await this.runTurn(message, false, onReply);
 
     // Silence is a decision, not a failure: M3's gate and borg's emission machinery
     // own it, so an unemitted turn returns null rather than an empty string, which
@@ -91,7 +94,11 @@ export class ArenaAkukiRunner implements AkukiRunner {
     await this.runTurn(message, true);
   }
 
-  private async runTurn(message: IncomingArenaMessage, assessOnly: boolean) {
+  private async runTurn(
+    message: IncomingArenaMessage,
+    assessOnly: boolean,
+    onReply?: (text: string) => Promise<void>,
+  ) {
     const sessionId = this.sessionIdFor(message.threadId);
     const audienceLabel = arenaAudienceLabel(message.threadId);
     const audienceEntityId = this.ensureThreadGroup(message, audienceLabel);
@@ -115,6 +122,9 @@ export class ArenaAkukiRunner implements AkukiRunner {
       senderEntityId,
       audience: audienceLabel,
       ...(assessOnly ? { assessOnly: true } : {}),
+      ...(onReply === undefined
+        ? {}
+        : { onReplyPersisted: (reply: { text: string }) => onReply(reply.text) }),
     });
 
     this.log(

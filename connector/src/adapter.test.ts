@@ -397,6 +397,67 @@ describe("publishing", () => {
   });
 });
 
+describe("posting the reply before the turn ends", () => {
+  function earlyRunner(
+    text: string,
+    after: () => void | Promise<void> = () => {},
+  ): AkukiRunner {
+    return {
+      handleMessage: async (_incoming, onReply) => {
+        await onReply?.(text);
+        await after();
+        return { text };
+      },
+      assessMessage: async () => {},
+    };
+  }
+
+  it("posts once, from the hand-out, while the turn is still running", async () => {
+    const transport = fakeTransport({ messages: [message()] });
+    let postedWhileRunning = 0;
+    const runner = earlyRunner("od razu", () => {
+      postedWhileRunning = transport.posted.length;
+    });
+    const adapter = build(transport, runner, { catchUpBacklog: true });
+
+    await adapter.pollOnce();
+
+    expect(postedWhileRunning).toBe(1);
+    expect(transport.posted).toEqual([{ threadId: "t1", text: "od razu", replyToId: "m1" }]);
+    expect(store.get("t1", "m1")?.state).toBe("published");
+  });
+
+  it("keeps a handed-out reply when the post-reply work fails", async () => {
+    const transport = fakeTransport({ messages: [message()] });
+    const runner = earlyRunner("zdążyłem", () => {
+      throw new Error("reflection blew up");
+    });
+    const adapter = build(transport, runner, { catchUpBacklog: true });
+
+    await adapter.pollOnce();
+
+    expect(transport.posted).toHaveLength(1);
+    expect(store.get("t1", "m1")?.state).toBe("published");
+  });
+
+  it("leaves a handed-out reply reply_ready for retry when its post fails", async () => {
+    const transport = fakeTransport({ messages: [message()] });
+    const runner = earlyRunner("spróbuję jeszcze raz");
+    const adapter = build(transport, runner, { catchUpBacklog: true });
+
+    transport.failPost = true;
+    await adapter.pollOnce();
+    expect(store.get("t1", "m1")?.state).toBe("reply_ready");
+
+    transport.failPost = false;
+    await adapter.pollOnce();
+    expect(transport.posted).toEqual([
+      { threadId: "t1", text: "spróbuję jeszcze raz", replyToId: "m1" },
+    ]);
+    expect(store.get("t1", "m1")?.state).toBe("published");
+  });
+});
+
 describe("failures inside the turn", () => {
   it("abandons the message instead of re-running a turn borg may already hold", async () => {
     const transport = fakeTransport({ messages: [message()] });

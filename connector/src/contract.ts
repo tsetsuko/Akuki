@@ -46,7 +46,15 @@ export type AkukiReply = {
 };
 
 export type AkukiRunner = {
-  handleMessage(message: IncomingArenaMessage): Promise<AkukiReply>;
+  /**
+   * Run a full turn. When `onReply` is given, it receives the reply text as soon
+   * as borg has the final reply, before the post-reply work of the turn ends, so
+   * the transport can post it early. The returned reply is the same text either way.
+   */
+  handleMessage(
+    message: IncomingArenaMessage,
+    onReply?: (text: string) => Promise<void>,
+  ): Promise<AkukiReply>;
   /**
    * Take the message in without answering it: stored, perceived and appraised,
    * but no reply and no decision to stay silent. The adapter uses this for every

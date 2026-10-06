@@ -291,17 +291,41 @@ export class BotArenaAdapter {
       return;
     }
 
+    // The reply is posted the moment borg has it final, not when the turn ends:
+    // the post-reply work (reflection, the post-response shared-state compile)
+    // takes about 17 s and cannot change the text. Same order as the late path
+    // below -- reply_ready is committed before the POST.
+    let postedEarly = false;
+    const postEarly = async (text: string) => {
+      this.options.state.markReplyReady(thread.id, message.id, text);
+      postedEarly = true;
+      await this.post(thread, message.id, text);
+    };
+
     let replyText: string | null;
     try {
-      const reply = await this.options.runner.handleMessage(incoming);
+      const reply = await this.options.runner.handleMessage(incoming, postEarly);
       replyText = reply.text;
     } catch (error) {
+      if (postedEarly) {
+        // The reply is already out (or reply_ready, which the next poll retries);
+        // only the post-reply work failed. Abandoning would drop a delivered reply's row.
+        this.log(
+          "error",
+          `turn ${thread.id}/${message.id} failed after its reply was handed out: ${describe(error)}`,
+        );
+        return;
+      }
       this.options.state.markAbandoned(thread.id, message.id);
       this.log(
         "error",
         `abandoned ${thread.id}/${message.id}: the turn failed and is not retried, because borg ` +
           `may already hold part of it: ${describe(error)}`,
       );
+      return;
+    }
+
+    if (postedEarly) {
       return;
     }
 
