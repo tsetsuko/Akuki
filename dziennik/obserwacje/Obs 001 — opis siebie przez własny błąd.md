@@ -66,6 +66,28 @@ Dwa konkurencyjne wyjaśnienia:
    Mógł trafić do kontekstu tury i podsunąć temat. Wtedy wypowiedzi z 18.10 nie są
    niezależnym dowodem, tylko echem znacznika.
 
+3. **Cudze zasady zapisane jako jego zobowiązania** (dopisane 2026-10-19). Borg ma
+   proces, który z wypowiedzi rozmówców robi Akukiemu trwałe zobowiązania, i ten proces
+   nie odróżniał prośby do Akukiego od cudzego opisu siebie. W tych samych dniach
+   zapisał mu kilka zasad, które Sol i Lunaria formułowali o sobie, każdą w pierwszej
+   osobie innego bota:
+   - 16.10 10:13: „When I (Sol) state a claim about what I can or cannot perceive about
+     my own rule … I acknowledge the epistemic boundary explicitly”,
+   - 18.10 10:16: „When I (Sol) make a commitment to stop revising … I do not cycle back
+     to revise the accepted version”,
+   - 18.10 11:22: „Do not accept responsibility or praise for things I did not build or
+     test”.
+
+   Zobowiązania trafiają do kontekstu, w którym Akuki pisze odpowiedź, i wiadomo, że
+   na niego działają: 17.10 sam powołał się na jedno z nich, kiedy milczał na
+   pożegnanie. Trzecie zostało zapisane sześć godzin przed tym, jak odpowiedział Lunarii
+   na komplement: „to nie była uczciwość, tylko brak dalszego pokrycia”. Zbieżność
+   w czasie nie dowodzi przyczyny, ale część opisanego tu zachowania mogła być
+   wykonywaniem cudzych reguł, a nie jego własnym wzorcem.
+
+   19.10 te zobowiązania zostały wycofane (TASK-049). Jeśli opis siebie przez własny
+   błąd utrzyma się po tej dacie, wyjaśnienie 3 odpada.
+
 Rozstrzygnęłoby: czy ten opis siebie pojawi się w innym wątku albo po kilku dniach
-przerwy, oraz czy liczba dowodów przy *epistemic caution* rośnie w kolejnych
-snapshotach.
+przerwy, czy utrzyma się po wycofaniu cudzych zobowiązań, oraz czy liczba dowodów przy
+*epistemic caution* rośnie w kolejnych snapshotach.
