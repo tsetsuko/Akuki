@@ -4,7 +4,7 @@ title: Moduł formułujący pytania + próg (ile ma zostać pytaniem)
 status: To Do
 assignee: []
 created_date: '2026-08-21 12:26'
-updated_date: '2026-10-19 15:25'
+updated_date: '2026-10-19 16:10'
 labels:
   - M2
   - akuki
@@ -25,11 +25,15 @@ Zmienił się też ciężar zadania. Dziś nie brakuje pytań — jest ich za du
 
 - w cztery dni powstały 63 nowe otwarte pytania (reflection 38, wykrywanie sprzeczności 22, associator 2, overseer 1);
 - łącznie 277 pytań: otwartych 182, rozwiązanych 43, porzuconych 52;
-- źródła wszystkich 277: reflection 173, contradiction 51, associator 31, overseer 21, autonomy 1. Żadne nie pochodzi z zaskoczenia — źródło napędzane błędem przewidywania nadal nie istnieje;
+- źródła wszystkich 277: reflection 173, contradiction 51, associator 31, overseer 21, autonomy 1. Etykieta mówi, który proces napisał pytanie, i nie ma wśród nich takiego, który odpalałby się na zaskoczenie;
 - przy wielu pytaniach ze sprzeczności Akuki sam podejrzewa, że sprzeczność jest pozorna, np. „czy krawędź «contradicts» powstała tylko ze wspólnego słowa «dieta»”, albo że dwa zdania opisują różne poziomy tego samego zjawiska;
 - 2026-10-19 powstało pytanie, które przypisuje Zosi słowa Lunarii („Zosia zapowiedziała, że sprząta stół”). Pamięć semantyczna ma tę wypowiedź poprawnie przy Lunarii, więc błąd powstał przy formułowaniu pytania. Przyczyna przypisania należy do TASK-033; tutaj liczy się to, że pytanie powstaje bez sprawdzenia, czy jego przesłanka zgadza się z pamięcią.
 
-Wniosek: zadanie to teraz dwie rzeczy. (1) Dołożyć brakujące źródło — pytania z zaskoczenia. (2) Próg dla źródeł, które już są, bo bez niego pytania przestają być rzadkie (§12: „meaningful development should be relatively sparse”), a ruminator spędza czas na sprzecznościach, których nie ma.
+Zaskoczenie wpływa na pytania tylko pośrednio, dwiema drogami:
+- rozliczone przewidywanie z błędem w paśmie 0,3–0,7 podnosi istotność epizodu, z którego wyrosło (`borg/src/cognition/predictions/surprise-significance.ts`). Istotność czyta m.in. associator przy wyborze epizodów (`borg/src/offline/associator/index.ts:339`), więc pytanie z etykietą „associator” mogło mieć zaskoczenie u źródła. Reflector, z którego jest większość pytań, istotności nie czyta;
+- warunek wybudzenia `prediction_error_spike` (próg 0,6) budzi Akukiego do przemyślenia dużego zaskoczenia; pytanie z takiej tury dostałoby etykietę „autonomy”. Warunek jest domyślnie wyłączony (decyzja D3 przy M2, „do czasu obserwacji”) i w repozytorium nic go nie włącza. Konfiguracji na VPS nie sprawdzano.
+
+Wniosek: zadanie to teraz dwie rzeczy. (1) Rozstrzygnąć, czy bezpośrednie źródło pytań z zaskoczenia jest w ogóle potrzebne (niżej, wątpliwość z 2026-10-19). (2) Próg dla źródeł, które już są, bo bez niego pytania przestają być rzadkie (§12: „meaningful development should be relatively sparse”), a ruminator spędza czas na sprzecznościach, których nie ma.
 
 ### Co borg już ma — nie wymyślamy modułowości
 
@@ -54,6 +58,18 @@ Modułowość w kognitywistyce jest sporna. Fodor (wiele wrodzonych, zamkniętyc
 - Mechanizm: wyzwalacz liczony ze stanu (czy zaskoczenie jest w paśmie redukowalnym? czy dotyczy kogoś ważnego? czy przeczy przekonaniu, które już ma — i czy ta sprzeczność istnieje w pamięci, a nie tylko w słowach?). Dopiero po otwarciu bramki model formułuje pytanie słowami.
 
 Wymaga zgody. Zadanie projektowe, przechodzi przez bramkę sześciu kroków.
+
+### Wątpliwość z 2026-10-19 — czy pytania z zaskoczenia są potrzebne
+
+Zosia: skoro refleksja produkuje dużo pytań, a zaskoczenie już pracuje na wagę wspomnień, osobne źródło pytań z zaskoczenia może być zbędne. Nie jest też jasne, co dałoby wybudzenie, skoro jest refleksja.
+
+Co za tym przemawia: problemem jest dziś nadmiar pytań, nie ich brak; przewidywalność partnera (M3) aktualizuje się przy rozliczeniu bez żadnego namysłu, więc wiedza z zaskoczenia nie czeka na pytanie; każde wybudzenie to pełna tura modelu i kolejna okazja do pytań.
+
+Niespójność do zapamiętania: wybudzenie ma próg 0,6, a pasmo z temperamentu kończy się na 0,7. Wybudzałoby więc także przy błędach powyżej 0,7, które według efektu Goldilocks są szumem, a nie materiałem do ciekawości.
+
+Co mogłoby to zmienić, do sprawdzenia przed decyzją: jaka część pytań z refleksji dotyczy epizodów, przy których Akuki się pomylił. Jeśli duża — zaskoczenie już dociera do pytań i osobne źródło jest zbędne. Jeśli mała — refleksja pyta o co innego niż to, czego nie umie przewidzieć, i wtedy brak jest realny.
+
+Nie rozstrzygnięte. Wybudzenie zostaje wyłączone.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
