@@ -1,0 +1,22 @@
+# Nocny snapshot stanu rozwojowego Akukiego (wektor stanu z M0).
+#
+# Skrypt kopiuje katalog tenanta i otwiera KOPIĘ: borg.db przez API kopii zapasowej
+# SQLite (spójny stan mimo działającej usługi), resztę zwykłą kopią. Żywej bazy nie
+# otwiera do zapisu i nie wykonuje żadnego wywołania do dostawcy modelu.
+#
+# Instalacja: deploy/README.md
+
+[Unit]
+Description=Akuki -- nocny snapshot stanu rozwojowego
+After=akuki.service
+
+[Service]
+Type=oneshot
+User=akuki
+Group=akuki
+EnvironmentFile=/etc/akuki/akuki.env
+Environment=AKUKI_SNAPSHOT_DIR=/var/lib/akuki/snapshots
+WorkingDirectory=/opt/akuki/app
+ExecStart=/usr/bin/node --import tsx scripts/akuki-snapshot.ts
+Nice=10
+IOSchedulingClass=idle

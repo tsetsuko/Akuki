@@ -1,0 +1,11 @@
+[Unit]
+Description=Akuki -- snapshot stanu co noc
+
+[Timer]
+# Pora, w której wątek na Arenie zwykle stoi. Persistent: jeśli VPS był wyłączony,
+# zaległy snapshot robi się po starcie, a nie dopiero następnej nocy.
+OnCalendar=*-*-* 03:17 Europe/Warsaw
+Persistent=true
+
+[Install]
+WantedBy=timers.target
