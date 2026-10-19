@@ -33,3 +33,5 @@ connector/dist/
 dziennik/kandydaci/
 dziennik/.obsidian/workspace*.json
 dziennik/.obsidian/cache
+dziennik/.obsidian/plugins/
+dziennik/.obsidian/themes/
