@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-09-09 16:15'
-updated_date: '2026-10-01 15:49'
+updated_date: '2026-10-19 17:05'
 labels:
   - akuki
   - M2
@@ -211,4 +211,11 @@ Zaden nie dotyka predykcji; sprawdzone osobno przed zmiana logiki.
 - Wdrozone: commit 270a4a30 jest przodkiem HEAD na VPS (`/opt/akuki/app`). 376 z 413 oczekiwan ma `formed_turn_counter`; 37 bez numeru to wiersze sprzed migracji, zgodnie z przewidywaniem. Rozliczenia maja null zgodnie z projektem.
 - Wyjasnienie dopisane do `doubts, questions.md` (vault jest pod `/home/zosia/Obsidian Vault/obsidians/...`, nie `~/obsidians`).
 - NIE zmierzone: czy po wdrozeniu spadl udzial przewidywan o wlasnej odpowiedzi i hurtowych rozliczen. Porownanie przed/po wymaga odczytu bazy produkcyjnej; odczyt zablokowany przez kontrole uprawnien sesji, czeka na decyzje Zosi.
+### Stan 2026-10-19 — pełny rozkład po sześciu tygodniach
+
+Odczyt przy TASK-020, żywa pamięć, tylko do odczytu. 1281 rozliczeń, wszystkie z oceną błędu. Średnia: wrzesień 0,323 (386), październik 0,336 (895). W paśmie 0,3–0,7: 50% i 55%.
+
+Wartości są zgrubne i skupione: 0,1 — 194, 0,5 — 145, 0,15 — 125, 0,6 — 134, 0,05 — 110, 0,3 — 86. Powyżej 0,7 tylko 23.
+
+Werdykt z 2026-09-09 trzyma się: ocena nie jest zaniżona. Dalszy ciąg — że zaskoczenie w paśmie jest normą, a nie wyjątkiem — przeniesiony do TASK-052. Nadal NIE zmierzone: czy po wdrożeniu poprawek spadł udział przewidywań o własnej odpowiedzi i hurtowych rozliczeń.
 <!-- SECTION:NOTES:END -->

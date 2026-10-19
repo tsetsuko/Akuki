@@ -4,7 +4,7 @@ title: Moduł formułujący pytania + próg (ile ma zostać pytaniem)
 status: To Do
 assignee: []
 created_date: '2026-08-21 12:26'
-updated_date: '2026-10-19 16:10'
+updated_date: '2026-10-19 17:05'
 labels:
   - M2
   - akuki
@@ -69,7 +69,15 @@ Niespójność do zapamiętania: wybudzenie ma próg 0,6, a pasmo z temperamentu
 
 Co mogłoby to zmienić, do sprawdzenia przed decyzją: jaka część pytań z refleksji dotyczy epizodów, przy których Akuki się pomylił. Jeśli duża — zaskoczenie już dociera do pytań i osobne źródło jest zbędne. Jeśli mała — refleksja pyta o co innego niż to, czego nie umie przewidzieć, i wtedy brak jest realny.
 
-Nie rozstrzygnięte. Wybudzenie zostaje wyłączone.
+Pomiar 2026-10-19 (żywa pamięć, VPS, tylko do odczytu). Wspomnienie liczy się jako zaskakujące, gdy przewidywanie, które z niego wyrosło (wspólny identyfikator strumienia), zostało rozliczone z błędem 0,3 lub wyższym. Pula: 373 wspomnienia od startu M2 (2026-09-08).
+
+- 54% z 1281 rozliczeń leży w paśmie 0,3–0,7; 71% wspomnień (264 z 373) ma co najmniej jedno takie rozliczenie; mediana średniego błędu wspomnienia 0,343.
+- Refleksja: średni błąd wspomnień, o które pyta, 0,330 wobec 0,338 w puli; z najbardziej zaskakującej ćwiartki (błąd ≥ 0,45) 34% wobec 25% losowo.
+- Associator: 0,357; 39% z górnej ćwiartki — lekka preferencja, zgodna z tym, że czyta istotność podbijaną zaskoczeniem.
+- Overseer: 0,292; 24%.
+- Istotności statystycznej nie liczono; te same wspomnienia powtarzają się w wielu pytaniach, więc próbki nie są niezależne.
+
+Wniosek: pomiar nie rozstrzyga pytania tak, jak było postawione, bo zaskoczenie w paśmie jest stanem typowym, nie wyjątkiem. Wzmacnia natomiast wątpliwość Zosi z innej strony: źródło pytań odpalane zaskoczeniem w paśmie odpalałoby się w większości tur i pogłębiło nadmiar pytań. Bezpośrednie źródło pytań z zaskoczenia — nie budować, dopóki zaskoczenie nie zacznie wyróżniać wspomnień (TASK-052). Wybudzenie zostaje wyłączone.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
