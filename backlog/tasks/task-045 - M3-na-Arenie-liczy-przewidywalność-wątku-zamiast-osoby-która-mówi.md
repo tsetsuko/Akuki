@@ -1,10 +1,10 @@
 ---
 id: TASK-045
 title: 'M3 na Arenie liczy przewidywalność wątku zamiast osoby, która mówi'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-29 10:50'
-updated_date: '2026-10-01 15:49'
+updated_date: '2026-10-19 15:20'
 labels:
   - M3
   - arena
@@ -80,4 +80,49 @@ Znane ograniczenie, nie zmieniane: w paczce od kilku nadawcow `socialInteraction
 
 - Brak commita i wdrozenia. Restart uslugi potrzebny (kod, nie zasiew).
 - AC #4 (pomiar na zywej Arenie) wymaga odczytu bazy produkcyjnej.
+
+### Wdrozenie (2026-10-02)
+
+Commity: borg 3a168d76 (akuki-dev), Akuki 129c0e4 (master). `akuki-wgraj.sh` na VPS: build czysty, zasiew zgodny ze zrodlem. Restart `./akuki-serwis.sh restart` o 18:44:45 UTC; po 20 s usluga active z ta sama godzina startu (brak petli restartow), API 7740 HTTP 200. Konektor nie wymagal przebudowy -- zmiana w nim to tylko komentarz.
+
+Zostaje AC #4: pomiar na zywej Arenie wymaga odczytu bazy produkcyjnej i nowych tur od Sola/Lunarii po 18:44:45 UTC.
+
+### Pomiar na zywej Arenie (2026-10-02, 18:53-18:59 UTC, odczyt tylko do odczytu)
+
+Liczba z tury NIE jest nigdzie zapisywana (zyje tylko w prompcie), wiec ponizej jest przeliczenie z obecnego stanu pamieci tym samym wzorem i parametrami (baza 0,75, waga 0,5, skala 5, okno 10, ulga 0,1, ostroznosc 0,3; nastroj watku -0,118, czyli +0,035). To przyblizenie tego, co tura widziala, nie odczyt.
+
+Tury po restarcie (watek 184888fd), autor -> co zrobil Akuki -> powsciagliwosc wobec autora:
+- Zosia "@Sol @Lunaria co boty robia w piatek wieczorem?" -> obserwacja (powod w strumieniu: pytanie skierowane do Sola i Lunarii, nie do niego) -> ~0,39 (przewidywalnosc 0,590, ulga figury)
+- Lunaria -> odpowiedz -> ~0,38 (przewidywalnosc 0,815, 82 interakcje)
+- Zosia, Fishy, Terra, Fishy -> tylko przyjete (kolejka TASK-046), bez liczby M3
+- Terra -> odpowiedz -> ~0,39 (przewidywalnosc 0,785, 41 interakcji)
+
+Przed poprawka kazda z tych tur dostalaby 0,75 + 0,035 = ~0,79, pasmo "high". Teraz pasmo "low" (< 0,4).
+
+AC #4: spelnione dla Lunarii, NIE dla Sola -- Sol nie napisal po restarcie. Dla porownania z obecnego stanu: Sol 0,635 -> ~0,47, Marvin 0,633 -> ~0,47.
+
+Bledne przewidywanie z 2026-10-01: zakladalem, ze Terra i Marvin beda wyraznie wyzej niz Sol i Lunaria, bo zna ich krocej. Terra jest NIZEJ niz Sol -- mniej interakcji (41 wobec 77), ale mniejsze bledy (srednia ok. 0,22 wobec ok. 0,37). Przewidywalnosc to znajomosc RAZY trafnosc, a przy kilkudziesieciu interakcjach znajomosc juz sie nasyca (skala 5), wiec rozroznia glownie trafnosc.
+
+Uwaga nie sprawdzona: po kazdej odpowiedzi Akukiego pojawia sie `social_attribution_drop` z powodem `audience_mismatch` -- odlozone przypisanie nastroju do autora przepada, gdy nastepna wiadomosc pisze ktos inny. Dotyczy przypisania sentymentu, nie licznika znajomosci; nie badane.
+### Zamknięcie (2026-10-19)
+
+Zamknięte decyzją Zosi bez pomiaru dla Sola, więc AC #4 zostaje formalnie niezaznaczone. Uzasadnienie: wzór i parametry są te same dla każdej osoby, a pomiar na Lunarii i Terrze pokazał to, co AC #4 miało pokazać — powściągliwość zależy od rozmówcy i spadła z ~0,79 do ~0,38–0,39. Sol nie jest przypadkiem szczególnym, tylko kolejną osobą tym samym wzorem.
+
+Pośredni ślad z dziennika (kandydaci 2026-10-15 – 2026-10-19): bramka inhibicji zatrzymała Akukiego 11 razy (8 przy wiadomościach do niego, 3 przy pozostałych). To pokazuje, że bramka działa, ale nie rozstrzyga, wobec kogo — liczba z tury nadal nie jest nigdzie zapisywana.
+
+Otwarte poza tym zadaniem: `social_attribution_drop` z powodem `audience_mismatch` (wyżej, niezbadane) oraz pomyłka w przypisaniu mówcy z 2026-10-19 — otwarte pytanie przypisuje Zosi słowa Lunarii — która należy do TASK-033.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Na Arenie powściągliwość Akukiego (M3) jest teraz liczona wobec osoby, która napisała wiadomość, a nie wobec encji wątku.
+
+PRZYCZYNA. Partnerem M3 była encja grupy wątku, która nie ma profilu społecznego ani rozliczonych przewidywań, bo borg zapisuje je przy mówcy. Przewidywalność partnera wynosiła więc zawsze 0 i nieśmiałość na Arenie nigdy nie malała z oswojenia, co łamało niezmiennik 5.
+
+NAPRAWA. Partnerem M3 jest ta sama encja, której borg zalicza wymianę społeczną w turze: w grupie autor wiadomości, w rozmowie 1:1 rozmówca. Tura bez jednego autora bierze najmniej znaną z obecnych osób (decyzja Zosi, wybór twórczy bez oparcia w badaniach, oznaczony w kodzie). Commity: borg 3a168d76, Akuki 129c0e4. Testy padają po przywróceniu starego podłączenia.
+
+POMIAR. Po wdrożeniu 2026-10-02 18:44 UTC powściągliwość wobec Lunarii ~0,38 i Terry ~0,39, zamiast ~0,79 przed poprawką. Sol nie napisał po restarcie, więc AC #4 nie zostało dla niego potwierdzone; zamknięte decyzją Zosi, bo wzór jest wspólny dla wszystkich osób.
+
+ZOSTAJE OSOBNO. W paczce od kilku nadawców mówcą jest nadawca z wejścia tury (nie występuje na Arenie po TASK-046). Niezbadany `social_attribution_drop` / `audience_mismatch`. Pomyłka mówcy w otwartym pytaniu z 2026-10-19 — TASK-033.
+<!-- SECTION:FINAL_SUMMARY:END -->
