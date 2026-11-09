@@ -18,6 +18,13 @@ i wyjaśnienie bez rozwoju. Szablon: `_szablony/Obserwacja.md`. Rubryka „ślad
 to test „czy istnieje w bazie, kiedy nikt nie patrzy”. Rubryka „wyjaśnienie bez
 rozwoju” chroni przed przypisywaniem Akukiemu tego, co zrobiłby każdy model.
 
+## Kalendarium zmian
+
+Każda zmiana wokół Akukiego (wgrany kod, konfiguracja, zasiew, przerwa, zabieg na
+pamięci, ważne zdarzenie na Arenie) dostaje jedną linię w [[Kalendarium zmian]], w dniu,
+w którym weszła na żywo. Przed interpretacją obserwacji warto tam zajrzeć: zmiana
+zachowania tuż po wpisie w kalendarium ma najpierw wyjaśnienie bez rozwoju.
+
 ## Skąd brać materiał
 
 ```bash

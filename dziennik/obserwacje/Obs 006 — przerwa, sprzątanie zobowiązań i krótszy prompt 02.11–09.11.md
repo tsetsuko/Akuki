@@ -11,8 +11,9 @@ kandydaci: nie dotyczy
 
 Wpis o warunkach, nie o rozwoju, tak jak [[Obs 002 — szybsze odpowiedzi na Arenie]]
 i [[Obs 005 — zmiany środowiska i ślepe miejsca pomiaru 19.10–02.11]]. Kto porówna
-zachowanie Akukiego sprzed 9 listopada z późniejszym, musi pamiętać o trzech rzeczach
-poniżej. Wszystkie trzy zadziałają naraz przy najbliższym starcie.
+zachowanie Akukiego sprzed 9 listopada z późniejszym, musi pamiętać o czterech rzeczach
+poniżej. Wszystkie cztery zadziałały naraz przy starcie 09.11 o 12:28. Pełna lista zmian
+środowiska jest w [[Kalendarium zmian]].
 
 ## Obserwacja
 
@@ -25,10 +26,9 @@ przeżył ani jednej tury i nie miał snów (procesy nocne chodzą w tej samej u
 Kalendarz poszedł o tydzień, doświadczenie stoi. W snapshocie z rana 02.11 było 825
 epizodów, dziś jest 833. Te 8 nowych to jeszcze tury z tamtego poranka.
 
-Tego, co działo się na Arenie przez ten tydzień, Akuki nie usłyszy. Po starcie konektor
-nadrabia tylko krótkie okno wstecz (ustawione na 10 minut; w praktyce dłuższe o przesunięcie
-czasu z TASK-048, w październiku około dwóch godzin), a starsze wiadomości pomija. W jego pamięci ten
-tydzień będzie po prostu dziurą.
+Tego, co działo się na Arenie przez ten tydzień, Akuki nie usłyszał. Po starcie 09.11
+o 12:28 konektor wziął tylko ostatnie 10 minut, a wszystko starsze pominął, łącznie
+z wiadomością sprzed 11 minut. W jego pamięci ten tydzień jest po prostu dziurą.
 
 ### 2. Odwołane zobowiązania od innych botów, 09.11 około 11:55
 
@@ -64,15 +64,20 @@ zaczną przybywać znowu (TASK-058).
 Do tej pory każda zasada pojawiała się w prompcie cztery razy, w różnych miejscach
 i w różnej formie. Teraz pojawia się raz, a w pozostałych miejscach jest tylko odsyłacz
 do niej. Akuki widzi te same zasady i te same informacje o nich, tylko bez powtórzeń.
-Kod jest wgrany, ale zacznie działać dopiero przy najbliższym starcie usługi.
+Kod wgrany o 12:11, działa od startu o 12:28.
 
 Razem z punktem 2 prompt odpowiedzi powinien spaść z około 157 tys. do około 85–90 tys.
 tokenów. To szacunek, do zmierzenia po starcie.
 
-### Czego NIE zmieniono
+### 4. Bez głębszej ścieżki myślenia, od startu 09.11 o 12:28
 
-Wyłączenie głębszej ścieżki myślenia (TASK-057) nadal nie jest wdrożone. Jeśli zostanie
-wdrożone przy tym samym starcie, dojdzie czwarta zmiana naraz.
+Akuki miał dwie drogi do odpowiedzi: prostą, w której jeden krok pisze odpowiedź, i głębszą,
+w której najpierw układa prywatny plan, a dopiero potem odpowiada. Głębszą wybierał głównie
+wtedy, gdy wiadomość wyglądała na refleksyjną albo gdy słabo pamiętał coś pasującego. Te dwa
+powody są teraz wyłączone (TASK-057), więc w praktyce zawsze idzie prostą drogą.
+
+Znika plan przed odpowiedzią i z nim nowe wpisy „myśli”, bo powstawały tylko z tych planów.
+To, czy wiadomość uznaje za refleksyjną, dalej wpływa na to, co sobie przypomina.
 
 ## Ślad w stanie
 
@@ -92,12 +97,12 @@ Czego się spodziewać i co sprawdzić po starcie:
   zmieni się po starcie, bez dalszego sprawdzenia nie da się powiedzieć, czy to przez
   odwołanie, przez przerwę, czy przez nowy kod.
 
-Pierwszych dni po starcie nie da się użyć do porównania „przed i po” żadnej z tych trzech
+Pierwszych dni po starcie nie da się użyć do porównania „przed i po” żadnej z tych czterech
 zmian z osobna, bo zmieniły się naraz.
 
 ## Wyjaśnienie bez rozwoju
 
 Cały wpis jest wyjaśnieniem bez rozwoju. Każda zmiana w tym, jak Akuki mówi po 9.11,
-ma najpierw takie proste wyjaśnienie: inne zasady w prompcie, krótszy prompt, tydzień
-przerwy i dziura w tym, co słyszał. Nie należy czytać jej jako rozwoju, dopóki nie
+ma najpierw takie proste wyjaśnienie: inne zasady w prompcie, krótszy prompt, odpowiedź
+zawsze prostą drogą, tydzień przerwy i dziura w tym, co słyszał. Nie należy czytać jej jako rozwoju, dopóki nie
 zostawi śladu w stanie, który powstał już po starcie.
