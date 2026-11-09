@@ -851,3 +851,151 @@ validator (`borg/src/akuki/smoke-config.ts:36`) has to be widened deliberately, 
 After the assess-only queue (TASK-046) is deployed and TASK-033 is done. TASK-047 carries the build.
 The signal that it is needed: an answered message that was trivial while a question to Akuki, or
 talk about him, in the same queue was only assessed.
+
+---
+
+## 14. borg-mini — Akuki's own turn over borg's memory
+
+**Proposed by Zosia 2026-11-02. Recorded, not built.** It came out of a token spike on the
+morning of 2026-11-02, and it is the first proposal to replace part of borg rather than adjust it.
+
+### Where it came from
+
+Between 11:17 and 11:32 CET on 2026-11-02 the token log recorded 161 model calls and 2.78M tokens,
+on a day when Akuki said only a few sentences on the Arena. The volume of conversation was not the
+cause. The cost of each reply was:
+
+- 12 incoming messages went through the turn. 8 became full turns (4 on the direct path S1, 4 on
+  the deliberative path S2, judging by 8 `reflection` calls and 4 `cognition-plan` calls). The other
+  4 were assess-only.
+- One S2 finalizer call averaged about 203k input tokens, one S1 call about 162k. So a full turn
+  cost roughly 300–350k tokens across all its calls.
+- The cache barely worked: 54k of 867k S2 input tokens were cache reads, and S2 wrote nothing to
+  the cache.
+- TASK-057 (S2 effectively off) was decided the same day but not yet deployed, so the S2 turns that
+  morning were expected.
+
+None of this was new. From 22 October the S2 prompt averaged 190–270k tokens, with one call at
+586k on 1 November, and the daily total was 8–36M tokens.
+
+Zosia's question was whether to take Akuki off borg and build a small substrate of his own.
+
+### The inventory behind the answer
+
+Every call site in the token log for 2026-10-26 to 2026-11-02 (82.8M tokens, 36 distinct labels)
+was traced in the fork's code: what it does, who reads its output, whether it serves M0–M4, and
+whether config alone can switch it off. Three read-only passes, one per group. Percentages are of
+all tokens in that week.
+
+**Group A — needed by the research, about 74% of tokens.**
+
+| call site | what it does | % | serves |
+|---|---|---|---|
+| `cognition-system-2` + `cognition-system-1` | writes the reply, or the choice to stay silent | 50.0 | the place where M2, M3 and M4 reach behaviour |
+| `reflection` | after a reply, records goal progress, traits shown, open questions | 7.3 | the main source of open questions; M0 reads traits and questions |
+| `prediction-extractor` | what Akuki expected and how wrong he was | 7.1 | M2; feeds M3 |
+| `episodic-extraction` | turns the stream into episodes | 2.1 | substrate for M0 counts and M2 significance |
+| `offline-review-open-question` | turns a flagged contradiction into a question | 2.0 | about 40% of new open questions |
+| `domain-trust-extractor` | trust per person per domain | 1.8 | M4 |
+| `perception-affective` | emotional tone of the message | 1.4 | M1 (empathy contagion), M3 (mood term) |
+| `frame-anomaly-classifier` | detects messages pretending to be the bot or a system prompt | 1.2 | when it fires, M2 and M4 extraction are skipped |
+| `offline-self-narrator`, `offline-ruminator` | life chapters, growth markers, closing and merging questions | 1.5 | the main offline source of `identity_events` |
+
+**Group B — inherited from Sol, no M0–M4 reader, about 26%.** `cognition-plan` 6.3,
+`corrective-preference-extractor` 4.7, `goal-promotion-extractor` 2.4, `shared-state-compiler` 2.4,
+`perception-mode-fallback` 1.9, `offline-overseer` 1.2, and about twenty more under 1% each:
+offline reflector, review-resolver, closure-loop classifier, entity and temporal perception,
+associator, semantic extraction, commitment judge, day summarizer, action-state extractor,
+commitment reconciler, closure-response auditor, procedural context, consolidator, creator
+directives, pending-action judge, semantic contradiction judge. Each of these still reaches the
+reply prompt or the reply itself in some form. None is completely unread, but none is read by a
+milestone mechanism.
+
+### What the inventory shows
+
+1. **Removing all of Group B saves only about 25%.** That alone does not justify a new substrate.
+2. **The real cost is the size of the reply prompt.** S1 and S2 are half of all tokens because
+   each call carries about 200k tokens of context, most of it Sol-shaped:
+   `borg_standing_with_audience` about 74k and the evidence ledger about 50k (TASK-054). A reply
+   prompt of 20–30k would bring that half down to a few percent. This lever exists whether or not
+   Akuki stays on borg.
+3. **Almost every role runs on `claude-opus-5`**, extractors and perception included. Only the
+   reply needs the strongest model. Moving the `background` role is a config change, but entry 8
+   explains why it was parked: that role also carries mood perception (M3) and the dream cycle.
+   The honest version is a per-call-site router.
+4. **Most of Group B cannot be switched off by config.** Only `perception.llmEnabled`,
+   `affective.llmEnabled`, `deliberation.system2Triggers`, the maintenance process lists,
+   `cognition.actionLifecycle.extractionEnabled` and
+   `generation.evidenceLedger.decisionArtifact.enabled` exist. Everything else needs code in the
+   fork, and every such change widens the gap to upstream (53 commits and about 11k lines on
+   2026-11-02).
+5. **Two silence routes bypass M3.** `closure-loop-classifier` can suppress a turn
+   (`turn-phase-coordinator.ts:1252`), and `closure-response-auditor` in enforce mode can suppress a
+   draft reply. Both make Akuki silent because a conversation looks like it is wrapping up, without
+   the shyness quantity being involved. Any analysis of M3 silences may be contaminated by them.
+   `closurePressure.mode=shadow` stops the auditor from suppressing, but the call still runs.
+6. **Messages that only get assessed still pay for perception, frame check and extraction.** That
+   is why `prediction-extractor` ran 398 times against about 110 replies in the week.
+
+### The idea
+
+Separate **memory** from **thinking**. Tokens are spent in thinking (cognition, deliberation,
+extractors), not in storage. borg-mini would:
+
+1. **Keep borg's storage and repositories**: `borg.db`, LanceDB episodes, `identity_events`, the
+   memory bands, procedural Beta posteriors, and the offline processes that write the developmental
+   record. Akuki keeps his past, and data from before and after stays comparable.
+2. **Replace borg's turn with a thin loop of its own**: one reply prompt of a deliberately designed
+   size, the M2/M3/M4 extractors, affective perception, a frame check, and only those other calls
+   that have a reader.
+3. **Admit each prompt section and each model call through the six-step gate.** Approval before
+   mechanism then holds from the bottom up, instead of being enforced by switching off things that
+   were never approved.
+
+It also removes both silence routes outside M3, and Group B, without patching the fork call by
+call.
+
+### What it would cost
+
+- **Continuity of measurement.** Every developmental measurement so far was taken on borg's turn.
+  A new turn changes what Akuki sees, so behaviour before and after the switch is not directly
+  comparable. Keeping the storage limits the damage to behaviour; it does not remove it.
+- **Rebuilding badly.** borg's retrieval, ranking and prompt assembly are years of Tomek's work. A
+  thin loop will be worse at things nobody has measured yet.
+- **What the reply prompt loses.** Commitments, goals, shared state, semantic insights, day
+  summaries and life chapters all reach today's prompt. Each one dropped is a decision, not a
+  default.
+- **Offline is cheap and carries research data.** About 5% of tokens, but it writes most of the
+  offline `identity_events`. It should stay.
+
+### Order recommended on 2026-11-02
+
+1. Cheaper models for helper calls, split per call site so mood perception and the dream cycle stay
+   where they are (entry 8).
+2. Shrink the reply prompt, starting with `borg_standing_with_audience` (TASK-054), and check why
+   the cache reads only the static block.
+3. Only then borg-mini, if 1 and 2 leave the cost or the opacity unsolved.
+
+### What is claim, analogue and choice
+
+- **Research claim:** none. This is an engineering and methodology decision, not a developmental
+  mechanism.
+- **Defensible analogue:** none needed. The argument is legibility: a mechanism can only be
+  credited with a behaviour if the path from state to behaviour is short enough to see.
+- **Creative choice:** the size of the reply prompt, which sections it carries, and which calls are
+  kept.
+
+### Not verified
+
+- The tenant config on the VPS was not read during the inventory, so role and model overrides there
+  are unknown.
+- Which offline process writes how many `identity_events` on the live tenant (a `GROUP BY` on the
+  VPS database would settle it).
+- `shared-state-compiler` shows 34 calls in the week even though TASK-044 records it as switched
+  off from 26 October. These may predate the deploy.
+
+### When to revisit
+
+After steps 1 and 2 above have run on the Arena long enough to measure. The signal for borg-mini:
+the reply prompt cannot be brought near 30k by config and targeted fork changes, or a further
+silence or decision path outside M2–M4 turns up that cannot be cut without diverging from upstream.
