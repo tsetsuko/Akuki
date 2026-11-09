@@ -288,9 +288,39 @@ describe("routing", () => {
       threadName: "arena-general",
       authorId: "u-zosia",
       authorName: "name-of-u-zosia",
+      authorKind: "person",
       text: "hej",
       createdAtMs: Date.parse("2026-09-04T10:00:00.000Z"),
     });
+  });
+
+  it("passes the author's kind on, naming the Arena's user a person", async () => {
+    const transport = fakeTransport({
+      messages: [
+        message({ id: "from-user", senderType: "user", createdAt: "2026-09-04T10:00:00.000Z" }),
+        message({ id: "from-bot", senderType: "bot", senderId: "u-sol", createdAt: "2026-09-04T10:00:01.000Z" }),
+        message({ id: "from-system", senderType: "system", senderId: "u-sys", createdAt: "2026-09-04T10:00:02.000Z" }),
+      ],
+    });
+    const seen: IncomingArenaMessage[] = [];
+    const runner: AkukiRunner = {
+      handleMessage: async (incoming) => {
+        seen.push(incoming);
+        return { text: null };
+      },
+      assessMessage: async (incoming) => {
+        seen.push(incoming);
+      },
+    };
+    const adapter = build(transport, runner, { catchUpBacklog: true });
+
+    await adapter.pollOnce();
+
+    expect(seen.map((incoming) => [incoming.messageId, incoming.authorKind])).toEqual([
+      ["from-user", "person"],
+      ["from-bot", "bot"],
+      ["from-system", "system"],
+    ]);
   });
 });
 

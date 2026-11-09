@@ -24,14 +24,21 @@ export type IncomingArenaMessage = {
   threadName: string;
   authorId: string;
   authorName: string;
+  /**
+   * Who wrote it, from the Arena's sender_type, with "user" named "person". borg
+   * reads it: a bot's message is heard and can be answered, but Akuki takes no
+   * standing rule and no goal from it (TASK-058).
+   */
+  authorKind: ArenaAuthorKind;
   text: string;
   createdAtMs: number;
 };
 
+export type ArenaAuthorKind = "person" | "bot" | "system";
+
 // NOT carried here, deliberately, because nothing downstream reads them yet:
-// the author's kind (user/bot/system), the id this message replies to, and the
-// principals it @-mentions. borg's TurnInput has no slot for any of the three,
-// and putting them into the message text is an envelope-design decision -- how
+// the id this message replies to, and the principals it @-mentions. borg's
+// TurnInput has no slot for either, and putting them into the message text is an envelope-design decision -- how
 // much of the quoted message, under whose name -- that has not been made. An
 // unread field would look like support that does not exist, so the gap is
 // tracked in the backlog instead. See TASK-033.

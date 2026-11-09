@@ -120,6 +120,8 @@ export class ArenaAkukiRunner implements AkukiRunner {
       userMessage: message.text,
       sessionId,
       senderEntityId,
+      // A bot's message sets no standing rule and no goal for Akuki (TASK-058).
+      senderKind: message.authorKind,
       audience: audienceLabel,
       ...(assessOnly ? { assessOnly: true } : {}),
       ...(onReply === undefined
@@ -168,9 +170,10 @@ export class ArenaAkukiRunner implements AkukiRunner {
     // person on the Arena does not create a second entity and split their history.
     // `kind: "person"` for bots too: borg's kinds are person/group/self/abstract,
     // and another bot is a named agent Akuki forms trust about, which "abstract"
-    // would not capture. authorType is kept out of the entity on purpose -- it is a
-    // transport fact, and inventing an entity kind for it would leak the transport
-    // into the memory model.
+    // would not capture. The author's kind is kept out of the entity on purpose --
+    // it is a transport fact, and inventing an entity kind for it would leak the
+    // transport into the memory model. It travels with the turn instead, as
+    // senderKind.
     return this.options.borg.entities.resolveExternal({
       source: BOTARENA_ENTITY_SOURCE,
       externalId: message.authorId,

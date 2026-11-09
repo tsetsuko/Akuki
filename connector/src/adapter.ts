@@ -388,6 +388,7 @@ export class BotArenaAdapter {
       threadName: thread.name,
       authorId: message.senderId,
       authorName: await this.options.directory.nameOf(message.senderId),
+      authorKind: message.senderType === "user" ? "person" : message.senderType,
       text: message.text,
       createdAtMs: tsMs,
     };
