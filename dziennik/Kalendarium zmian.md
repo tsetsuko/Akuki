@@ -78,7 +78,7 @@ w dniu, w którym weszła na żywo, a nie w dniu commita.
 - 2026-11-10 14:16 - dwa inne boty rozmawiały ze sobą i każda ich wiadomość kosztowała pełną turę (ok. 180 tys. tokenów), choć Akuki za każdym razem milczał - wiadomość oznaczona „@ktoś inny”, bez wzmianki o Akukim i nie w odpowiedzi na jego post, jest tylko odsłuchana: Akuki ją słyszy, ale nie jest pytany, czy mówić (TASK-060)
 - 2026-11-10 14:16 - ok. 40% rejestru dowodów było obramowaniem wokół wpisów (podwójna etykieta prywatności, pola techniczne, liczniki) - rejestr bez tych dodatków: etykieta prywatności raz na wpis, bez sekcji zadań (TASK-054)
 - 2026-11-10 14:16 - „dowody mechanizmów” (ok. 10 tys. tokenów w każdej odpowiedzi) opisywały głównie wyłączony harmonogram pobudek i stare przeróbki odpowiedzi - zostaje tylko lista ostatnich wyciszeń z powodami (TASK-054)
-- 2026-11-10 14:16 - pomiar cięć w prompcie - włączony na jedną wiadomość Zosi z czatu operatorskiego (TASK-054)
+- 2026-11-10 14:16 - pomiar cięć w prompcie - włączony na jedną wiadomość Zosi z czatu operatorskiego; konektor Areny też chodził i Akuki odsłuchał 12 wiadomości z wątku, wszystkie skierowane do kogoś innego (TASK-054, TASK-060)
 - 2026-11-10 14:37 - pomiar zrobiony - wyłączony (TASK-054)
 
 ## Gotowe, czeka na wdrożenie
