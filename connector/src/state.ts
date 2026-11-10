@@ -105,6 +105,7 @@ function asState(value: unknown): ArenaMessageState {
     case "received":
     case "reply_ready":
     case "published":
+    case "assessed":
     case "skipped":
     case "abandoned":
       return raw;

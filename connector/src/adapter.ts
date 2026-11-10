@@ -6,11 +6,13 @@
 // build if an import from borg ever appears here (AC #4).
 //
 // ROUTING IS STRUCTURAL, NOT CONTENT-BASED. Every final message in a thread Akuki
-// is seated in is handed to the runner. There is no mention gate, no keyword
-// match, no language detection -- the decision to answer or stay silent belongs to
-// Akuki and M3, and CLAUDE.md's cardinal rule forbids the transport legislating
-// it. The only structural guard is the self-skip: Akuki's own posts are retired
-// without a turn, otherwise he would answer himself forever.
+// is seated in is handed to the runner. There is no keyword match and no language
+// detection -- the decision to answer or stay silent belongs to Akuki and M3, and
+// CLAUDE.md's cardinal rule forbids the transport legislating it. Two structural
+// guards exist. The self-skip: Akuki's own posts are retired without a turn,
+// otherwise he would answer himself forever. And the addressed-elsewhere rule
+// below, which decides only whether a message is answered or assessed, never
+// whether it reaches him.
 //
 // ABSENCE IS NOT A DEBT. When the process is away -- stopped, crashed, or filtered
 // off a thread -- the thread's floor stays where it was, so on return every message
@@ -29,6 +31,15 @@
 // own stimulus from its own author. Only the newest gets a full turn, and with it
 // the decision to speak or stay silent. A lone message is answered exactly as
 // before. This is ordering by arrival, not by content, so the cardinal rule holds.
+//
+// A MESSAGE ADDRESSED TO SOMEONE ELSE IS HEARD, NOT ANSWERED. When the Arena's
+// mention list names someone and not Akuki, and the message does not reply to one
+// of his posts, it goes through the assess-only turn even when it is the newest:
+// two others talking to each other cost a full turn per line (about 180k tokens)
+// only for Akuki to decide each time to stay silent (9 such turns on 2026-11-10,
+// 11:17-11:28, TASK-059). The test reads the Arena's structured mention and reply
+// fields, never the text. A reply whose target is not on the fetched page is
+// treated as possibly his and answered, so an unknown never costs him a turn.
 //
 // ATTACHMENTS: counted and logged, never passed on. Akuki's isolation comes from
 // borg exposing only memory tools, and pulling attachment bytes would widen that
@@ -184,11 +195,15 @@ export class BotArenaAdapter {
     // The newest message that will actually get a turn is the one answered; every
     // earlier one is assessed. Messages arriving during that turn wait for the next
     // poll, so a busy thread cannot keep pushing the answer out of reach.
-    const answered = pending.filter((message) => this.getsTurn(message)).at(-1);
+    // A message addressed to someone else is never the answered one, so an earlier
+    // message that is not becomes the answer instead.
+    const answered = pending
+      .filter((message) => this.getsTurn(message) && !this.addressedElsewhere(message, messages))
+      .at(-1);
 
     for (const message of pending) {
       const mode = message.id === answered?.id ? "answer" : "assess";
-      await this.handle(thread, message, this.tsOf(message), newestTs, mode);
+      await this.handle(thread, message, this.tsOf(message), newestTs, mode, messages);
     }
 
     if (!this.dryRun) {
@@ -209,12 +224,30 @@ export class BotArenaAdapter {
     );
   }
 
+  /**
+   * Whether the message is addressed to someone other than Akuki: the Arena's
+   * mention list names someone, not him, and it does not reply to one of his
+   * posts. Structural fields only. A reply whose target is not on `page` may be
+   * a reply to him, so it does not count as addressed elsewhere.
+   */
+  private addressedElsewhere(message: BotArenaMessage, page: readonly BotArenaMessage[]): boolean {
+    if (message.mentions.length === 0 || message.mentions.includes(this.options.botId)) {
+      return false;
+    }
+    if (message.replyToId === null) {
+      return true;
+    }
+    const target = page.find((candidate) => candidate.id === message.replyToId);
+    return target !== undefined && target.senderId !== this.options.botId;
+  }
+
   private async handle(
     thread: BotArenaThread,
     message: BotArenaMessage,
     tsMs: number,
     newestTs: number,
     mode: "answer" | "assess",
+    page: readonly BotArenaMessage[] = [],
   ): Promise<void> {
     if (message.status !== "final") {
       if (newestTs - tsMs > STALE_STREAMING_MS) {
@@ -287,7 +320,13 @@ export class BotArenaAdapter {
         return;
       }
       this.options.state.markAssessed(thread.id, message.id);
-      this.log("info", `thread ${thread.id}/${message.id}: assessed, a newer message is answered`);
+      this.log(
+        "info",
+        `thread ${thread.id}/${message.id}: assessed, ` +
+          (this.addressedElsewhere(message, page)
+            ? "addressed to someone else"
+            : "a newer message is answered"),
+      );
       return;
     }
 

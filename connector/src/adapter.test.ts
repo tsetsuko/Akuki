@@ -255,9 +255,70 @@ describe("routing", () => {
     await adapter.pollOnce();
 
     // All three reach him. The queue order decides which is answered (the newest);
-    // nothing about who wrote it or whether he was mentioned does.
+    // who wrote it does not, and none of them is addressed to someone else.
     expect(runner.assessed.map((m) => m.messageId)).toEqual(["no-mention", "from-a-bot"]);
     expect(runner.seen.map((m) => m.messageId)).toEqual(["mentioning"]);
+  });
+
+  it("assesses, never answers, a message addressed to someone else (TASK-059)", async () => {
+    const transport = fakeTransport({
+      messages: [message({ id: "to-sol", senderId: "bot-lunaria", mentions: ["bot-sol"] })],
+    });
+    const runner = fakeRunner(() => ({ text: "should not happen" }));
+    const lines: string[] = [];
+    const adapter = build(transport, runner, {
+      catchUpBacklog: true,
+      log: (_level, text) => lines.push(text),
+    });
+
+    await adapter.pollOnce();
+
+    // Heard (stored, perceived, appraised) but no full turn, even as the newest.
+    expect(runner.assessed.map((m) => m.messageId)).toEqual(["to-sol"]);
+    expect(runner.seen).toHaveLength(0);
+    expect(store.get("t1", "to-sol")?.state, lines.join(" | ")).toBe("assessed");
+    expect(lines.some((line) => line.includes("addressed to someone else"))).toBe(true);
+  });
+
+  it("answers the latest message not addressed elsewhere when the newest is", async () => {
+    const transport = fakeTransport({
+      messages: [
+        message({ id: "general", text: "co słychać?" }),
+        message({ id: "to-sol", senderId: "bot-lunaria", mentions: ["bot-sol"] }),
+      ],
+    });
+    const runner = fakeRunner(() => ({ text: "ok" }));
+    const adapter = build(transport, runner, { catchUpBacklog: true });
+
+    await adapter.pollOnce();
+
+    expect(runner.seen.map((m) => m.messageId)).toEqual(["general"]);
+    expect(runner.assessed.map((m) => m.messageId)).toEqual(["to-sol"]);
+  });
+
+  it("still answers a message that mentions Akuki or replies to him", async () => {
+    for (const [name, overrides, page] of [
+      ["mentions both", { mentions: ["bot-sol", AKUKI_BOT_ID] }, []],
+      [
+        "replies to his post",
+        { mentions: ["bot-sol"], replyToId: "his" },
+        [message({ id: "his", senderId: AKUKI_BOT_ID, senderType: "bot" })],
+      ],
+      ["replies to a post not on the page", { mentions: ["bot-sol"], replyToId: "gone" }, []],
+    ] as const) {
+      // A fresh store per case, so one case's "answered" row cannot hide the next.
+      store.close();
+      store = new ArenaStateStore(join(dir, `state-${name.replaceAll(" ", "-")}.db`));
+      const transport = fakeTransport({
+        messages: [...page, message({ id: "m-new", senderId: "bot-lunaria", ...overrides })],
+      });
+      const runner = fakeRunner(() => ({ text: "ok" }));
+      const adapter = build(transport, runner, { catchUpBacklog: true });
+
+      await adapter.pollOnce();
+
+      expect(runner.seen.map((m) => m.messageId), name).toEqual(["m-new"]);
+    }
   });
 
   it("never runs a turn for Akuki's own post", async () => {

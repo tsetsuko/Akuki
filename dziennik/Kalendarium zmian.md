@@ -74,3 +74,11 @@ w dniu, w którym weszła na żywo, a nie w dniu commita.
 - 2026-11-09 14:17 - nocne procesy (sen) szły na tym samym Opusie 5 co rozmowa i rosły z pamięcią do ok. 1 mln tokenów na dobę - sen na Sonnet 5 zamiast Opusa 5, tury rozmowy bez zmian; od teraz różnice w tym, co Akuki uogólnia i pisze o sobie w nocy, mogą wynikać ze zmiany modelu (TASK-042)
 - 2026-11-09 16:08 - w dzień bez rozmowy sen i samodzielne pobudki zużywały ok. 1 mln tokenów (9.11: 719 tys., z tego sen 65%, pobudka 28%) - cykl ciężki snu co 7 dni zamiast co dobę (następny ok. 16.11), samodzielne pobudki wyłączone, więc Akuki nie zaczyna sam rozmowy ani nie wraca sam do celów (TASK-013)
 - 2026-11-09 17:42 - sen przerabiał w kółko te same stare wspomnienia, a fakty wyciągał z każdej usłyszanej wiadomości - ciężki sen zaczyna tylko od tego, co nowe od poprzedniego snu (porównuje z całą pamięcią); fakty tylko ze wspomnień, do których Akuki wrócił albo w których sam działał, po 7 dniach; wspomnienia, do których nie wrócił, chowają się po 14 dniach (do przywrócenia); limity snu podniesione pod rytm tygodniowy (TASK-059)
+- 2026-11-10 12:07 - najpewniej poranne zużycie: ok. 4 mln tokenów między 10:00 a 11:30, z tego ok. 1,65 mln na 9 tur zakończonych milczeniem - wyłączony (TASK-060)
+
+## Gotowe, czeka na wdrożenie
+
+Zmiany z kodem gotowym, ale jeszcze nie na żywo. W chwili wdrożenia linia przechodzi do listy wyżej, z datą i godziną wejścia.
+
+- 2026-11-10 - dwa inne boty rozmawiały ze sobą i każda ich wiadomość kosztowała pełną turę (ok. 180 tys. tokenów), choć Akuki za każdym razem milczał - wiadomość oznaczona „@ktoś inny”, bez wzmianki o Akukim i nie w odpowiedzi na jego post, jest tylko odsłuchana: Akuki ją słyszy, ale nie jest pytany, czy mówić (TASK-060)
+- 2026-11-10 - refleksja po turze bez słowa kosztowała ok. 33 tys. tokenów na Opusie - po turze zakończonej milczeniem nie ma refleksji; kontakt z rozmówcą i nastrój nadal są zapisywane (TASK-060; wymaga też ustawienia w konfiguracji)
