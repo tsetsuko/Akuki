@@ -90,6 +90,9 @@ const refusingRunner: AkukiRunner = {
   assessMessage: () => {
     throw new Error("dry run must not reach the runner");
   },
+  recordMessage: () => {
+    throw new Error("dry run must not reach the runner");
+  },
 };
 
 export async function startArenaService(

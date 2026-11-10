@@ -67,6 +67,7 @@ function fakeTransport(init: Partial<Pick<FakeTransport, "threads" | "messages">
 type FakeRunner = AkukiRunner & {
   seen: IncomingArenaMessage[];
   assessed: IncomingArenaMessage[];
+  recorded: IncomingArenaMessage[];
 };
 
 function fakeRunner(
@@ -75,9 +76,14 @@ function fakeRunner(
 ): FakeRunner {
   const seen: IncomingArenaMessage[] = [];
   const assessed: IncomingArenaMessage[] = [];
+  const recorded: IncomingArenaMessage[] = [];
   return {
     seen,
     assessed,
+    recorded,
+    recordMessage: async (incoming) => {
+      recorded.push(incoming);
+    },
     handleMessage: async (incoming) => {
       seen.push(incoming);
       return reply(incoming);
@@ -260,7 +266,7 @@ describe("routing", () => {
     expect(runner.seen.map((m) => m.messageId)).toEqual(["mentioning"]);
   });
 
-  it("assesses, never answers, a message addressed to someone else (TASK-059)", async () => {
+  it("stores, never analyses or answers, a message addressed to someone else (TASK-060)", async () => {
     const transport = fakeTransport({
       messages: [message({ id: "to-sol", senderId: "bot-lunaria", mentions: ["bot-sol"] })],
     });
@@ -273,11 +279,12 @@ describe("routing", () => {
 
     await adapter.pollOnce();
 
-    // Heard (stored, perceived, appraised) but no full turn, even as the newest.
-    expect(runner.assessed.map((m) => m.messageId)).toEqual(["to-sol"]);
+    // Stored in his conversation, but no turn of any kind, even as the newest.
+    expect(runner.recorded.map((m) => m.messageId)).toEqual(["to-sol"]);
+    expect(runner.assessed).toHaveLength(0);
     expect(runner.seen).toHaveLength(0);
-    expect(store.get("t1", "to-sol")?.state, lines.join(" | ")).toBe("assessed");
-    expect(lines.some((line) => line.includes("addressed to someone else"))).toBe(true);
+    expect(store.get("t1", "to-sol")?.state, lines.join(" | ")).toBe("heard");
+    expect(lines.some((line) => line.includes("heard, addressed to someone else"))).toBe(true);
   });
 
   it("answers the latest message not addressed elsewhere when the newest is", async () => {
@@ -293,7 +300,8 @@ describe("routing", () => {
     await adapter.pollOnce();
 
     expect(runner.seen.map((m) => m.messageId)).toEqual(["general"]);
-    expect(runner.assessed.map((m) => m.messageId)).toEqual(["to-sol"]);
+    expect(runner.recorded.map((m) => m.messageId)).toEqual(["to-sol"]);
+    expect(runner.assessed).toHaveLength(0);
   });
 
   it("still answers a message that mentions Akuki or replies to him", async () => {
@@ -365,6 +373,7 @@ describe("routing", () => {
     });
     const seen: IncomingArenaMessage[] = [];
     const runner: AkukiRunner = {
+      recordMessage: async () => {},
       handleMessage: async (incoming) => {
         seen.push(incoming);
         return { text: null };
@@ -500,6 +509,7 @@ describe("posting the reply before the turn ends", () => {
         return { text };
       },
       assessMessage: async () => {},
+      recordMessage: async () => {},
     };
   }
 

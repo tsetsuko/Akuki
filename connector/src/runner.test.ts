@@ -26,7 +26,14 @@ function incoming(overrides: Partial<IncomingArenaMessage> = {}): IncomingArenaM
 
 function fakeBorg() {
   const turns: Record<string, unknown>[] = [];
+  const appended: { input: Record<string, unknown>; options: Record<string, unknown> }[] = [];
   const borg = {
+    stream: {
+      append: async (input: Record<string, unknown>, options: Record<string, unknown>) => {
+        appended.push({ input, options });
+        return { id: "strm_1" };
+      },
+    },
     entities: {
       resolve: () => "ent_thread",
       resolveExternal: () => "ent_author",
@@ -43,7 +50,7 @@ function fakeBorg() {
       };
     },
   };
-  return { borg: borg as unknown as Borg, turns };
+  return { borg: borg as unknown as Borg, turns, appended };
 }
 
 function runnerFor(borg: Borg) {
@@ -68,5 +75,25 @@ describe("ArenaAkukiRunner", () => {
     await runner.assessMessage(incoming({ messageId: "m2", authorKind: "person" }));
 
     expect(turns.map((turn) => turn.senderKind)).toEqual(["bot", "person"]);
+  });
+
+  it("stores a message addressed elsewhere in his conversation without any turn (TASK-060)", async () => {
+    const { borg, turns, appended } = fakeBorg();
+    const runner = runnerFor(borg);
+
+    await runner.handleMessage(incoming({ messageId: "m0", authorKind: "person" }));
+    await runner.recordMessage(incoming({ messageId: "m1", text: "@Lunaria a ty?" }));
+
+    // No turn means no perception, no appraisal, no model call at all.
+    expect(turns).toHaveLength(1);
+    expect(appended).toHaveLength(1);
+    expect(appended[0]?.input).toEqual({
+      kind: "user_msg",
+      content: "@Lunaria a ty?",
+      audience: "botarena_thread:t1",
+      sender_entity_id: "ent_author",
+    });
+    // The same conversation the answered turn used.
+    expect(appended[0]?.options).toEqual({ session: turns[0]?.sessionId });
   });
 });

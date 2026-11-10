@@ -32,14 +32,17 @@
 // the decision to speak or stay silent. A lone message is answered exactly as
 // before. This is ordering by arrival, not by content, so the cardinal rule holds.
 //
-// A MESSAGE ADDRESSED TO SOMEONE ELSE IS HEARD, NOT ANSWERED. When the Arena's
+// A MESSAGE ADDRESSED TO SOMEONE ELSE IS STORED, NOT ANALYSED. When the Arena's
 // mention list names someone and not Akuki, and the message does not reply to one
-// of his posts, it goes through the assess-only turn even when it is the newest:
-// two others talking to each other cost a full turn per line (about 180k tokens)
-// only for Akuki to decide each time to stay silent (9 such turns on 2026-11-10,
-// 11:17-11:28, TASK-059). The test reads the Arena's structured mention and reply
-// fields, never the text. A reply whose target is not on the fetched page is
-// treated as possibly his and answered, so an unknown never costs him a turn.
+// of his posts, it gets no turn at all, even when it is the newest: it is written
+// into his conversation so he knows it was said, and nothing else happens -- no
+// perception, no M2/M4 appraisal, no mood, no contact, no model call. Two others
+// talking to each other cost a full turn per line (about 180k tokens) only for
+// Akuki to stay silent each time (9 such turns on 2026-11-10, 11:17-11:28), and
+// even an assess-only turn costs about 35k per line (TASK-060). The test reads the
+// Arena's structured mention and reply fields, never the text. A reply whose
+// target is not on the fetched page is treated as possibly his and answered, so
+// an unknown never costs him a turn.
 //
 // ATTACHMENTS: counted and logged, never passed on. Akuki's isolation comes from
 // borg exposing only memory tools, and pulling attachment bytes would widen that
@@ -202,8 +205,13 @@ export class BotArenaAdapter {
       .at(-1);
 
     for (const message of pending) {
-      const mode = message.id === answered?.id ? "answer" : "assess";
-      await this.handle(thread, message, this.tsOf(message), newestTs, mode, messages);
+      const mode =
+        message.id === answered?.id
+          ? "answer"
+          : this.addressedElsewhere(message, messages)
+            ? "record"
+            : "assess";
+      await this.handle(thread, message, this.tsOf(message), newestTs, mode);
     }
 
     if (!this.dryRun) {
@@ -246,8 +254,7 @@ export class BotArenaAdapter {
     message: BotArenaMessage,
     tsMs: number,
     newestTs: number,
-    mode: "answer" | "assess",
-    page: readonly BotArenaMessage[] = [],
+    mode: "answer" | "assess" | "record",
   ): Promise<void> {
     if (message.status !== "final") {
       if (newestTs - tsMs > STALE_STREAMING_MS) {
@@ -294,7 +301,7 @@ export class BotArenaAdapter {
     if (this.dryRun) {
       this.log(
         "info",
-        `[dry-run] would ${mode === "answer" ? "run a turn" : "assess"} for ` +
+        `[dry-run] would ${mode === "answer" ? "run a turn" : mode} for ` +
           `${thread.id}/${message.id} from ${message.senderId} (${message.text.length} chars)`,
       );
       return;
@@ -305,6 +312,25 @@ export class BotArenaAdapter {
     }
 
     const incoming = await this.normalize(thread, message, tsMs);
+
+    if (mode === "record") {
+      try {
+        await this.options.runner.recordMessage(incoming);
+      } catch (error) {
+        // Nothing was analysed, but the line may already be in the stream, so it is
+        // not written a second time.
+        this.options.state.markAbandoned(thread.id, message.id);
+        this.log(
+          "error",
+          `abandoned ${thread.id}/${message.id}: storing it failed and is not retried: ` +
+            describe(error),
+        );
+        return;
+      }
+      this.options.state.markHeard(thread.id, message.id);
+      this.log("info", `thread ${thread.id}/${message.id}: heard, addressed to someone else`);
+      return;
+    }
 
     if (mode === "assess") {
       try {
@@ -320,13 +346,7 @@ export class BotArenaAdapter {
         return;
       }
       this.options.state.markAssessed(thread.id, message.id);
-      this.log(
-        "info",
-        `thread ${thread.id}/${message.id}: assessed, ` +
-          (this.addressedElsewhere(message, page)
-            ? "addressed to someone else"
-            : "a newer message is answered"),
-      );
+      this.log("info", `thread ${thread.id}/${message.id}: assessed, a newer message is answered`);
       return;
     }
 

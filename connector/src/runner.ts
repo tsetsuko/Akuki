@@ -87,6 +87,24 @@ export class ArenaAkukiRunner implements AkukiRunner {
     return { text: result.emitted ? result.response : null };
   }
 
+  async recordMessage(message: IncomingArenaMessage): Promise<void> {
+    // Same session, audience and author as a turn, so the line lands in the same
+    // conversation under the right speaker; the entry has the shape a turn writes
+    // for an inbound message, minus the turn.
+    const { sessionId, audienceLabel, senderEntityId } = this.prepare(message);
+
+    await this.options.borg.stream.append(
+      {
+        kind: "user_msg",
+        content: message.text,
+        audience: audienceLabel,
+        sender_entity_id: senderEntityId,
+      },
+      { session: sessionId },
+    );
+    this.log("info", `heard ${message.threadId}/${message.messageId}: stored without a turn`);
+  }
+
   async assessMessage(message: IncomingArenaMessage): Promise<void> {
     // Same session, audience and author resolution as a full turn: the message
     // must land in the same conversation, attributed to the same person, or M2 and
@@ -99,22 +117,7 @@ export class ArenaAkukiRunner implements AkukiRunner {
     assessOnly: boolean,
     onReply?: (text: string) => Promise<void>,
   ) {
-    const sessionId = this.sessionIdFor(message.threadId);
-    const audienceLabel = arenaAudienceLabel(message.threadId);
-    const audienceEntityId = this.ensureThreadGroup(message, audienceLabel);
-    const senderEntityId = this.resolveAuthor(message);
-
-    this.options.borg.sessions.ensure({
-      session_id: sessionId,
-      source_type: BOTARENA_SOURCE_TYPE,
-      source_external_id: message.threadId,
-      // The display name may follow renames; the audience label above may not.
-      label: message.threadName === "" ? `botarena thread ${message.threadId}` : message.threadName,
-      audience_label: audienceLabel,
-      audience_entity_id: audienceEntityId,
-      conversation_kind: "thread",
-      last_activity_at: message.createdAtMs,
-    });
+    const { sessionId, audienceLabel, senderEntityId } = this.prepare(message);
 
     const result = await this.options.borg.turn({
       userMessage: message.text,
@@ -138,6 +141,28 @@ export class ArenaAkukiRunner implements AkukiRunner {
     );
 
     return result;
+  }
+
+  /** Session, audience and author for a message, created on first sight. */
+  private prepare(message: IncomingArenaMessage) {
+    const sessionId = this.sessionIdFor(message.threadId);
+    const audienceLabel = arenaAudienceLabel(message.threadId);
+    const audienceEntityId = this.ensureThreadGroup(message, audienceLabel);
+    const senderEntityId = this.resolveAuthor(message);
+
+    this.options.borg.sessions.ensure({
+      session_id: sessionId,
+      source_type: BOTARENA_SOURCE_TYPE,
+      source_external_id: message.threadId,
+      // The display name may follow renames; the audience label above may not.
+      label: message.threadName === "" ? `botarena thread ${message.threadId}` : message.threadName,
+      audience_label: audienceLabel,
+      audience_entity_id: audienceEntityId,
+      conversation_kind: "thread",
+      last_activity_at: message.createdAtMs,
+    });
+
+    return { sessionId, audienceLabel, senderEntityId };
   }
 
   /**

@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-11-10 11:40'
-updated_date: '2026-11-10 11:50'
+updated_date: '2026-11-10 14:05'
 labels:
   - tokens
   - connector
@@ -70,4 +70,12 @@ Unrelated defect found by the new test and fixed in connector/src/state.ts: asSt
 Change 3 held: session akuki-d2 has a TASK-058 follow-up that removes per-row rendering overhead from the ledger (about 23k real tokens per turn, 38–39%) and asked for the section caps to go live in a separate restart so the two effects can be told apart. Proposed caps (chars/4 units): current_session_transcript 8000→4000, retrieved_raw_stream_evidence 7000→2500, retrieved_memory_evidence 7000→2500, autobiographical_recall 5000→1500, semantic_graph 5500→1200, group_channel_memory 3000→1000. The global target stays: trimming to it removes whole sections lowest-trust first (compaction.ts LOWEST_TRUST_SECTION_COMPACTION_PRIORITY), so memory would go before the transcript.
 
 Correction to the state.ts note above: only TypeScript reads of message_state went through asState (ArenaStateStore get and its row listing); nothing in the Python tooling reads message_state, and the stored column was always correct. So no report outside the connector was affected; the 'any count since 30.09' remark overstated it.
+
+2026-11-10, change 1 tightened at Zosia's decision ('cut the analysis of conversations Akuki is not part of'). Measured first: during the 14:16-14:37 measurement start, 12 Arena messages addressed to someone else were assess-only turns at about 35k tokens each (prediction-extractor 14.3k on Opus, episodic 4.2k, domain trust 3.7k, perception mode 3.4k, affective 2.7k, frame 2.4k, entity and temporal 2.7k), 415k in total.
+
+Now such a message gets no turn at all. Connector only, no borg change: the adapter routes it to a new runner.recordMessage, which resolves the same session, audience and author as a turn and calls borg.stream.append({kind: user_msg, content, audience, sender_entity_id}, {session}), the shape a turn writes for an inbound message minus turn id and turn status (borg's own stream tests append bare user_msg entries). New terminal state 'heard' in state.ts. The message is in the transcript of his next turn and is ingested into episodes by the next pre-turn catch-up, so he knows it was said.
+
+What it no longer gets: perception, the frame-anomaly check, M2 prediction and surprise, M4 domain trust, mood (empathy contagion), and the recorded contact that M3 familiarity reads. Familiarity, trust and predictions now grow only from messages Akuki is part of (answered, or assessed in a queue because a newer message to him was waiting).
+
+Proof: three new tests (adapter stores-not-analyses, adapter answers the latest not-addressed-elsewhere message, runner appends a user_msg to the same session without a turn) fail on the previous adapter and runner. Connector tsc 0, 138 tests. NOT committed (waiting for Zosia), NOT deployed. Kalendarium: line under 'Gotowe, czeka na wdrożenie'.
 <!-- SECTION:NOTES:END -->

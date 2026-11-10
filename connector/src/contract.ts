@@ -68,4 +68,11 @@ export type AkukiRunner = {
    * message in a queue except the newest, which gets handleMessage.
    */
   assessMessage(message: IncomingArenaMessage): Promise<void>;
+  /**
+   * Store the message in Akuki's conversation and nothing else: no perception,
+   * no M2/M4 appraisal, no mood, no contact, no model call. He will know it was
+   * said (it is in the transcript and memory forms from it later), but he did
+   * not take part. The adapter uses this for a message addressed to someone else.
+   */
+  recordMessage(message: IncomingArenaMessage): Promise<void>;
 };

@@ -11,6 +11,7 @@
 //   received -> reply_ready(text|null) -> published
 //           |                        \-> abandoned
 //           |-> assessed
+//           |-> heard
 //           |-> skipped
 //           \-> abandoned
 //
@@ -41,13 +42,15 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
-// The five resting places a message can reach, kept distinct because each one
+// The six resting places a message can reach, kept distinct because each one
 // answers a different operational question:
 //   published -- the outbound decision was carried out. A null reply_text here
 //                means Akuki chose silence, which is a real, handled outcome.
 //   assessed  -- Akuki took the message in but was not asked to answer it,
 //                because a newer message was waiting behind it. Not a silence:
 //                no decision to speak was made for it at all.
+//   heard     -- addressed to someone else: stored in Akuki's conversation so he
+//                knows it was said, but not analysed and not answered (TASK-060).
 //   skipped   -- no turn was ever intended (Akuki's own post, a dead stream).
 //   abandoned -- a turn WAS in flight and did not finish. Never retried.
 export type ArenaMessageState =
@@ -55,6 +58,7 @@ export type ArenaMessageState =
   | "reply_ready"
   | "published"
   | "assessed"
+  | "heard"
   | "skipped"
   | "abandoned";
 
@@ -71,6 +75,7 @@ export type ArenaMessageRecord = {
 const TERMINAL_STATES: readonly ArenaMessageState[] = [
   "published",
   "assessed",
+  "heard",
   "skipped",
   "abandoned",
 ];
@@ -106,6 +111,7 @@ function asState(value: unknown): ArenaMessageState {
     case "reply_ready":
     case "published":
     case "assessed":
+    case "heard":
     case "skipped":
     case "abandoned":
       return raw;
@@ -255,6 +261,10 @@ export class ArenaStateStore {
    */
   markAssessed(threadId: string, messageId: string): void {
     this.transition(threadId, messageId, "assessed", ["received"]);
+  }
+
+  markHeard(threadId: string, messageId: string): void {
+    this.transition(threadId, messageId, "heard", ["received"]);
   }
 
   /**
