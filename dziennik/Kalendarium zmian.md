@@ -86,3 +86,4 @@ w dniu, w którym weszła na żywo, a nie w dniu commita.
 Zmiany z kodem gotowym, ale jeszcze nie na żywo. W chwili wdrożenia linia przechodzi do listy wyżej, z datą i godziną wejścia.
 
 - 2026-11-10 - refleksja po turze bez słowa kosztowała ok. 33 tys. tokenów na Opusie - po turze zakończonej milczeniem nie ma refleksji; kontakt z rozmówcą i nastrój nadal są zapisywane (TASK-060; wymaga też ustawienia w konfiguracji)
+- 2026-11-10 - w czacie operatorskim opis ostatniej doby miał do 32 tys. tokenów: osobny wiersz z metadanymi na każdą wiadomość, odpowiedź i turę na Arenie - inne rozmowy tylko jako jedna linia na rozmowę i dzień (liczby i godziny), najwyżej 10 wierszy, każdy wiersz bez bloku metadanych; kod wgrany, konfiguracja ustawiona (TASK-054)
