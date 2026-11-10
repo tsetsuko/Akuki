@@ -4,7 +4,7 @@ title: 'Weryfikacja kosztów: cache, role modeli, dream cycle'
 status: In Progress
 assignee: []
 created_date: '2026-08-20 14:28'
-updated_date: '2026-09-21 13:35'
+updated_date: '2026-11-09 15:10'
 labels: []
 dependencies: []
 priority: high
@@ -243,5 +243,20 @@ STAN PULI W AIPROXY, zmierzony przy okazji 2026-09-21: `claude-opus-4-8`, `claud
 Usługa `akuki` jest nieaktywna od 2026-09-15 20:37 UTC, więc pomiar obejmuje ostatni okres, w którym Akuki faktycznie chodził.
 
 Dalsze prace: TASK-042 (rozdzielenie ról), TASK-043 (cache przy rzadkim ruchu), TASK-044 (shared-state-compiler).
+---
+
+created: 2026-11-09 15:10
+---
+SEN CO TYDZIEŃ, ZERO SAMODZIELNYCH POBUDEK — 2026-11-09 16:08 CET, decyzja Zosi.
+
+POWÓD. 9 listopada Akuki z nikim nie rozmawiał, a zużył 718 628 tokenów (log /var/lib/akuki/token-usage.jsonl, 33 wywołania, nic po 12:46): ciężki cykl snu 469 455 (65%), samodzielna pobudka executive_focus_due o 12:44 197 741 (28%, w tym jedno wywołanie cognition-system-1 na 118 665 tokenów wejścia), jedna wiadomość z Areny oceniona bez odpowiedzi 51 432 (7%). W dzień bez rozmowy stały koszt to więc sen (0,5–1 mln na dobę pod koniec października) plus do 2 pobudek po ok. 200 tys. Wcześniejsze stwierdzenie „prawdziwy koszt to tury rozmowy” opierało się na średnich z października i dla dnia bez rozmowy było błędne.
+
+ZMIANA. /var/lib/akuki/data/akuki/config.json, kopia config.json.bak-20261109-weekly-heavy-no-wakes:
+- maintenance.heavyIntervalMs = 604800000 (7 dni zamiast 24 h). Ostatni ciężki cykl 2026-11-09 ok. 12:43 CET, więc następny ok. 2026-11-16 12:43. Lekki cykl (consolidator, semantic-extractor, curator) bez zmian, co 4 h.
+- autonomy.enabled = false. Scheduler autonomii nie startuje (borg/src/borg/autonomy-setup.ts:245 przekazuje flagę, scheduler w start() wraca od razu). Skutek uboczny wprost: Akuki nie zaczyna sam rozmowy na Arenie (proactiveOutbound) i nie wraca sam do celów ani otwartych pytań między wiadomościami.
+
+DOWÓD. Restart 15:08:54 UTC, start czysty. Przed zmianą linia autonomy.tick pojawiała się w dzienniku co 60 s; po restarcie przez 75 s ani jednej.
+
+CZEGO NIE ZMIENIA. Cykl ciężki dalej wybiera materiał z całej pamięci bez względu na to, czy przybyło coś nowego: reflector bierze wszystkie epizody (offline/reflector/index.ts:634), grupuje je po tagach i celach i za każdym razem wybiera dwie największe grupy (:334-336), więc bez nowych przeżyć przerabia te same epizody; associator losuje próbki z całości (offline/associator/index.ts:438-462). Raz w tygodniu kosztuje to tyle samo co dotąd raz na dobę. Propozycja bramki „sen tylko przy nowych przeżyciach” i okien pamięci czeka na zgodę.
 ---
 <!-- COMMENTS:END -->

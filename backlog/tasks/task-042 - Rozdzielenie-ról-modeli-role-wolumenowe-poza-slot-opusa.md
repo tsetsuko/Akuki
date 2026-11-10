@@ -4,7 +4,7 @@ title: 'Rozdzielenie ról modeli: role wolumenowe poza slot opusa'
 status: In Progress
 assignee: []
 created_date: '2026-09-21 13:33'
-updated_date: '2026-09-28 18:46'
+updated_date: '2026-11-09 13:18'
 labels: []
 dependencies:
   - TASK-013
@@ -181,5 +181,26 @@ Dla porownania: baza z 2026-09-15..17 to 205-226 tys. tokenow na ture, wszystko 
 Schedulery maintenance i autonomy startuje serwer demo, nie konektor (log: „schedulers left to the host: this Borg is borrowed"), z budzetami 60k/200k z akuki.env. Zgodnie z decyzja o pozostawieniu maintenance.
 
 DROBNA NIEZGODNOSC DO SPRAWDZENIA OSOBNO: linia startowa konektora wypisuje `tokenUsageLog=<off>`, a mimo to plik telemetrii rosnie i ma dzisiejsze wpisy. AKUKI_ARENA_TOKEN_USAGE_LOG jest ustawione w /etc/akuki/akuki.env. Czyli albo linia startowa czyta inne zrodlo niz sink wpinany w plugin.ts, albo wypisuje stan sprzed wczytania konfiguracji. Telemetria dziala — myli komunikat, nie pomiar — ale komunikat, ktory mowi „nie mierze", gdy mierzy, jest dokladnie tym rodzajem rzeczy, ktora pozniej kogos wprowadzi w blad.
+---
+
+created: 2026-11-09 13:18
+---
+SEN NA SONNET 5 — 2026-11-09 14:17 CET, decyzja Zosi.
+
+POWÓD. Skok zużycia 9 listopada o 12:28–12:45: 33 wywołania, ok. 720 tys. tokenów, z czego ok. 459 tys. (64%) to ciężki cykl maintenance, który po tygodniu przerwy był zaległy i ruszył zaraz po starcie. Odczyt całego /var/lib/akuki/token-usage.jsonl po dniach: procesy offline rosły z ok. 235 tys. na dobę na początku października do ok. 1 mln pod koniec, czyli 5–10% doby z ruchem i 20–36% doby cichej. Wszystkie szły na claude-opus-5, bo rola background obsługuje i sen, i wywołania w turze (percepcja afektywna, sędziowie, audytorzy).
+
+ZMIANA W KODZIE, fork 4f1eae1c: nowy slot anthropic.models.offline (BORG_MODEL_OFFLINE). Stosowany w jednym miejscu, przy budowie kontekstu maintenance (borg/src/borg/offline-setup.ts, offlineMaintenanceConfig): w tym kontekście role background i extraction wskazują model offline, więc każdy proces nocny idzie za nim bez zmian w jego kodzie. Ekstraktor przeglądu otwartych pytań (etykieta offline-review-open-question) też. Tury rozmowy czytają wspólny config i się nie zmieniły. Brak slotu = zachowanie jak wcześniej, więc upstream bez różnicy. Walidacja AKUKI_ANTHROPIC_ONLY sprawdza teraz także sloty opcjonalne.
+
+ZMIANA NA VPS-IE. Kopia: /etc/akuki/akuki.env.bak-before-offline-model-20261109. Dopisana jedna linia: BORG_MODEL_OFFLINE=claude-sonnet-5. Restart 13:17:45 UTC, start czysty, zero błędów. loadConfig z nowym kodem i env z VPS-a rozwiązuje offline = claude-sonnet-5, pozostałe role bez zmian.
+
+DOWÓD PRZED WGRANIEM. Testy: nowe padały przed zmianą (4 porażki z właściwych powodów), po zmianie 171/171 w trzech plikach; pełne src/ 5775 zielonych, 3 porażki to przekroczenia 15 s, z czego dwie znikają przy osobnym biegu, a trzecia (evidence-ledger/builder) jest znaną porażką bazową. tsc czysty, heuristics:guard zielony. Sonda przez klienta borga na VPS-ie, przez aiproxy, wymuszone narzędzie jak w procesach offline: claude-sonnet-5 HTTP 200, stop tool_use, 1,5 s, poprawny werdykt; claude-opus-5 jako kontrola to samo w 2,4 s.
+
+CENA. Opus 5: 5 USD wejście, 25 USD wyjście za milion. Sonnet 5: 2 i 10. Ta sama liczba tokenów jest o 60% tańsza; liczba tokenów się nie zmienia.
+
+DLACZEGO SONNET 5, A NIE NOWSZY ALBO TAŃSZY. Sonnet 5.5 kosztuje tyle samo, ale odrzuca wymuszony wybór narzędzia (HTTP 400), a borg tłumaczy to tylko dla Opusa 5.5+ i Fable 5.1+ (borg/src/llm/tool-choice-compatibility.ts:20), więc każdy proces nocny by padał. Haiku byłby tańszy, ale reflector, self-narrator i belief-reviser piszą to, co staje się pamięcią semantyczną i autonarracją; zasada „noworodek to nie głupi dorosły” mówi, żeby korę zostawić mocną.
+
+ZASTRZEŻENIE POMIAROWE. Od 2026-11-09 14:17 uogólnienia, skojarzenia, rewizje przekonań i autonarracja powstają na innym modelu niż przez cały październik. Różnica w M2–M4 albo w treści snów po tej dacie jest nierozstrzygalna między rozwojem a zmianą modelu. Zapisane w dzienniku/Kalendarium zmian.
+
+CZEGO JESZCZE NIE MA. Żaden proces nocny nie przeszedł jeszcze na nowym kodzie. Lekki cykl (co 4 h) ruszy najwcześniej ok. 16:30 CET, ciężki (co 24 h) ok. 12:45 CET 10 listopada. Dowodem, że zmiana działa w żywym procesie, będą linie offline-* z model=claude-sonnet-5 w token-usage.jsonl.
 ---
 <!-- COMMENTS:END -->
