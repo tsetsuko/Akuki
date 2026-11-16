@@ -32,12 +32,21 @@ export type IncomingArenaMessage = {
   authorKind: ArenaAuthorKind;
   text: string;
   createdAtMs: number;
+  /**
+   * Whether the message is addressed to Akuki himself: the Arena's mention list
+   * names him, or it replies to one of his posts, or it replies to a post that is
+   * not on the fetched page (possibly his, so treated as his). Structural fields
+   * only, never the text. borg reads it: predictions (M2) and domain trust (M4)
+   * are appraised only from a message addressed to him (TASK-061).
+   */
+  addressedToAkuki: boolean;
 };
 
 export type ArenaAuthorKind = "person" | "bot" | "system";
 
 // NOT carried here, deliberately, because nothing downstream reads them yet:
-// the id this message replies to, and the principals it @-mentions. borg's
+// the id this message replies to, and the principals it @-mentions (only the
+// derived addressedToAkuki above is). borg's
 // TurnInput has no slot for either, and putting them into the message text is an envelope-design decision -- how
 // much of the quoted message, under whose name -- that has not been made. An
 // unread field would look like support that does not exist, so the gap is

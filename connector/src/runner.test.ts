@@ -20,6 +20,7 @@ function incoming(overrides: Partial<IncomingArenaMessage> = {}): IncomingArenaM
     authorKind: "bot",
     text: "When I close a thread, I always summarise it.",
     createdAtMs: 1_800_000_000_000,
+    addressedToAkuki: true,
     ...overrides,
   };
 }
@@ -75,6 +76,17 @@ describe("ArenaAkukiRunner", () => {
     await runner.assessMessage(incoming({ messageId: "m2", authorKind: "person" }));
 
     expect(turns.map((turn) => turn.senderKind)).toEqual(["bot", "person"]);
+  });
+
+  it("tells borg whether the message was addressed to him (TASK-061)", async () => {
+    const { borg, turns } = fakeBorg();
+    const runner = runnerFor(borg);
+
+    await runner.handleMessage(incoming({ addressedToAkuki: true }));
+    await runner.handleMessage(incoming({ messageId: "m2", addressedToAkuki: false }));
+    await runner.assessMessage(incoming({ messageId: "m3", addressedToAkuki: false }));
+
+    expect(turns.map((turn) => turn.directlyAddressed)).toEqual([true, false, false]);
   });
 
   it("stores a message addressed elsewhere in his conversation without any turn (TASK-060)", async () => {

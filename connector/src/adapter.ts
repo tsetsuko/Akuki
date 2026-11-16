@@ -44,6 +44,13 @@
 // target is not on the fetched page is treated as possibly his and answered, so
 // an unknown never costs him a turn.
 //
+// PREDICTIONS AND TRUST ONLY FROM WHAT IS SAID TO HIM. Every message that gets a
+// turn carries whether it was addressed to Akuki (mention of him, reply to his
+// post, or reply to a post off the page). One said to the room -- no mention, no
+// reply -- or assessed in a queue without naming him is still perceived and can
+// be answered, but borg skips the M2 prediction and M4 trust appraisals for it:
+// the prediction appraisal alone cost about 14k tokens per message (TASK-061).
+//
 // ATTACHMENTS: counted and logged, never passed on. Akuki's isolation comes from
 // borg exposing only memory tools, and pulling attachment bytes would widen that
 // input surface. The log line is what keeps the omission observable (AC #8).
@@ -211,7 +218,14 @@ export class BotArenaAdapter {
           : this.addressedElsewhere(message, messages)
             ? "record"
             : "assess";
-      await this.handle(thread, message, this.tsOf(message), newestTs, mode);
+      await this.handle(
+        thread,
+        message,
+        this.tsOf(message),
+        newestTs,
+        mode,
+        this.addressedToAkuki(message, messages),
+      );
     }
 
     if (!this.dryRun) {
@@ -249,12 +263,30 @@ export class BotArenaAdapter {
     return target !== undefined && target.senderId !== this.options.botId;
   }
 
+  /**
+   * Whether the message is addressed to Akuki himself: its mention list names
+   * him, or it replies to one of his posts, or to a post not on `page` (possibly
+   * his). A message that names nobody and replies to nothing is said to the room,
+   * not to him. Structural fields only.
+   */
+  private addressedToAkuki(message: BotArenaMessage, page: readonly BotArenaMessage[]): boolean {
+    if (message.mentions.includes(this.options.botId)) {
+      return true;
+    }
+    if (message.replyToId === null) {
+      return false;
+    }
+    const target = page.find((candidate) => candidate.id === message.replyToId);
+    return target === undefined || target.senderId === this.options.botId;
+  }
+
   private async handle(
     thread: BotArenaThread,
     message: BotArenaMessage,
     tsMs: number,
     newestTs: number,
     mode: "answer" | "assess" | "record",
+    addressedToAkuki: boolean,
   ): Promise<void> {
     if (message.status !== "final") {
       if (newestTs - tsMs > STALE_STREAMING_MS) {
@@ -311,7 +343,7 @@ export class BotArenaAdapter {
       return;
     }
 
-    const incoming = await this.normalize(thread, message, tsMs);
+    const incoming = await this.normalize(thread, message, tsMs, addressedToAkuki);
 
     if (mode === "record") {
       try {
@@ -440,6 +472,7 @@ export class BotArenaAdapter {
     thread: BotArenaThread,
     message: BotArenaMessage,
     tsMs: number,
+    addressedToAkuki: boolean,
   ): Promise<IncomingArenaMessage> {
     return {
       messageId: message.id,
@@ -450,6 +483,7 @@ export class BotArenaAdapter {
       authorKind: message.senderType === "user" ? "person" : message.senderType,
       text: message.text,
       createdAtMs: tsMs,
+      addressedToAkuki,
     };
   }
 

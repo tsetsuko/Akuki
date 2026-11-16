@@ -127,6 +127,8 @@ export class ArenaAkukiRunner implements AkukiRunner {
       senderKind: message.authorKind,
       audience: audienceLabel,
       ...(assessOnly ? { assessOnly: true } : {}),
+      // Predictions (M2) and trust (M4) only from what is said to him (TASK-061).
+      directlyAddressed: message.addressedToAkuki,
       ...(onReply === undefined
         ? {}
         : { onReplyPersisted: (reply: { text: string }) => onReply(reply.text) }),

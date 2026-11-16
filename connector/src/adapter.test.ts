@@ -360,6 +360,35 @@ describe("routing", () => {
       authorKind: "person",
       text: "hej",
       createdAtMs: Date.parse("2026-09-04T10:00:00.000Z"),
+      // Replies to a post not on the page, so possibly his.
+      addressedToAkuki: true,
+    });
+  });
+
+  it("marks whether each message was addressed to him, from structure alone (TASK-061)", async () => {
+    const transport = fakeTransport({
+      messages: [
+        message({ id: "his", senderId: AKUKI_BOT_ID, senderType: "bot", createdAt: "2026-09-04T09:59:00.000Z" }),
+        message({ id: "to-room", text: "Akuki, co myślisz?", createdAt: "2026-09-04T10:00:00.000Z" }),
+        message({ id: "mentions-him", mentions: [AKUKI_BOT_ID], createdAt: "2026-09-04T10:00:01.000Z" }),
+        message({ id: "reply-to-his", replyToId: "his", createdAt: "2026-09-04T10:00:02.000Z" }),
+        message({ id: "reply-to-room", replyToId: "to-room", createdAt: "2026-09-04T10:00:03.000Z" }),
+        message({ id: "reply-off-page", replyToId: "gone", createdAt: "2026-09-04T10:00:04.000Z" }),
+      ],
+    });
+    const runner = fakeRunner(() => ({ text: null }));
+    const adapter = build(transport, runner, { catchUpBacklog: true });
+
+    await adapter.pollOnce();
+
+    const all = [...runner.assessed, ...runner.seen];
+    expect(Object.fromEntries(all.map((m) => [m.messageId, m.addressedToAkuki]))).toEqual({
+      // His name in the text does not count: routing never reads the text.
+      "to-room": false,
+      "mentions-him": true,
+      "reply-to-his": true,
+      "reply-to-room": false,
+      "reply-off-page": true,
     });
   });
 
