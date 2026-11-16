@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-11-10 11:40'
-updated_date: '2026-11-10 14:05'
+updated_date: '2026-11-16 10:39'
 labels:
   - tokens
   - connector
@@ -52,7 +52,7 @@ Research note: change 1 changes when Akuki is asked to decide at all, which matt
 - [x] #2 Fork: reflection.afterSilentTurn=false skips the reflector on observed/suppressed turns, keeps contact and mood, traces reflection.skipped_after_silence; default reflects as upstream; tests fail on the old coordinator
 - [x] #3 tsc, heuristics:guard, connector tests, and fork src/cognition src/borg src/tracing src/config src/offline pass except known timeouts
 - [ ] #4 Ledger caps chosen with Zosia and set in tenant config with a backup
-- [ ] #5 Deployed and restarted by decision of Zosia; Kalendarium zmian updated
+- [x] #5 Deployed and restarted by decision of Zosia; Kalendarium zmian updated
 - [ ] #6 After a few days: share of full turns vs assess-only, reflection calls, ledger size and tokens per inbound message compared with 09.11–10.11
 <!-- AC:END -->
 
@@ -78,4 +78,8 @@ Now such a message gets no turn at all. Connector only, no borg change: the adap
 What it no longer gets: perception, the frame-anomaly check, M2 prediction and surprise, M4 domain trust, mood (empathy contagion), and the recorded contact that M3 familiarity reads. Familiarity, trust and predictions now grow only from messages Akuki is part of (answered, or assessed in a queue because a newer message to him was waiting).
 
 Proof: three new tests (adapter stores-not-analyses, adapter answers the latest not-addressed-elsewhere message, runner appends a user_msg to the same session without a turn) fail on the previous adapter and runner. Connector tsc 0, 138 tests. NOT committed (waiting for Zosia), NOT deployed. Kalendarium: line under 'Gotowe, czeka na wdrożenie'.
+
+2026-11-16, deployed at Zosia's decision ('wdrażaj te co są w gotowe'). Zosia started akuki.service at 11:18:35 (Polish time) after the break since 10.11. Between 11:18 and the restart, 6 Arena messages addressed to someone else still went through the full assess-only turn, because the connector on the VPS was at 17952c6.
+
+Deploy: akuki-wgraj.sh on the VPS pulled the connector to 8766d6b (the fork stayed at 6841de0b, which already contained 125a08e9 since the 10.11 15:01 pull) and rebuilt the fork; all its checks passed. Before the restart, following known mistake 13 (the connector is checked against borg/dist, not the fork sources): connector tsc --noEmit 0 against the deployed dist, adapter and runner tests 41 passed on the VPS. Tenant config: backup config.json.bak-20261116-silent-reflection, then cognition.reflection.afterSilentTurn=false added inside the existing cognition block; JSON valid. Restart via akuki-serwis.sh at 11:38:55; service up, API 200, connector started, no errors in the log. Kalendarium: both lines moved from 'Gotowe' to the main list at 11:38.
 <!-- SECTION:NOTES:END -->
