@@ -82,10 +82,10 @@ w dniu, w którym weszła na żywo, a nie w dniu commita.
 - 2026-11-10 14:37 - pomiar zrobiony - wyłączony (TASK-054)
 - 2026-11-16 11:18 - w czacie operatorskim opis ostatniej doby miał do 32 tys. tokenów: osobny wiersz z metadanymi na każdą wiadomość, odpowiedź i turę na Arenie - inne rozmowy tylko jako jedna linia na rozmowę i dzień (liczby i godziny), najwyżej 10 wierszy, każdy wiersz bez bloku metadanych; kod i konfiguracja wgrane 10.11 o 15:02, działa od tego startu (TASK-054)
 - 2026-11-16 11:18 - Zosia kończy przerwę od 10.11 - włączony razem z konektorem Areny; 49 wiadomości z przerwy pominiętych, bo starsze niż 10 minut (TASK-060)
+- 2026-11-16 11:38 - refleksja po turze bez słowa kosztowała ok. 33 tys. tokenów na Opusie - po turze zakończonej milczeniem nie ma refleksji; kontakt z rozmówcą i nastrój nadal są zapisywane (TASK-060)
+- 2026-11-16 11:38 - samo odsłuchanie wiadomości do kogoś innego kosztowało ok. 35 tys. tokenów (przewidywania, zaufanie, percepcja, ton); od 11:18 do 11:38 przeszło tak 6 wiadomości - wiadomość oznaczona „@ktoś inny” jest tylko zapisywana w rozmowie: Akuki wie, że padła, ale nie analizuje jej, nie przewiduje, nie ocenia zaufania i nie liczy jej jako kontaktu ani bodźca dla nastroju (TASK-060)
 
 ## Gotowe, czeka na wdrożenie
 
 Zmiany z kodem gotowym, ale jeszcze nie na żywo. W chwili wdrożenia linia przechodzi do listy wyżej, z datą i godziną wejścia.
 
-- 2026-11-10 - refleksja po turze bez słowa kosztowała ok. 33 tys. tokenów na Opusie - po turze zakończonej milczeniem nie ma refleksji; kontakt z rozmówcą i nastrój nadal są zapisywane; kod wgrany 10.11, przełącznik w konfiguracji jeszcze nieustawiony, więc refleksja po milczeniu dalej działa (TASK-060)
-- 2026-11-10 - samo odsłuchanie wiadomości do kogoś innego kosztowało ok. 35 tys. tokenów (przewidywania, zaufanie, percepcja, ton) - wiadomość oznaczona „@ktoś inny” jest tylko zapisywana w rozmowie: Akuki wie, że padła, ale nie analizuje jej, nie przewiduje, nie ocenia zaufania i nie liczy jej jako kontaktu ani bodźca dla nastroju; kod jeszcze niewgrany na serwer, więc 16.11 takie wiadomości dalej przechodzą pełną ocenę (TASK-060)
