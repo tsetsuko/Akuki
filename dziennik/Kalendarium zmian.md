@@ -89,3 +89,4 @@ w dniu, w którym weszła na żywo, a nie w dniu commita.
 
 Zmiany z kodem gotowym, ale jeszcze nie na żywo. W chwili wdrożenia linia przechodzi do listy wyżej, z datą i godziną wejścia.
 
+- 16.11 - prompt odpowiedzi za ciężki dla puli tokenów (102k na wywołanie S1, pamięć ~41k) - w configu tenanta wyłączona sekcja grafu semantycznego (`includeSemanticGraph: false`, borg 6d326776) i limit surowego strumienia z rejestru obniżony z 7000 do 3000 szacowanych tokenów; spodziewane ~16k mniej na wywołanie (TASK-054)
