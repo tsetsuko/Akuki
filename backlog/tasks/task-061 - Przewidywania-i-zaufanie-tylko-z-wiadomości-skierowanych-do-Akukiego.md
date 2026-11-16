@@ -4,7 +4,7 @@ title: Przewidywania i zaufanie tylko z wiadomości skierowanych do Akukiego
 status: In Progress
 assignee: []
 created_date: '2026-11-16 12:45'
-updated_date: '2026-11-16 12:45'
+updated_date: '2026-11-16 13:20'
 labels:
   - tokens
   - connector
@@ -52,7 +52,7 @@ Research note: expectations and surprise (M2) and per-partner trust (M4) now gro
 - [x] #1 Fork: directlyAddressed=false skips prediction and domain-trust extractors and traces extraction.not_addressed.skipped; absent or true runs both; test fails on the old extraction phase
 - [x] #2 Connector: addressedToAkuki true for a mention of him, a reply to his post, a reply to a post not on the page; false for a room message and a reply to someone else's post; text never read; runner passes it on answered and assessed turns; tests fail on the old adapter and runner
 - [x] #3 tsc and heuristics:guard pass in the fork; connector tsc against rebuilt borg/dist and all connector tests pass; fork src/cognition src/borg src/tracing src/config pass except known timeouts
-- [ ] #4 Committed, deployed and restarted by decision of Zosia; Kalendarium zmian updated
+- [x] #4 Committed, deployed and restarted by decision of Zosia; Kalendarium zmian updated
 - [ ] #5 After a few days: prediction-extractor and domain-trust calls and tokens per day compared with 16.11
 <!-- AC:END -->
 
@@ -60,4 +60,6 @@ Research note: expectations and surprise (M2) and per-partner trust (M4) now gro
 
 <!-- SECTION:NOTES:BEGIN -->
 2026-11-16, implemented, NOT committed, NOT deployed. Fork: extraction-phase test 'appraises predictions and trust only from a message addressed to the being' fails on the old phase ('expected vi.fn() to not be called at all, but actually been called 1 times'). tsc 0, heuristics:guard 0, src/cognition src/borg src/tracing src/config: 2551 passed, 1 failed (evidence-ledger builder reverse-scan, known 15 s timeout). Connector: borg/dist rebuilt (npm run build), tsc --noEmit 0, 140 tests; the two new tests and the updated normalize test fail on the old adapter and runner (3 failed). On the VPS the fork must be rebuilt before the connector is checked (known mistake 13).
+
+2026-11-16, deployed at Zosia's decision. Fork 8c1eec7c and akuki 997f7c3 pushed; akuki-wgraj.sh on the VPS pulled both and rebuilt, all checks passed. Connector tsc --noEmit 0 against the deployed dist, adapter and runner tests 43 passed on the VPS. Restart via akuki-serwis.sh at 14:19 Polish time (13:19:46 UTC); API 200, connector started, no errors. Correction: TASK-054's includeSemanticGraph=false was already live since the 13:25 restart, so this restart changed only this task; the question asked before it rested on a stale Kalendarium copy. Kalendarium: TASK-061 line moved to the main list at 14:19 (decfab2); the TASK-054 line that commit wrongly moved to 14:19 was restored to 13:25 (55823aa).
 <!-- SECTION:NOTES:END -->
