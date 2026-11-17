@@ -91,3 +91,5 @@ Dwa konkurencyjne wyjaśnienia:
 Rozstrzygnęłoby: czy ten opis siebie pojawi się w innym wątku albo po kilku dniach
 przerwy, czy utrzyma się po wycofaniu cudzych zobowiązań, oraz czy liczba dowodów przy
 *epistemic caution* rośnie w kolejnych snapshotach.
+
+Ciąg dalszy z danymi z 19.10 – 02.11: [[Obs 004 — opis siebie przez własny błąd, dwa tygodnie później]].

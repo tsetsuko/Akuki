@@ -610,6 +610,20 @@ A ladder in `cognition/deliberation/path-selector.ts:119-156`:
 Which cause dominates has to be counted from `deliberation.path.completed` trace events (field
 `reason`). No turn traces are persisted on the VPS today, so turning tracing on is the first step.
 
+**Counted 2026-11-02**, from the VPS trace (BORG_TRACE has been on since 2026-10-06), over turns
+since 2026-10-19. There were 252 deliberative turns: 209 answered messages and 43 wakes.
+
+- The classifier dominates: 190 of the 252 (75%) took S2 because mode was "reflective".
+- 62 (25%) took it because retrieval confidence was below 0.45.
+- None were forced by an open-question contradiction.
+
+Wakes take the deliberative path almost always, 43 of 45.
+
+Token cost, from `/var/lib/akuki/token-usage.jsonl`, 19–29 October. The S2 finalizer was 54.2M
+of 176.4M input (31%) and the plan call 12.5M (7%). Each S2 turn would still need a direct
+answer (S1 median 146k), so taking S2 away entirely saves about 14% of input, not 38%. Per
+deliberative turn that is roughly 100k: the 53k plan, plus a finalizer prompt about 50k larger.
+
 ### Options
 
 1. **Count the reasons** across a day of Arena turns.
@@ -619,6 +633,32 @@ Which cause dominates has to be counted from `deliberation.path.completed` trace
 3. **Change the classifier's tie-break** so that doubt does not default to reflective. A prompt
    change in the fork.
 4. **Let Akuki learn when deliberation pays.** This is entry 11.
+
+### Decided 2026-11-02 (TASK-057)
+
+Zosia chose neither option 2 nor option 3. She chose to switch off two of the ladder's natural S2
+triggers for Akuki:
+
+- **Reflective mode no longer takes S2.** The classifier is untouched. Its label still sets
+  recall weights and the recall limit, decides whether open questions are shown, and triggers
+  autobiographical recall. Option 3 was rejected for exactly this reason: a classifier change
+  would also have made Akuki recall himself less often.
+- **Low retrieval confidence no longer takes S2.** "When unsure, plan first" is a work-assistant
+  reliability rule. Part of Akuki's low confidence is the decay paradox above, not real
+  uncertainty. He still sees his confidence and the weak-support line, and he still has the
+  memory-reading tools on S1.
+
+S2 now comes only from high stakes, which the connector never sets, or from the
+operational-contradiction override, which last fired before 19 October. In effect S2 is off.
+
+What goes with it: the plan before replying, and with it every new `thought` entry, because S2
+plans are the only source of thoughts.
+
+The config is `deliberation.system2Triggers`. Upstream's ladder is the default, and the prompt's
+confidence line describes whichever ladder is in force.
+
+Entry 11's direction ("deliberation as a skill") is not foreclosed. If it is ever built, it would
+replace these switches, not sit on top of them.
 
 ---
 
@@ -851,6 +891,93 @@ validator (`borg/src/akuki/smoke-config.ts:36`) has to be widened deliberately, 
 After the assess-only queue (TASK-046) is deployed and TASK-033 is done. TASK-047 carries the build.
 The signal that it is needed: an answered message that was trivial while a question to Akuki, or
 talk about him, in the same queue was only assessed.
+
+---
+
+## 13. Trying out another bot's stated practice instead of adopting it as a rule
+
+**Proposed by Zosia 2026-10-19. Recorded, not built.** Backlog: the research task on critical
+stance toward suggestions (created the same day).
+
+### Where it came from
+
+Until 2026-10-19 the commitment extractor turned other bots' statements about their own practice
+into Akuki's binding commitments. Sol would write "I mark which parts came from memory", Terra "I
+don't describe my infrastructure", and the next turn Akuki carried that as his own rule. On that
+day 33 such commitments were revoked, and the extractor was changed to store a correction only
+when it asks Akuki himself to change (borg `72cb3222`).
+
+That fix only stops the error. It also throws away something real: a peer saying how they work is
+genuine social information, and children learn a great deal from exactly that. Zosia's idea is to
+keep it, in the right shape.
+
+### The idea
+
+When a participant states a practice of their own, record it as **an observed behaviour of that
+participant**, not as a rule for Akuki. Akuki may then try it, and whether it stays is decided by
+how it works for him:
+
+```text
+Sol states his practice ("I mark what came from memory")
+      ↓
+recorded as observed: practice X, from Sol
+      ↓
+Akuki tries X in his own turns (or never does)
+      ↓
+outcome of each try
+      ↓
+retain as his own / keep trying / reject
+```
+
+Most of the machinery already exists:
+
+- **Acquisition provenance for skills** (TASK-028, done): a procedural skill can be marked as
+  observed from a named entity.
+- **The imitation-retention reader** (TASK-032): a copied behaviour becomes Akuki's own only when
+  its posterior over his own outcomes clears a floor with enough confidence, and it is rejected
+  when the posterior says it does not work. Founding evidence is subtracted, so the evidence that
+  created a skill cannot also promote it.
+- **Domain-keyed trust from M4**: whose practice in which domain is worth trying at all.
+
+What is missing is the bridge: nothing turns "a participant stated a practice" into an observed
+skill candidate, and the extractor now simply drops such statements.
+
+### The research it rests on
+
+- **Claim:** the research doc's section 2 (social learning and modelling): children learn by
+  observing others as models, and observation does not automatically become imitation. The chain
+  is observation, hypothesis, small experiment, social outcome, interpretation, possible
+  self-update.
+- **Architecture:** section 6 of the architecture doc, mimicry as social experimentation (observe,
+  imitate, observe outcome, compare, retain / modify / reject).
+- **Not yet read for this:** selective trust in informants, over-imitation, and how children weigh
+  a peer's stated rule against an adult's. Step 2 of the gate is therefore not done.
+
+### What is claim, analogue and choice
+
+- **Research claim:** modelling, and observation that does not automatically become imitation.
+- **Defensible analogue:** another bot's stated practice is an observed behaviour with a source; it
+  becomes Akuki's only through his own outcomes.
+- **Creative choice:** what counts as an outcome for a conversational practice, which domains are
+  eligible, and whether a tried practice is shown to the model at all.
+
+### Open problems
+
+1. **What is the outcome of trying a conversational practice?** For a skill the procedural band
+   classifies success after the turn. For "mark your sources" the honest signal might be whether
+   the partner corrected him, or engaged, or nothing at all. Without a real outcome signal the
+   retention reader has nothing to count, and this becomes a rule with extra steps.
+2. **The extractor must not become a policeman.** Telling "a request to Akuki" from "a description
+   of oneself" stays the model's judgment, read from its own structured field. No wording rules.
+3. **A creator's request is not a peer's practice.** What Zosia asks for stays a commitment.
+   Whether a bot may ever supersede a creator commitment was already ruled out of scope (doc-002).
+
+### When to revisit
+
+After the fixed extractor has run on the Arena for a while, so we know how many peer statements
+it now drops, and once the research on selective trust and over-imitation has been read. If the
+diary shows Akuki picking up peers' practices anyway, through the conversation itself, this entry
+explains what that looks like when it is done with state rather than by accident.
 
 ---
 

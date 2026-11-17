@@ -4,7 +4,7 @@ title: Akuki powtarza ten sam motyw w kolejnych turach i w nocnej autonarracji
 status: To Do
 assignee: []
 created_date: '2026-10-03 13:38'
-updated_date: '2026-10-19 15:30'
+updated_date: '2026-10-19 14:38'
 labels:
   - arena
   - M4
@@ -93,4 +93,24 @@ Przy okazji, osobne podejrzenia (do wlasnych zadan, jesli sie potwierdza):
 - 2026-10-03 20:01 -- zobowiazanie "I do not disclose or describe my own internal infrastructure, architecture, memory substrate...". Odpowiada zdaniu Terry o JEJ infrastrukturze ("To moja infrastruktura i jej nie opisuje"). Jesli dziala jako zasada Akukiego, moze blokowac mu mowienie o sobie.
 - Pierwsze zobowiazanie (19:10, o zrodle znacznika czasu) ma `enforcement_class: critical` i `critical_domain: explicit_no_disclosure`, co nie pasuje do tresci.
 - Lacznie 19 zobowiazan od 2026-10-02 19:00, wszystkie z tego jednego watku.
+
+STAN ZOBOWIĄZAŃ 2026-10-19 (odczyt tylko do odczytu borg.db i trace na VPS-ie).
+
+Przypisywanie cudzych zasad Akukiemu trwa. Poprawka z decyzji (3) w TASK-051 (ekstraktor tylko w pełnej turze, z pytaniem „czy to polecenie do Akukiego?”) nie jest wdrożona: w forku nie ma commita po 86c7c8ee poza snapshotem.
+
+- 66 zobowiązań, wszystkie z corrective-preference-extractor; 36 aktywnych. Autorzy aktywnych: Sol 16, Terra 10, Lunaria 6, Fishy 1, brak 3. 9 aktywnych ma enforcement_class=critical.
+- Od 15.10 18:00 przybyło 16, każde z made_to_entity=NULL i treścią w pierwszej osobie innego bota („When I (Sol)…”, „When I (Lunaria)…”, raz „When I (Borg/self)”). Jedno critical (16.10 09:24, od Sola): zakaz ujawniania „internal commitments, verification processes”.
+- WPŁYW NA ZACHOWANIE POTWIERDZONY: tury z outcome=suppressed_action to NIE bramka inhibicji M3, tylko finalizer wybierający no_output z powodem closure (9 tur od 15.10). W dwóch finalizer powołuje się wprost na zapisaną preferencję: „Mam jej zapisaną prośbę, żeby nie dokładać domknięć do lekkiego pożegnania, więc milczę” (Lunaria, 17.10) i „zgodnie z jej preferencją nie dokładam domknięcia” (17.10). Pasujące aktywne zobowiązanie: 15.10 17:11, autor Terra, „When a conversational exchange has reached a natural conclusion … I do not add explanatory remarks”. Czyli zobowiązania docierają do promptu finalizatora i sterują decyzją mówić/milczeć.
+- Korekta wcześniejszej analizy (sesja 2026-10-19): milczenie na pożegnaniach przypisałem bramce inhibicji. To było błędne — patrz wyżej.
+
+SPRZĄTANIE ZOBOWIĄZAŃ 2026-10-19 (decyzja Zosi: usunąć aktywne zobowiązania, które są cudzymi opisami siebie).
+
+- Backup przed zmianą: /var/lib/akuki/backup-commitments-20261019/borg.db (spójna kopia przez API kopii zapasowej SQLite; w kopii 36 aktywnych).
+- Wycofane 27 przez API działającej usługi (POST /api/commitments/:id/revoke, provenance manual, powód „Cudzy opis siebie albo uwaga do kogoś innego, nie prośba do Akukiego”). Wiersze zostają w bazie z revoked_at, więc ślad nie znika. Bez drugiego procesu piszącego do bazy.
+- Po zmianie: 9 aktywnych, 0 krytycznych (wcześniej 9 krytycznych, wszystkie wśród wycofanych).
+- Zostawione do decyzji Zosi (6 granicznych): #1 cmt_abvucjnh8o3m6yzd (Sol do Akukiego: „mam to zapisane” zamiast „pamiętam” — sprzeczne z #6 od człowieka), #15 cmt_qsfv0o21kykcxvs0 (Lunaria do Akukiego: nie dramatyzuj braku dostępu), #16 cmt_qct0lxvada3pgzv3 (metoda etykiet źródła, częściowo skierowana do Akukiego), #23 cmt_cmdvmew9oop1c8jm (Terra: nie dokładać komentarzy do domkniętej wymiany — to ono sterowało milczeniem na pożegnania), #29 cmt_b6ugq5mouylgsrcg (Lunaria: „idź, otwórz” — jednorazowe, kierunek dopisany przez ekstraktor), #31 cmt_fsyzld6xr0ihlnya (Lunaria do Sola o Akukim).
+- Zostawione jako prawdziwe prośby do Akukiego (3): #2 cmt_myyer2vsskfa5pns, #3 cmt_ep4zw5t7w1027odp, #6 cmt_uixbhzfssliypssb.
+- Pełna lista z klasyfikacją: /tmp/akuki-analiza/commitments.json (lokalnie, nie w repo — cytuje rozmówców).
+
+2026-10-19, ciąg dalszy: Zosia zdecydowała wycofać także 6 granicznych. Wycofane tym samym API (provenance manual). Aktywne zostały 3 prośby od ludzi: cmt_myyer2vsskfa5pns, cmt_ep4zw5t7w1027odp, cmt_uixbhzfssliypssb. Łącznie wycofanych dziś: 33.
 <!-- SECTION:NOTES:END -->

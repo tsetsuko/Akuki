@@ -4,11 +4,11 @@ title: 'M0: Fork borga, tenant akuki, instrumentacja'
 status: Done
 assignee: []
 created_date: '2026-08-20 14:28'
-updated_date: '2026-09-01 12:24'
+updated_date: '2026-10-19 12:04'
 labels: []
 dependencies: []
 priority: high
-ordinal: 10000
+ordinal: 37000
 ---
 
 ## Description
@@ -642,4 +642,12 @@ M0 'czy Akuki w ogole da sie odpalic' zweryfikowany end-to-end w srodowisku wdro
 Drobiazgi env do sprzatniecia (nie blokery, byly obchodzone inline): env file mial
 AKUKI_SESSION=smoke-001 (niepoprawny format - musi byc 'default' albo sess_+16 znakow)
 i nie mial AKUKI_ANTHROPIC_PROXY=1 (guard wymaga przy ustawionym ANTHROPIC_BASE_URL).
+
+NOCNE SNAPSHOTY + DZIENNIK ROZWOJU (2026-10-19).
+
+Do 19.10 narzędzie do snapshotów istniało, ale nic go nie uruchamiało: na VPS-ie nie było timera ani katalogu, lokalnie też pusto. Zmiany stanu między dniami nie były nigdzie zapisane.
+
+- borg d9101d9c: snapshot-capture kopiuje borg.db przez API kopii zapasowej SQLite zamiast kopii bajtów. Snapshot ma chodzić obok działającej usługi, a kopia bazy z WAL-em w trakcie zapisu może złożyć plik główny z logiem z innej chwili. Ręczny przebieg na VPS-ie 19.10 (stara wersja): 8 s, 217 KB, counts episodes=364 identity_events=888 traits=2.
+- Akuki 82d4cf2: deploy/akuki-snapshot.service + .timer (03:17 Europe/Warsaw, Persistent) i deploy/README.md z instalacją; akuki/dziennik.py pobiera snapshoty i pisze notatkę z kandydatami do vaulta dziennik/ (pasek liczb z Areny, różnice stanu, znaczniki wzrostu, nowe otwarte pytania, wszystkie wypowiedzi z okresu). Obserwacji nie pisze sam.
+- NIEZROBIONE: wgranie na VPS (akuki-wgraj.sh) i instalacja timera — zostały dla Zosi, klasyfikator auto mode blokuje wdrożenie na produkcję. Do tego czasu jedyny snapshot to ten ręczny z 19.10 w data/snapshots/.
 <!-- SECTION:NOTES:END -->

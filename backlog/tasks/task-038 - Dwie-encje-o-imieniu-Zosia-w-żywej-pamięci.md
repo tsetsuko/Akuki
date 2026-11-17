@@ -21,7 +21,7 @@ modified_files:
   - borg/src/memory/commitments/repository.test.ts
 priority: high
 type: bug
-ordinal: 12000
+ordinal: 30000
 ---
 
 ## Description

@@ -58,3 +58,40 @@ Nie zawężać pasma ani nie przesuwać progów, żeby udział spadł. Pasmo to 
 - [ ] #3 Udział wspomnień w paśmie policzony także przy innej agregacji (średnia zamiast co najmniej jednego), żeby oddzielić hipotezę 3
 - [ ] #4 Jeśli naprawa: po stronie tego, co model dostaje albo o co jest proszony, zatwierdzona przed implementacją zgodnie z bramką sześciu kroków
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+### Ocena 2026-10-19
+
+**Oceniał model językowy (Claude), nie człowiek.** To jedna ślepa ocena innego modelu, nie ludzka; arkusz Zosi (`dziennik/ocena-rozliczen/2026-10-19-arkusz.md`) zostaje pusty i jej ocena może dać inny wynik. Oceny z uzasadnieniami: `dziennik/ocena-rozliczen/2026-10-19-claude-arkusz.md`. Klucz otwarty dopiero po wpisaniu wszystkich 40 ocen.
+
+Wynik porównania (40 pozycji, ziarno 52; ocenionych 34, `?` przy 6):
+
+| ocena modelu | 0 | 1 | 2 | 3 |
+|---|---|---|---|---|
+| ≤0,15 | 5 | 0 | 0 | 0 |
+| 0,3–0,6 | 8 | 9 | 5 | 3 |
+| ≥0,7 | 0 | 3 | 1 | 0 |
+
+- Pasmo 0,3–0,6: 30 pozycji, z czego 5 oznaczonych `?` (z 6 wszystkich `?`). Z 25 ocenionych: 2 („zaskoczenie pośrednie”) przy 5 (20%), 0–1 przy 17 (68%), 3 przy 3 (12%).
+- Wielowątkowe: 6 ocenionych (+1 `?`), średnia ocena modelu 0,48; jednowątkowe: 28, średnia 0,40. W samym paśmie wielowątkowe są 4 z 25.
+
+**Co widać w rozbiciu pasma na pół** (policzone po otwarciu klucza, z tych samych ocen):
+
+- Wartości 0,3–0,45 (15 pozycji): 8 trafień (0) i 7 zwykłych rozbieżności (1), ani jednej 2 ani 3. Model wpisuje 0,3 przy wyraźnych trafieniach (np. 12, 18, 38, 39).
+- Wartości 0,5–0,6 (10 pozycji): wszystkie pięć ocen 2, wszystkie trzy oceny 3, tylko dwie oceny 1.
+- Czyli model rozróżnia trafienie od chybienia, ale dno jego skali dla trafień leży na 0,3, a 0,5–0,6 dostaje każde chybienie — i to zrozumiałe, warte wracania (2), i to, którego nie dało się przewidzieć, np. czy człowiek się odezwie (3).
+
+**Hipoteza 1 (skala):** potwierdzona, ale w innej postaci niż zapisana. Nie jest tak, że częściowe trafienie dostaje 0,5–0,6 z przyzwyczajenia — częściowe trafienia leżą w większości na 0,3–0,45. Jest tak, że pełne trafienie często dostaje 0,3, więc dolna część pasma to zwykła rozmowa, a górna miesza zaskoczenie pośrednie z szumem. W obu przypadkach liczba z modelu nie odpowiada temu, co badanie (Kidd, Piantadosi & Aslin 2012) nazywa zaskoczeniem pośrednim.
+
+**Hipoteza 2 (kształt oczekiwań):** nie wyjaśnia udziału. Wielowątkowych jest mało (7 z 40, 4 z 25 ocenionych w paśmie), więc nawet gdyby zawsze lądowały w paśmie, nie dałyby 54%. Różnica średnich (0,48 wobec 0,40) idzie w przewidywanym kierunku, ale przy 6 pozycjach to nie jest wynik. Uwaga do oceny: alternatywę jednego aktora („albo zmieni temat, albo…”) liczyłem jako jednowątkową.
+
+**Hipoteza 3 (agregacja):** ta ocena jej nie dotyczy, rozstrzyga ją kryterium #3.
+
+**Poprzednia prognoza** („większość pasma dostanie 1, a 2 co najwyżej ćwierć”) potwierdziła się w połowie. Ocena 2 w 20% pasma, czyli poniżej ćwierci — tak. Większość 1 — nie: 1 dostało 9 z 25, a trafienia (0) prawie tyle samo, 8 z 25. Razem 0–1 to 68%.
+
+**Uboczne:** dwa przewidywania wyglądają na zapisane z perspektywy innego mówcy (27 — „moja ciekawostka” i hibernacja Terry; 28 — „mówczyni” pyta „Philipa”, a odpowiada Akuki). Model ocenił 28 na 0,9. Pięć z sześciu `?` w paśmie wynika z tego, że w okienku nie widać odpowiedzi osoby, której dotyczyło przewidywanie.
+
+Bez propozycji zmiany pasma ani progów (niezmiennik 5, opis zadania). Ocena Zosi na oryginalnym arkuszu jest potrzebna, zanim kryterium #1 uznać za spełnione.
+<!-- SECTION:NOTES:END -->

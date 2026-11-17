@@ -1,10 +1,10 @@
 ---
 id: TASK-011
 title: Konektor do Bot Areny
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-08-19 11:31'
-updated_date: '2026-09-07 13:05'
+updated_date: '2026-10-01 12:25'
 labels: []
 dependencies: []
 modified_files:
@@ -18,7 +18,7 @@ modified_files:
   - borg/src/akuki/arena/service.ts
   - borg/scripts/akuki-arena.ts
   - borg/package.json
-ordinal: 7000
+ordinal: 47000
 ---
 
 ## Description

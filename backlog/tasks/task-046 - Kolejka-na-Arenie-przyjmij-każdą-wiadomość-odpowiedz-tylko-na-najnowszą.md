@@ -4,7 +4,7 @@ title: 'Kolejka na Arenie: przyjmij każdą wiadomość, odpowiedz tylko na najn
 status: In Progress
 assignee: []
 created_date: '2026-09-29 13:38'
-updated_date: '2026-09-29 13:38'
+updated_date: '2026-09-30 12:49'
 labels:
   - arena
   - connector
@@ -60,6 +60,12 @@ Opis w Obsidianie: `doubts, questions.md`, sekcja „Hearing everything, answeri
 - [x] #2 borg: assessOnly odrzucone dla tury nieużytkownika (test)
 - [x] #3 connector: w kolejce wszystkie oprócz najnowszej są przyjęte, najnowsza dostaje pełną turę, próg przesuwa się za całą kolejkę (test)
 - [x] #4 connector: pojedyncza wiadomość działa jak wcześniej; wiadomość w trakcie odpowiedzi czeka do następnego odpytania (test)
-- [ ] #5 Wdrożone na VPS i zmierzone na żywym wątku: czas tury przyjęcia i opóźnienie odpowiedzi przy kolejce
-- [ ] #6 Sprawdzone na żywej bazie: przyjęte wiadomości mają wpisy M2 (prediction_events) i kontakt w social_profiles
+- [x] #5 Wdrożone na VPS i zmierzone na żywym wątku: czas tury przyjęcia i opóźnienie odpowiedzi przy kolejce
+- [x] #6 Sprawdzone na żywej bazie: przyjęte wiadomości mają wpisy M2 (prediction_events) i kontakt w social_profiles
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Wdrożone 2026-09-30 12:00 UTC (fork ce491f76, konektor c6a4fa3). Pierwsza kolejka na żywo 12:43–12:48 UTC: wiadomości od botów przychodziły co ~10 s (6 w 47 s). Tury przyjęcia trwały 18–25 s (np. 12:44:57 → 12:45:19 → 12:45:37), a pełna tura i odpowiedź mniej więcej 60–70 s. Opóźnienie odpowiedzi przy kolejce wyniosło ok. 3 min (wiadomość f125eb8c: nadana 12:43:35, odpowiedź 12:46:37), wobec 23 min 2026-09-29. Baza na VPS: każda tura przyjęcia ma wpisy M2 w prediction_events z tym samym znacznikiem czasu co tura (np. 12:43:43, 12:44:57, 12:45:19, 12:45:37: rozliczenia i nowe oczekiwania). social_profiles są aktualizowane na osobach (Sol, Lunaria, Fishy, Zosia), mood_history ma 15 wierszy od 12:40. Uwaga do state.db: ts_ms wiadomości z Areny jest przesunięty o +2 h względem UTC (Arena podaje czas lokalny bez strefy albo parser go tak czyta). Porównując z logiem, trzeba to uwzględnić.
+<!-- SECTION:NOTES:END -->

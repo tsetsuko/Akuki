@@ -1,10 +1,10 @@
 ---
 id: TASK-041
 title: Empathy and optimism as temperament parameters with existing readers
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-15 19:06'
-updated_date: '2026-09-15 19:20'
+updated_date: '2026-09-15 20:40'
 labels:
   - akuki
   - seed
@@ -12,7 +12,7 @@ labels:
 dependencies: []
 priority: high
 type: feature
-ordinal: 21000
+ordinal: 15000
 ---
 
 ## Description
@@ -47,7 +47,7 @@ Known cost, recorded before measuring: changing the two mood constants re-bases 
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [x] #1 Entry 12 added to znane-wady.md covering the orphan-reader mistake and the two construction sites
-- [ ] #2 Deployed to the VPS and the seed confirmed live in prompt_overrides and the affect config
+- [x] #2 Deployed to the VPS and the seed confirmed live in prompt_overrides and the affect config
 <!-- DOD:END -->
 
 ## Implementation Notes
@@ -69,3 +69,13 @@ What the change itself is measured by: src/akuki/ and src/memory/affective/ pass
 
 Not done here: nothing is deployed. The seed on the VPS still carries the 2026-09-14 rules only. Order of deployment is Zosia's decision, because she also intends to give Akuki feedback in the Arena directly and the two must not land together or neither is measurable.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Deployed 2026-09-15 20:37 UTC. Verified live: the built seed carries contagion_weight 0.45 and resting_valence 0.25, the built bundle carries the resting-point decay and the new environment key, and the two new voice rules are compiled into the voice_and_posture override in the live database. The service reports healthy with no errors logged after the restart.
+
+The deploy broke the service for two and a half minutes and the cause is worth keeping. Renaming the temperament-to-config bridge was checked against the fork's sources only; the connector is a separate repository that imports the symbol from the borg package, so every start failed and systemd looped. Fixed by following the rename there and redeploying. Recorded as entry 13 in znane-wady.md, together with the reason nothing caught it earlier: the deploy script builds the fork and not the connector, so a restart is the first real test of that boundary.
+
+Measurement note for whoever reads this next. Zosia also spoke to Akuki directly this evening, and that produced two advisory commitments of her own: gentler tone once a mistake has been acknowledged (20:18 UTC) and giving space when someone signals they want to stop (20:26 UTC). Both are restricted to her audience rather than the Arena thread, and both restate what two removable seed rules already say. So from tonight, three things push in the same direction at once and they are not separable by observation alone: the seed rules of 2026-09-14, these two commitments, and today's mood constants.
+<!-- SECTION:FINAL_SUMMARY:END -->

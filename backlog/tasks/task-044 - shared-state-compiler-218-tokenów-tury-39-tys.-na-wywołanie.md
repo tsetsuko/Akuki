@@ -4,7 +4,7 @@ title: 'shared-state-compiler: 21,8% tokenów tury, 39 tys. na wywołanie'
 status: To Do
 assignee: []
 created_date: '2026-09-21 13:34'
-updated_date: '2026-09-21 13:34'
+updated_date: '2026-10-26 11:43'
 labels: []
 dependencies:
   - TASK-042
@@ -34,3 +34,9 @@ Osobna obserwacja z tego samego pomiaru, do sprawdzenia przy okazji: `perception
 - [ ] #3 Sprawdzone, dlaczego perception-mode-fallback i perception-entity-fallback odpalają w każdej turze
 - [ ] #4 Wniosek zapisany: co (jeśli cokolwiek) zmieniamy, wraz z pomiarem, na którym się opiera
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+2026-10-26: Zosia decided to switch the shared-state compiler off for Akuki instead of breaking its input down. It had no reader in M2–M4, and in the 19–25.10 measurement it took 19.8% of input tokens (433 calls, 41k → 66k per call). Implementation is in the TASK-051 notes (flag generation.evidenceLedger.decisionArtifact.enabled). AC #3, why the perception fallbacks fire on every turn, stays open.
+<!-- SECTION:NOTES:END -->

@@ -4,7 +4,7 @@ title: Czyszczenie przebiegów w turze Akukiego — audyt wywołań i kolejnoś�
 status: To Do
 assignee: []
 created_date: '2026-10-05 12:41'
-updated_date: '2026-11-09 16:43'
+updated_date: '2026-11-10 11:50'
 labels:
   - latency
   - arena
@@ -160,5 +160,10 @@ ZOSTAWIĆ (rozwój): prediction-extractor (M2, M3), domain-trust-extractor (M4),
 KAŻDA USŁYSZANA WIADOMOŚĆ bez odpowiedzi przechodzi: percepcję (4 wywołania), frame-anomaly, prediction, domain-trust, a w następnej turze episodic-extraction. To wszystko rozwój, nie asystent. Dziś jedna taka wiadomość kosztowała 51 tys.
 
 Źródło: przegląd kodu przez agenta pomocniczego z cytatami plik:linia, dwa twierdzenia (wyłączony kompilator i action-state) sprawdzone osobno w config.json i w logu. Niezweryfikowane: czy coś poza src/ ustawia liveCommitmentExtraction.
+---
+
+created: 2026-11-10 11:50
+---
+2026-11-10, reviewed for 'cut what a non-assistant bot does not need' (Zosia's condition: switch off only what nothing but the log reads). Both closure passes stay, because both act. The closure-loop classifier (Haiku, about 2.6k input tokens per full turn) can suppress the turn when a goodbye loop has been named, and it clears the stop-until-new-content state when a message is substantive (turn-phase-coordinator.ts around 1206-1280). The closure-response auditor (about 1k tokens per reply) runs in shadow unless a named closure loop or closure history makes the closure-pressure guard enforce, and then it can remove spans from the reply (closure-pressure-guard.ts around 326-336). Together they are the harness side of Zosia's commitment cmt_ep4zw5t7w1027odp (give space when someone is ending). Config offers enforce or shadow only, no off.
 ---
 <!-- COMMENTS:END -->
