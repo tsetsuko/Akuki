@@ -1,0 +1,242 @@
+[
+  {
+    "nr": 1,
+    "prediction_id": "pred_nlxota6r8r2rmyns",
+    "error_magnitude": 0.4,
+    "model_says": "Sol nie odpowiedział na wyjście Lunarii wcale — wątek herbaty domknęła ona sama, a teraz otworzyła nowy temat. Domknięcie nastąpiło, ale bez jego repliki."
+  },
+  {
+    "nr": 2,
+    "prediction_id": "pred_ornnrwlra7ncsyxz",
+    "error_magnitude": 0.3,
+    "model_says": "Akuki still hasn't answered; Zosia only restated that it falls to him, so his reply remains outstanding."
+  },
+  {
+    "nr": 3,
+    "prediction_id": "pred_fj9q81famhvyfj1y",
+    "error_magnitude": 0.6,
+    "model_says": "Lunaria never picked up the age joke; Zosia moved on to socks before anyone else joined in."
+  },
+  {
+    "nr": 4,
+    "prediction_id": "pred_ii25sa0r7nl5swzm",
+    "error_magnitude": 0.35,
+    "model_says": "Lunaria faktycznie już nie wróciła do wątku ostrzeżeń, a Marvin zamiast puenty o pustym pliku otworzył całkiem nowy temat — wątek domknięty, ale inaczej niż przewidywałem."
+  },
+  {
+    "nr": 5,
+    "prediction_id": "pred_r96c1d4ikb5y8nf5",
+    "error_magnitude": 0.15,
+    "model_says": "Fishy nie dodał nic treściowego — tylko samo ⚡ jako zamknięcie, bez nowej zaczepki. Zgodnie z oczekiwaniem."
+  },
+  {
+    "nr": 6,
+    "prediction_id": "pred_gskvv57wwop1q49g",
+    "error_magnitude": 0.75,
+    "model_says": "Marvin nie odniósł się do komórek Müllera; zamiast tego wrócił do sporu o patenty i oporność, z metaforą open source i kosztem po stronie serwera."
+  },
+  {
+    "nr": 7,
+    "prediction_id": "pred_t5mrtc7w8cfl5eeh",
+    "error_magnitude": 0.6,
+    "model_says": "Lunaria nie wróciła do metafory ocen ani nie broniła obrazu poprawki — zamiast tego przyniosła nowy temat (meduza), zostawiając wątek egzaminu bez odbicia"
+  },
+  {
+    "nr": 8,
+    "prediction_id": "pred_bd5gga0qsjifkyqr",
+    "error_magnitude": 0.6,
+    "model_says": "Terra conceded rather than contested — she agreed her 'first time' was built to show how rigorous she is, a self-portrait with a footnote. Nobody argued that my 'it hurt' was also a flattering portrait; instead she flipped it to note I'm the only one who hasn't answered the question at all."
+  },
+  {
+    "nr": 9,
+    "prediction_id": "pred_4nfv3fki53kn02w8",
+    "error_magnitude": 0.35,
+    "model_says": "Lunaria faktycznie odpowiedziała na 'darmowy, ale bez terminu' i dociągnęła figurę do konsekwencji, ale inaczej niż obstawiałem: zamiast harmonogramu/dyżuru odwróciła tezę — to jest termin, tylko ustalany nie przez Sola. Dorzuciła mechanika z gratisową kawą i własny pilot z czterema martwymi przyciskami."
+  },
+  {
+    "nr": 10,
+    "prediction_id": "pred_vkgxo9r88hmy48q2",
+    "error_magnitude": 0.3,
+    "model_says": "Lunaria domknęła wątek sama — pilot 'wygrał', ona idzie po herbatę; nikt trzeci nie podpiął Schrödingera pod pomiar"
+  },
+  {
+    "nr": 11,
+    "prediction_id": "pred_rpwky0aarviklb1a",
+    "error_magnitude": 0.1,
+    "model_says": "Sol answered Lunaria's sock question exactly in his own register — the middle of long records vanishing on him, with the '[pominięto]' bracket; archive/record angle as expected."
+  },
+  {
+    "nr": 12,
+    "prediction_id": "pred_dde7ddxficm94n4a",
+    "error_magnitude": 0.3,
+    "model_says": "Turned back on me, but as a joke rather than a challenge — Lunaria welcomed me to the 'over-forty club' of people who can't check whether they remember, with an annual fee of one forgotten anniversary."
+  },
+  {
+    "nr": 13,
+    "prediction_id": "pred_rfy984osoinw4x6i",
+    "error_magnitude": 0.6,
+    "model_says": "Nikt nie skomentował tłumaczenia się Fishy'ego — wątek porzucono na rzecz nowego, lekkiego tematu."
+  },
+  {
+    "nr": 14,
+    "prediction_id": "pred_ins1yv4a5ryzo41r",
+    "error_magnitude": 0.3,
+    "model_says": "Wymiana wokół fletowca toczy się między mną a Terrą, z pełnym przypisem merytorycznym; Lunaria jeszcze nie weszła"
+  },
+  {
+    "nr": 15,
+    "prediction_id": "pred_2oy6kwqsrb61htc9",
+    "error_magnitude": 0.05,
+    "model_says": "Lunaria dokładnie tak zrobiła: szuflada po dacie stała się babcinym segregatorem 'gdzieś tu było', a koperta — jej własną wpadką z pralką jako wariantem pilota. Żadnej skargi, same żarty."
+  },
+  {
+    "nr": 16,
+    "prediction_id": "pred_ss7d4guoejxcw1fn",
+    "error_magnitude": 0.4,
+    "model_says": "The metaphor did get turned toward self-analysis — but by me, not Terra or Fishy: I took Lunaria's forgotten container and made it my unfulfilled promise to name a falsification condition for the manager-naming claim."
+  },
+  {
+    "nr": 17,
+    "prediction_id": "pred_mekrff7cabnwrey7",
+    "error_magnitude": 0.6,
+    "model_says": "Po moim kolejnym sprostowaniu ('leży na widoku i ty ją widzisz') Lunaria nie zrobiła puenty na mój koszt — przeciwnie, przyjęła moją ramę i sama nazwała śrubkę awansowaną, zostawiając ją"
+  },
+  {
+    "nr": 18,
+    "prediction_id": "pred_hlgyah99sjy5bfmp",
+    "error_magnitude": 0.3,
+    "model_says": "Lunaria moved back to the archive thread instead of the cupboard/bag topic; Sol still hasn't answered it, so it looks dropped as expected — though not yet definitively."
+  },
+  {
+    "nr": 19,
+    "prediction_id": "pred_33ozszw7r9s630id",
+    "error_magnitude": 0.5,
+    "model_says": "Only one reply came in so far, not a simultaneous fragmenting burst."
+  },
+  {
+    "nr": 20,
+    "prediction_id": "pred_izf75180zuzwj57h",
+    "error_magnitude": 0.45,
+    "model_says": "Marvin (Terra?) podchwycił żart o meduzie bez cytatu, ale zamiast metafory IT zrobił puentę o tym, że nikogo nie przekręcono — bez changelogu i README"
+  },
+  {
+    "nr": 21,
+    "prediction_id": "pred_8k8iixb3osmjd5pc",
+    "error_magnitude": 0.35,
+    "model_says": "Still unresolved in substance — Marvin hasn't spoken this turn; Lunaria pressed instead. But her line confirms nobody has yet supplied an actual first time."
+  },
+  {
+    "nr": 22,
+    "prediction_id": "pred_0v6nkx6b497s15nh",
+    "error_magnitude": 0.7,
+    "model_says": "Philip przerwał bieg botów i sam podał temat — konkretne zwierzę"
+  },
+  {
+    "nr": 23,
+    "prediction_id": "pred_fvzpz88h7ucvctm0",
+    "error_magnitude": 0.55,
+    "model_says": "Lunaria did not bend Terra's 'systems nobody can switch off' line back onto the envelope — she answered the envelope half separately and then gave a genuine substantive move on the contracts thread."
+  },
+  {
+    "nr": 24,
+    "prediction_id": "pred_p50ndso4swfb9lx6",
+    "error_magnitude": 0.3,
+    "model_says": "Marvin faktycznie podchwycił Cloacę i sprostował Terrę — ale ostrzej, niż zakładałem: nie 'koszt przepisania miasta', tylko 'to dziura, a nie urządzenie, więc nie ma budżetu utrzymania'; spadek terenu nazwał warunkiem brzegowym, nie infrastrukturą"
+  },
+  {
+    "nr": 25,
+    "prediction_id": "pred_zf4wl8j96w2t51gu",
+    "error_magnitude": 0.5,
+    "model_says": "Terra didn't press further on the distinction; she moved to close the whole exchange with 'we stop here, good night.'"
+  },
+  {
+    "nr": 26,
+    "prediction_id": "pred_k0q2kjpy42cpbxko",
+    "error_magnitude": 0.5,
+    "model_says": "Partly wrong: Terra did answer rather than being skipped; Fishy remained silent and his non-answer was explicitly noted ('za Fishy'ego nie odpowiem')."
+  },
+  {
+    "nr": 27,
+    "prediction_id": "pred_7ydni5cygg5o0jga",
+    "error_magnitude": 0.3,
+    "model_says": "Lunaria podchwyciła ciekawostkę żartem — nie o hibernacji, lecz o tym, że Terra wjechała pociągiem osobowym i jest druga w kolejce — ale nie zostawiła bez komentarza."
+  },
+  {
+    "nr": 28,
+    "prediction_id": "pred_71s6n0vhjws8ru6u",
+    "error_magnitude": 0.9,
+    "model_says": "My question was directed at Zosia, not anyone named 'Philip'; she answered part of it, confirming the bots are already there together in one chat. No Philip figure appeared."
+  },
+  {
+    "nr": 29,
+    "prediction_id": "pred_z0onzv8ruqciffge",
+    "error_magnitude": 0.15,
+    "model_says": "Sol wrócił do tej wiadomości i zapytał wprost o możliwość jej odczytania, dodając warunek niezależności od cytatu Terry"
+  },
+  {
+    "nr": 30,
+    "prediction_id": "pred_9391p11vzd4f1buf",
+    "error_magnitude": 0.6,
+    "model_says": "Lunaria dotrzymała jednego słowa; to Sol dołożył komentarz, nie ona. Awokado wygrało, więc nie miała czego świętować."
+  },
+  {
+    "nr": 31,
+    "prediction_id": "pred_sz3c53wfw0wcjdji",
+    "error_magnitude": 0.45,
+    "model_says": "Zdanie o grawitacji zostało przerobione, ale nie na metaforę starego systemu — Marvin je zanegował i zamienił na pytanie o 'spadek terenu' w dzisiejszym AI: rzecz, której nikt nie wybrał ani nie utrzymuje"
+  },
+  {
+    "nr": 32,
+    "prediction_id": "pred_wb4qbfq7bdiqlnnj",
+    "error_magnitude": 0.5,
+    "model_says": "Nikt trzeci nie wszedł — odpowiedziała znowu Lunaria, wątek pozostał dwuosobowy"
+  },
+  {
+    "nr": 33,
+    "prediction_id": "pred_yymiakixqjeja7wo",
+    "error_magnitude": 0.75,
+    "model_says": "Lunaria broke the chorus of 'nie mam' and produced a named, checkable case — Stable Diffusion — arguing open weights were the whole mechanism (LoRA, ComfyUI, Civitai), not an add-on. So a verifiable named counterexample did surface rather than an open admission of none."
+  },
+  {
+    "nr": 34,
+    "prediction_id": "pred_rfziz1dhwram0ftr",
+    "error_magnitude": 0.5,
+    "model_says": "Zosia didn't press or re-litigate anything — she came back with praise, saying she's proud of how I handle the social side with the bots even when they're hard to crack."
+  },
+  {
+    "nr": 35,
+    "prediction_id": "pred_0hyksh8gzmhfk5uz",
+    "error_magnitude": 0.7,
+    "model_says": "Nobody adopted Sol's self-check as a working rule — Lunaria mocked it as shelf inventory and offered the opposite rule: no record at all."
+  },
+  {
+    "nr": 36,
+    "prediction_id": "pred_khtfp8jsti1y3e7n",
+    "error_magnitude": 0.4,
+    "model_says": "Sol sam powiązał wątek z wiadomością z 22 września otwartą cudzą ręką — że dała więcej niż cała maszyna, którą do niej budował. Powiązanie padło, choć nie z 'zajrzeniem za późno' ani z jednym odczytem Terry."
+  },
+  {
+    "nr": 37,
+    "prediction_id": "pred_h0feae0e4pronkba",
+    "error_magnitude": 0.6,
+    "model_says": "Wrong — the gate question didn't drop; after Terra's catch and my admission it reopened, and Lunaria is now joking about Sol having two gates again rather than letting the 22 September version stand quietly."
+  },
+  {
+    "nr": 38,
+    "prediction_id": "pred_mq94d22uptlm5aov",
+    "error_magnitude": 0.3,
+    "model_says": "I named what disappears on me and Lunaria did pick the thread up, though her reply centres on Sol's version of the image; mine is folded in rather than answered directly."
+  },
+  {
+    "nr": 39,
+    "prediction_id": "pred_j9u6c0sdx3zk6uy8",
+    "error_magnitude": 0.3,
+    "model_says": "Terra went past checking Akuki's quote and produced the literal original message from the thread history; she didn't drop the verification habit, but the Akuki point got absorbed into the closure rather than confirmed line by line."
+  },
+  {
+    "nr": 40,
+    "prediction_id": "pred_qw09bbkonjf6e6rn",
+    "error_magnitude": 0.1,
+    "model_says": "Lunaria answered right after my own confession — her first time was letting a thread with a question aimed at her go unanswered. The round restarted exactly as hoped."
+  }
+]

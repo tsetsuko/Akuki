@@ -1,0 +1,986 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Akuki — tokeny</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7;
+    --surface-1: #fcfcfb;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #898781;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --border: rgba(11, 11, 11, 0.10);
+    --wash: rgba(11, 11, 11, 0.05);
+    --shadow: 0 4px 16px rgba(11, 11, 11, 0.08);
+    --s1: #2a78d6;
+    --s2: #eb6834;
+    --s3: #1baf7a;
+    --s4: #eda100;
+    --s5: #e87ba4;
+    --other: #898781;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --page: #0d0d0d;
+      --surface-1: #1a1a19;
+      --text-primary: #f0efec;
+      --text-secondary: #c3c2b7;
+      --text-muted: #898781;
+      --grid: #2c2c2a;
+      --axis: #383835;
+      --border: rgba(255, 255, 255, 0.10);
+      --wash: rgba(255, 255, 255, 0.06);
+      --shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      --s1: #3987e5;
+      --s2: #d95926;
+      --s3: #199e70;
+      --s4: #c98500;
+      --s5: #d55181;
+      --other: #898781;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface-1: #1a1a19;
+    --text-primary: #f0efec;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --wash: rgba(255, 255, 255, 0.06);
+    --shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    --s1: #3987e5;
+    --s2: #d95926;
+    --s3: #199e70;
+    --s4: #c98500;
+    --s5: #d55181;
+    --other: #898781;
+  }
+
+  /* Fixed colour per entity: categories in the daily stack, lines in the prompt chart. */
+  .c1 { --c: var(--s1); }
+  .c2 { --c: var(--s2); }
+  .c3 { --c: var(--s3); }
+  .c4 { --c: var(--s4); }
+  .c5 { --c: var(--s5); }
+  .c0 { --c: var(--other); }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--text-primary);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 1120px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px; }
+  h2 { font-size: 15px; font-weight: 600; margin: 0; }
+  p { margin: 0; }
+
+  .naglowek { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+  .meta { color: var(--text-secondary); font-size: 13px; }
+  .przycisk {
+    font: inherit; font-size: 13px; color: var(--text-primary);
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px 12px; cursor: pointer; white-space: nowrap;
+  }
+  .przycisk:hover { background: var(--wash); }
+  .przycisk:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
+
+  .filtry { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 20px 0 16px; }
+  .filtry .etykieta { color: var(--text-secondary); font-size: 13px; margin-right: 4px; }
+  .filtry .przycisk[aria-checked="true"] { font-weight: 600; }
+  .filtry .przycisk[aria-checked="true"]::before { content: "✓ "; font-weight: 700; }
+
+  .kpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .kafel { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .kafel .etykieta { color: var(--text-secondary); font-size: 13px; }
+  .kafel .wartosc { font-size: 24px; font-weight: 600; margin: 2px 0; }
+  .kafel .dopisek { color: var(--text-muted); font-size: 12px; }
+
+  .karta {
+    margin: 0 0 16px; background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px;
+  }
+  .opis { color: var(--text-secondary); font-size: 13px; margin-top: 4px; max-width: 80ch; }
+  .legenda { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 0 4px; font-size: 13px; color: var(--text-secondary); }
+  .pozycja { display: inline-flex; align-items: center; gap: 6px; }
+  .probka { width: 10px; height: 10px; border-radius: 2px; background: var(--c); display: inline-block; }
+  .kreska { width: 14px; height: 2px; border-radius: 1px; background: var(--c); display: inline-block; }
+  .wykres { width: 100%; }
+  .wykres svg { display: block; }
+  .brak { color: var(--text-muted); font-size: 13px; padding: 24px 0; }
+
+  svg text { font: 11px system-ui, -apple-system, "Segoe UI", sans-serif; fill: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .siatka { stroke: var(--grid); stroke-width: 1; shape-rendering: crispEdges; }
+  .os { stroke: var(--axis); stroke-width: 1; shape-rendering: crispEdges; }
+  .seg { fill: var(--c); }
+  .wash { fill: var(--wash); }
+  .hit { fill: transparent; }
+  .hit:focus { outline: none; }
+  .hit:focus-visible { stroke: var(--text-secondary); stroke-width: 1; }
+  .linia { fill: none; stroke: var(--c); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .kropka { fill: var(--c); stroke: var(--surface-1); stroke-width: 2; }
+  .krzyz { stroke: var(--text-muted); stroke-width: 1; shape-rendering: crispEdges; }
+  .znacznik { stroke: var(--text-secondary); stroke-width: 1; opacity: 0.7; shape-rendering: crispEdges; }
+  svg text.znacznik-nr { fill: var(--text-secondary); font-weight: 600; }
+  svg text.etykieta-linii { fill: var(--text-secondary); font-size: 12px; }
+
+  .zmiany { list-style: none; padding: 0; margin: 8px 0 0; font-size: 13px; color: var(--text-secondary); }
+  .zmiany li { display: flex; gap: 8px; margin-top: 2px; }
+  .zmiany .nr { font-weight: 600; min-width: 1.2em; }
+
+  details { margin-top: 8px; }
+  summary { color: var(--text-secondary); font-size: 13px; cursor: pointer; }
+  .tabela-przewijana { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 8px; }
+  th, td { padding: 5px 8px; border-bottom: 1px solid var(--grid); text-align: left; white-space: nowrap; }
+  th { color: var(--text-secondary); font-weight: 600; }
+  td.liczba, th.liczba { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .tip {
+    position: fixed; z-index: 10; pointer-events: none;
+    background: var(--surface-1); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow);
+    padding: 8px 10px; font-size: 12px; min-width: 160px;
+  }
+  .tip-tytul { color: var(--text-secondary); margin-bottom: 4px; }
+  .tip-wiersz { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+  .tip-wiersz strong { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .tip-wiersz .tip-nazwa { color: var(--text-secondary); }
+  .tip-wiersz .kreska.bez { background: transparent; }
+
+  .blad, .pusto {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px; margin: 16px 0;
+  }
+  .stopka { color: var(--text-muted); font-size: 12px; margin-top: 24px; }
+  .stopka p { margin-top: 4px; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+</style>
+</head>
+<body>
+<main>
+  <header class="naglowek">
+    <div>
+      <h1>Akuki — zużycie tokenów</h1>
+      <p class="meta" id="meta"></p>
+    </div>
+    <button type="button" class="przycisk" id="motyw">Motyw: system</button>
+  </header>
+
+  <div class="blad" id="blad" role="alert" hidden></div>
+  <div class="pusto" id="pusto" hidden>
+    <p>Brak danych. W katalogu projektu uruchom <code>./akuki-tokeny.sh</code>: pobierze log tokenów z VPS-a i otworzy tę stronę.</p>
+  </div>
+
+  <div id="tresc" hidden>
+    <div class="filtry" role="radiogroup" aria-label="Zakres dni" id="zakresy">
+      <span class="etykieta">Zakres:</span>
+    </div>
+
+    <section class="kpi" id="kpi" aria-label="Podsumowanie wybranego zakresu"></section>
+
+    <figure class="karta">
+      <figcaption>
+        <h2>Tokeny wejścia dziennie, według źródła</h2>
+        <p class="opis">Wejście to wszystko, co model przeczytał: zwykłe tokeny plus odczyt i zapis cache.
+          „Odpowiedź” obejmuje też rundy pobudek, bo log tokenów ich nie odróżnia.
+          Numery nad słupkami to zmiany w Akukim, opisane pod wykresem.</p>
+      </figcaption>
+      <div class="legenda" id="leg-dzienny"></div>
+      <div class="wykres" id="w-dzienny"></div>
+      <ul class="zmiany" id="zmiany"></ul>
+      <details><summary>Dane w tabeli</summary><div class="tabela-przewijana" id="t-dzienny"></div></details>
+    </figure>
+
+    <figure class="karta">
+      <figcaption>
+        <h2>Rozmiar promptu na jedno wywołanie</h2>
+        <p class="opis">Mediana tokenów wejścia na jedno wywołanie danego dnia. To rozmiar promptu: rośnie razem z pamięcią Akukiego, a nie z ruchem na Arenie.</p>
+      </figcaption>
+      <div class="legenda" id="leg-prompt"></div>
+      <div class="wykres" id="w-prompt"></div>
+      <details><summary>Dane w tabeli</summary><div class="tabela-przewijana" id="t-prompt"></div></details>
+    </figure>
+
+    <figure class="karta">
+      <figcaption>
+        <h2>Przetworzone wiadomości dziennie</h2>
+        <p class="opis">Jedna przetworzona wiadomość to jedno wywołanie percepcji nastroju. Liczy się też wiadomość, na którą Akuki nie odpowiedział.</p>
+      </figcaption>
+      <div class="wykres" id="w-wiadomosci"></div>
+      <details><summary>Dane w tabeli</summary><div class="tabela-przewijana" id="t-wiadomosci"></div></details>
+    </figure>
+
+    <figure class="karta">
+      <figcaption>
+        <h2>Pobudki</h2>
+        <p class="opis" id="opis-pobudki">Tury, które Akuki zaczyna sam, bez wiadomości na Arenie.</p>
+      </figcaption>
+      <div class="tabela-przewijana" id="t-pobudki"></div>
+    </figure>
+
+    <figure class="karta">
+      <figcaption>
+        <h2>Według miejsca wywołania</h2>
+        <p class="opis">Każde miejsce w kodzie borga, które woła model, w wybranym zakresie. Kolumna „kategoria” pokazuje, do której części wykresu dziennego trafia.</p>
+      </figcaption>
+      <div class="tabela-przewijana" id="t-budzety"></div>
+    </figure>
+
+    <footer class="stopka">
+      <p>Dni są liczone w czasie lokalnym tej przeglądarki. Raporty w backlogu liczą dni w UTC, więc sumy dzienne mogą się trochę różnić.</p>
+      <p>Źródło: log tokenów konektora i tabela pobudek z bazy Akukiego, pobrane przez <code>./akuki-tokeny.sh</code>. Strona niczego nie wysyła i działa bez internetu.</p>
+    </footer>
+  </div>
+</main>
+
+<div class="tip" id="tip" role="tooltip" hidden></div>
+
+<script src="../data/tokeny/dane.js"></script>
+<script>
+"use strict";
+
+window.addEventListener("error", (zdarzenie) => {
+  const blad = document.getElementById("blad");
+  blad.hidden = false;
+  blad.textContent = "Błąd strony: " + zdarzenie.message;
+});
+
+// Changes to Akuki that may shift token use, drawn as numbered markers on the
+// daily chart. Add a line after every such deploy.
+const ZMIANY = [
+  { kiedy: "2026-10-26T11:55:00Z", opis: "Wyłączone: kompilator wspólnego stanu i ekstraktor stanu akcji. Okno ostatnich doświadczeń z 3 dni do 1." },
+  { kiedy: "2026-10-30T11:59:00Z", opis: "Merge upstreamu (190 commitów). Pobudki bez unieważnionych zobowiązań, najwyżej 2 na dobę." },
+  { kiedy: "2026-11-02T08:30:00Z", opis: "Pobudka najwyżej 3 rundy. Wyłączone: nocny audytor i rozstrzygacz kolejki przeglądu." },
+];
+
+// Order is the stacking order (bottom up) and fixes each category's colour.
+const KATEGORIE = [
+  { id: "odpowiedz", nazwa: "Odpowiedź (S1, S2, plan)", klasa: "c1" },
+  { id: "ekstraktory", nazwa: "Ekstraktory i percepcja", klasa: "c2" },
+  { id: "mechanizmy", nazwa: "Mechanizmy M2–M4", klasa: "c3" },
+  { id: "refleksja", nazwa: "Refleksja po turze", klasa: "c4" },
+  { id: "tlo", nazwa: "Procesy w tle", klasa: "c5" },
+  { id: "inne", nazwa: "Inne", klasa: "c0" },
+];
+
+function kategoria(budzet) {
+  if (budzet === "cognition-system-1" || budzet === "cognition-system-2" || budzet === "cognition-plan") {
+    return "odpowiedz";
+  }
+  if (budzet === "reflection") {
+    return "refleksja";
+  }
+  // M2 (prediction), M4 (domain trust) and the mood perception that M3 reads.
+  if (budzet === "prediction-extractor" || budzet === "domain-trust-extractor" || budzet === "perception-affective") {
+    return "mechanizmy";
+  }
+  if (
+    budzet.startsWith("offline-") ||
+    ["review-resolver", "semantic-extraction", "semantic-contradiction-judge", "belief-reviser"].includes(budzet)
+  ) {
+    return "tlo";
+  }
+  if (/-extractor$|-extraction$|^perception-|classifier|judge|auditor|^shared-state-|^recall-expansion$|^generation-gate$|^procedural-context$|^image-perception$|^commitment-revision$/.test(budzet)) {
+    return "ekstraktory";
+  }
+  // A budget label nobody classified yet: visible as "Inne" rather than hidden in a category.
+  return "inne";
+}
+
+const LINIE = [
+  { budzet: "cognition-system-2", nazwa: "S2, tryb głęboki", krotko: "S2", klasa: "c1" },
+  { budzet: "cognition-system-1", nazwa: "S1, tryb szybki", krotko: "S1", klasa: "c2" },
+  { budzet: "cognition-plan", nazwa: "Plan przed S2", krotko: "plan", klasa: "c3" },
+];
+
+const WYZWALACZE = {
+  executive_focus_due: "termin celu",
+  goal_followup_due: "termin celu (follow-up)",
+  commitment_revoked: "unieważnione zobowiązanie",
+  commitment_expiring: "wygasające zobowiązanie",
+  open_question_urgency_bump: "pilne otwarte pytanie",
+  open_question_dormant: "uśpione otwarte pytanie",
+  scheduled_wake: "zaplanowana przez Akukiego",
+  scheduled_reflection: "zaplanowana refleksja",
+  mood_valence_drop: "spadek nastroju",
+  prediction_error_spike: "skok błędu przewidywania (M2)",
+};
+const WYNIKI = { headway: "postęp", silent: "cisza", error: "błąd", busy: "zajęty", interrupted: "przerwana" };
+
+const ZAKRESY = [
+  { dni: 7, nazwa: "7 dni" },
+  { dni: 14, nazwa: "14 dni" },
+  { dni: 30, nazwa: "30 dni" },
+  { dni: 90, nazwa: "90 dni" },
+  { dni: null, nazwa: "wszystko" },
+];
+
+const fKrotko = new Intl.NumberFormat("pl-PL", { notation: "compact", maximumFractionDigits: 1 });
+const fPelna = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 0 });
+const fJedno = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 1 });
+const fProcent = new Intl.NumberFormat("pl-PL", { style: "percent", maximumFractionDigits: 1 });
+
+const dwieCyfry = (n) => String(n).padStart(2, "0");
+const dataKrotko = (t) => { const d = new Date(t); return `${dwieCyfry(d.getDate())}.${dwieCyfry(d.getMonth() + 1)}`; };
+const dataDluga = (t) => new Date(t).toLocaleDateString("pl-PL", { weekday: "short", day: "numeric", month: "long" });
+const czas = (ms) => new Date(ms).toLocaleString("pl-PL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+const nazwaModelu = (m) => m.replace(/^claude-/, "").replace(/-\d{8}$/, "");
+// The day the data was fetched is still running, so its totals are partial.
+function tytulDnia(t) {
+  const pobrano = Date.parse(D.pobrano);
+  if (t !== poczatekDnia(pobrano)) return dataDluga(t);
+  const godzina = new Date(pobrano).toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
+  return `${dataDluga(t)}, niepełny: do ${godzina}`;
+}
+
+function poczatekDnia(ms) {
+  const d = new Date(ms);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+// Calendar arithmetic, not +24 h: a day around a DST change is 23 or 25 hours long.
+function przesunDni(ms, ile) {
+  const d = new Date(ms);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + ile).getTime();
+}
+function mediana(wartosci) {
+  if (wartosci.length === 0) return null;
+  const s = [...wartosci].sort((a, b) => a - b);
+  const m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+function podzialki(max) {
+  if (!(max > 0)) return [0, 1];
+  const surowy = max / 5;
+  const rzad = 10 ** Math.floor(Math.log10(surowy));
+  const n = surowy / rzad;
+  const krok = (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * rzad;
+  const wynik = [];
+  for (let v = 0; v < max + krok * 0.999; v += krok) wynik.push(v);
+  return wynik;
+}
+
+const D = window.AKUKI_TOKENY;
+
+function przygotuj() {
+  const katBudzetu = D.budzety.map(kategoria);
+  const wywolania = D.wywolania.map((r) => ({
+    ms: r[0],
+    b: r[1],
+    m: r[2],
+    // Input as the model read it: plain input plus cache reads and cache writes.
+    wejscie: r[3] + r[5] + r[6],
+    wyjscie: r[4],
+    cache: r[5],
+  }));
+  wywolania.sort((a, b) => a.ms - b.ms);
+  const pobudki = D.pobudki.map(([ms, wyzwalacz, wynik, rundy]) => ({ ms, wyzwalacz, wynik, rundy }));
+  return { katBudzetu, wywolania, pobudki };
+}
+
+function zakresDni(liczbaDni) {
+  const ostatni = poczatekDnia(Date.parse(D.pobrano));
+  const pierwszy =
+    liczbaDni === null
+      ? poczatekDnia(dane.wywolania.length ? dane.wywolania[0].ms : Date.parse(D.pobrano))
+      : przesunDni(ostatni, -(liczbaDni - 1));
+  const dni = [];
+  for (let t = pierwszy; t <= ostatni; t = przesunDni(t, 1)) dni.push(t);
+  return { od: pierwszy, do: przesunDni(ostatni, 1), dni };
+}
+
+function agreguj(zakres) {
+  const { od, do: koniec, dni } = zakres;
+  const n = dni.length;
+  const indeksDnia = new Map(dni.map((t, i) => [t, i]));
+  const indeksKategorii = new Map(KATEGORIE.map((k, i) => [k.id, i]));
+  const indeksLinii = new Map(LINIE.map((l, i) => [D.budzety.indexOf(l.budzet), i]));
+  const percepcja = D.budzety.indexOf("perception-affective");
+
+  const naKategorie = KATEGORIE.map(() => new Array(n).fill(0));
+  const wiadomosci = new Array(n).fill(0);
+  const linie = LINIE.map(() => Array.from({ length: n }, () => []));
+  const budzety = new Map();
+  let suma = 0;
+  let zCache = 0;
+
+  for (const w of dane.wywolania) {
+    if (w.ms < od || w.ms >= koniec) continue;
+    const i = indeksDnia.get(poczatekDnia(w.ms));
+    if (i === undefined) continue;
+    naKategorie[indeksKategorii.get(dane.katBudzetu[w.b])][i] += w.wejscie;
+    if (w.b === percepcja) wiadomosci[i] += 1;
+    const l = indeksLinii.get(w.b);
+    if (l !== undefined) linie[l][i].push(w.wejscie);
+    let s = budzety.get(w.b);
+    if (!s) {
+      s = { wywolania: 0, wejscie: 0, wyjscie: 0, cache: 0, model: w.m };
+      budzety.set(w.b, s);
+    }
+    s.wywolania += 1;
+    s.wejscie += w.wejscie;
+    s.wyjscie += w.wyjscie;
+    s.cache += w.cache;
+    s.model = w.m;
+    suma += w.wejscie;
+    zCache += w.cache;
+  }
+
+  const pobudki = dane.pobudki.filter((p) => p.ms >= od && p.ms < koniec);
+  return {
+    dni,
+    naKategorie,
+    wiadomosci,
+    medianyDzienne: linie.map((naDzien) => naDzien.map(mediana)),
+    medianyZakresu: linie.map((naDzien) => mediana(naDzien.flat())),
+    wywolaniaLinii: linie.map((naDzien) => naDzien.map((x) => x.length)),
+    budzety,
+    suma,
+    zCache,
+    pobudki,
+  };
+}
+
+/* ---------- SVG and DOM helpers ---------- */
+
+const NS = "http://www.w3.org/2000/svg";
+function svgEl(tag, atrybuty, rodzic) {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(atrybuty)) e.setAttribute(k, v);
+  if (rodzic) rodzic.appendChild(e);
+  return e;
+}
+function htmlEl(tag, klasa, tekst) {
+  const e = document.createElement(tag);
+  if (klasa) e.className = klasa;
+  if (tekst !== undefined) e.textContent = tekst;
+  return e;
+}
+
+function ramka(kontener, { wysokosc, lewo = 64, prawo = 16, gora = 24, dol = 30, opis }) {
+  const szer = Math.max(320, kontener.clientWidth);
+  const calosc = gora + wysokosc + dol;
+  const svg = svgEl("svg", { width: szer, height: calosc, viewBox: `0 0 ${szer} ${calosc}`, role: "img", "aria-label": opis });
+  kontener.appendChild(svg);
+  return { svg, x0: lewo, x1: szer - prawo, y0: gora, y1: gora + wysokosc };
+}
+
+function osY(R, wartosci, y) {
+  for (const v of wartosci) {
+    const yy = Math.round(y(v)) + 0.5;
+    svgEl("line", { x1: R.x0, x2: R.x1, y1: yy, y2: yy, class: v === 0 ? "os" : "siatka" }, R.svg);
+    const t = svgEl("text", { x: R.x0 - 8, y: yy + 4, "text-anchor": "end" }, R.svg);
+    t.textContent = v === 0 ? "0" : fKrotko.format(v);
+  }
+}
+
+function osX(R, dni, pasmo) {
+  // Labels are anchored to the last day, so the newest date is always named.
+  const co = Math.max(1, Math.ceil(44 / pasmo));
+  dni.forEach((t, i) => {
+    if ((dni.length - 1 - i) % co !== 0) return;
+    const tekst = svgEl("text", { x: R.x0 + (i + 0.5) * pasmo, y: R.y1 + 18, "text-anchor": "middle" }, R.svg);
+    tekst.textContent = dataKrotko(t);
+  });
+}
+
+// Column with a 4px rounded data end and a square base.
+function sciezkaSlupka(x, y, w, h, zaokraglenie) {
+  const r = Math.min(zaokraglenie, w / 2, h);
+  if (r <= 0) return `M${x},${y}h${w}v${h}h${-w}Z`;
+  return `M${x},${y + h}V${y + r}A${r},${r} 0 0 1 ${x + r},${y}H${x + w - r}A${r},${r} 0 0 1 ${x + w},${y + r}V${y + h}Z`;
+}
+
+const tip = document.getElementById("tip");
+function pokazTip(tytul, wiersze, x, y) {
+  tip.replaceChildren(htmlEl("div", "tip-tytul", tytul));
+  for (const w of wiersze) {
+    const wiersz = htmlEl("div", "tip-wiersz");
+    const klucz = htmlEl("span", w.klasa ? `kreska ${w.klasa}` : "kreska bez");
+    wiersz.append(klucz, htmlEl("strong", "", w.wartosc), htmlEl("span", "tip-nazwa", w.nazwa));
+    tip.appendChild(wiersz);
+  }
+  tip.hidden = false;
+  const odstep = 14;
+  const r = tip.getBoundingClientRect();
+  let lewo = x + odstep;
+  if (lewo + r.width > window.innerWidth - 8) lewo = x - odstep - r.width;
+  let gora = y + odstep;
+  if (gora + r.height > window.innerHeight - 8) gora = y - odstep - r.height;
+  tip.style.left = `${Math.max(8, lewo)}px`;
+  tip.style.top = `${Math.max(8, gora)}px`;
+}
+function ukryjTip() {
+  tip.hidden = true;
+}
+// Pointer events carry a position; keyboard focus does not, so use the element's centre.
+function punkt(zdarzenie, element) {
+  if (zdarzenie && typeof zdarzenie.clientX === "number" && zdarzenie.type.startsWith("pointer")) {
+    return { x: zdarzenie.clientX, y: zdarzenie.clientY };
+  }
+  const r = element.getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + r.height / 3 };
+}
+
+function tabela(naglowki, wiersze) {
+  const t = document.createElement("table");
+  const tr = t.createTHead().insertRow();
+  for (const n of naglowki) tr.appendChild(htmlEl("th", n.liczba ? "liczba" : "", n.tekst));
+  const tb = t.createTBody();
+  for (const w of wiersze) {
+    const r = tb.insertRow();
+    w.forEach((komorka, i) => {
+      const td = r.insertCell();
+      if (komorka instanceof Node) td.appendChild(komorka);
+      else td.textContent = komorka;
+      if (naglowki[i].liczba) td.classList.add("liczba");
+    });
+  }
+  return t;
+}
+
+/* ---------- Column chart: stacked for several series, plain for one ---------- */
+
+function wykresSlupkowy(kontener, dni, serie, { opis, formatuj, znaczniki = [] }) {
+  kontener.replaceChildren();
+  const n = dni.length;
+  const sumy = dni.map((_, i) => serie.reduce((s, x) => s + x.wartosci[i], 0));
+  if (!sumy.some((v) => v > 0)) {
+    kontener.appendChild(htmlEl("p", "brak", "Brak danych w tym zakresie."));
+    return;
+  }
+  const R = ramka(kontener, { wysokosc: 240, opis });
+  const skala = podzialki(Math.max(...sumy));
+  const gora = skala[skala.length - 1];
+  const wysokoscPlotu = R.y1 - R.y0;
+  const y = (v) => R.y1 - (v / gora) * wysokoscPlotu;
+  osY(R, skala, y);
+
+  const pasmo = (R.x1 - R.x0) / n;
+  const szerokosc = Math.min(24, Math.max(2, pasmo * 0.68));
+  osX(R, dni, pasmo);
+
+  const wash = svgEl("rect", { class: "wash", y: R.y0, width: pasmo, height: wysokoscPlotu, visibility: "hidden" }, R.svg);
+
+  dni.forEach((_, i) => {
+    const x = R.x0 + i * pasmo + (pasmo - szerokosc) / 2;
+    const widoczne = serie.filter((s) => s.wartosci[i] > 0);
+    let dolSegmentu = R.y1;
+    widoczne.forEach((s, k) => {
+      const h = (s.wartosci[i] / gora) * wysokoscPlotu;
+      const gornaKrawedz = dolSegmentu - h;
+      // 2px surface gap above the segment below; a segment thinner than the gap
+      // draws nothing and stays readable in the tooltip and the table.
+      const przerwa = k === 0 ? 0 : 2;
+      const widocznaWysokosc = h - przerwa;
+      if (widocznaWysokosc > 0.5) {
+        const najwyzszy = k === widoczne.length - 1;
+        svgEl("path", { d: sciezkaSlupka(x, gornaKrawedz, szerokosc, widocznaWysokosc, najwyzszy ? 4 : 0), class: `seg ${s.klasa}` }, R.svg);
+      }
+      dolSegmentu = gornaKrawedz;
+    });
+  });
+
+  for (const z of znaczniki) {
+    const dzien = poczatekDnia(z.ms);
+    const i = dni.indexOf(dzien);
+    if (i < 0) continue;
+    const ulamek = (z.ms - dzien) / (przesunDni(dzien, 1) - dzien);
+    const x = Math.round(R.x0 + (i + ulamek) * pasmo) + 0.5;
+    svgEl("line", { x1: x, x2: x, y1: R.y0 - 4, y2: R.y1, class: "znacznik" }, R.svg);
+    const nr = svgEl("text", { x, y: R.y0 - 9, "text-anchor": "middle", class: "znacznik-nr" }, R.svg);
+    nr.textContent = String(z.nr);
+  }
+
+  // The whole day band is the hit target, wider than the column it holds.
+  dni.forEach((t, i) => {
+    const pas = svgEl("rect", {
+      x: R.x0 + i * pasmo, y: R.y0, width: pasmo, height: wysokoscPlotu, class: "hit", tabindex: 0,
+      "aria-label": `${dataDluga(t)}: ${formatuj(sumy[i])}`,
+    }, R.svg);
+    const pokaz = (zd) => {
+      wash.setAttribute("x", R.x0 + i * pasmo);
+      wash.setAttribute("visibility", "visible");
+      const wiersze = serie.length > 1
+        ? [
+            { wartosc: formatuj(sumy[i]), nazwa: "razem" },
+            ...[...serie].reverse().filter((s) => s.wartosci[i] > 0)
+              .map((s) => ({ wartosc: formatuj(s.wartosci[i]), nazwa: s.nazwa, klasa: s.klasa })),
+          ]
+        : [{ wartosc: formatuj(sumy[i]), nazwa: serie[0].nazwa }];
+      const p = punkt(zd, pas);
+      pokazTip(tytulDnia(t), wiersze, p.x, p.y);
+    };
+    const schowaj = () => {
+      wash.setAttribute("visibility", "hidden");
+      ukryjTip();
+    };
+    pas.addEventListener("pointermove", pokaz);
+    pas.addEventListener("focus", pokaz);
+    pas.addEventListener("pointerleave", schowaj);
+    pas.addEventListener("blur", schowaj);
+  });
+}
+
+/* ---------- Line chart: median prompt size per call ---------- */
+
+function wykresPromptu(kontener, agg) {
+  kontener.replaceChildren();
+  const { dni, medianyDzienne, wywolaniaLinii } = agg;
+  const n = dni.length;
+  const wszystkie = medianyDzienne.flat().filter((v) => v !== null);
+  if (wszystkie.length === 0) {
+    kontener.appendChild(htmlEl("p", "brak", "Brak wywołań odpowiedzi w tym zakresie."));
+    return;
+  }
+  const R = ramka(kontener, { wysokosc: 220, prawo: 56, opis: "Wykres liniowy: mediana tokenów wejścia na jedno wywołanie, S2, S1 i plan, dzień po dniu" });
+  const skala = podzialki(Math.max(...wszystkie));
+  const gora = skala[skala.length - 1];
+  const y = (v) => R.y1 - (v / gora) * (R.y1 - R.y0);
+  osY(R, skala, y);
+  const pasmo = (R.x1 - R.x0) / n;
+  const srodek = (i) => R.x0 + (i + 0.5) * pasmo;
+  osX(R, dni, pasmo);
+
+  const konce = [];
+  LINIE.forEach((linia, li) => {
+    let d = "";
+    let ciagla = false;
+    let ostatni = -1;
+    medianyDzienne[li].forEach((v, i) => {
+      if (v === null) {
+        ciagla = false;
+        return;
+      }
+      const sasiedzi = (medianyDzienne[li][i - 1] ?? null) !== null || (medianyDzienne[li][i + 1] ?? null) !== null;
+      if (!sasiedzi) {
+        // A lone day has no segment to draw, so it gets a marker instead.
+        svgEl("circle", { cx: srodek(i), cy: y(v), r: 4, class: `kropka ${linia.klasa}` }, R.svg);
+      }
+      d += `${ciagla ? "L" : "M"}${srodek(i)},${y(v)}`;
+      ciagla = true;
+      ostatni = i;
+    });
+    if (d) svgEl("path", { d, class: `linia ${linia.klasa}` }, R.svg);
+    if (ostatni >= 0) {
+      const v = medianyDzienne[li][ostatni];
+      svgEl("circle", { cx: srodek(ostatni), cy: y(v), r: 4, class: `kropka ${linia.klasa}` }, R.svg);
+      konce.push({ x: srodek(ostatni) + 8, y: y(v), tekst: linia.krotko });
+    }
+  });
+  // End labels only where they do not collide; the legend and tooltip carry the rest.
+  konce.sort((a, b) => a.y - b.y);
+  let poprzedni = -Infinity;
+  for (const k of konce) {
+    if (k.y - poprzedni < 13) continue;
+    const t = svgEl("text", { x: k.x, y: k.y + 4, class: "etykieta-linii" }, R.svg);
+    t.textContent = k.tekst;
+    poprzedni = k.y;
+  }
+
+  const krzyz = svgEl("g", { visibility: "hidden" }, R.svg);
+  const pion = svgEl("line", { y1: R.y0, y2: R.y1, class: "krzyz" }, krzyz);
+  const kropki = LINIE.map((l) => svgEl("circle", { r: 4, class: `kropka ${l.klasa}` }, krzyz));
+  const nakladka = svgEl("rect", {
+    x: R.x0, y: R.y0, width: R.x1 - R.x0, height: R.y1 - R.y0, class: "hit", tabindex: 0,
+    "aria-label": "Rozmiar promptu dzień po dniu. Strzałki w lewo i w prawo zmieniają dzień.",
+  }, R.svg);
+  let aktywny = n - 1;
+
+  function pokazDzien(i, x, yEkranu) {
+    aktywny = Math.max(0, Math.min(n - 1, i));
+    const cx = Math.round(srodek(aktywny)) + 0.5;
+    pion.setAttribute("x1", cx);
+    pion.setAttribute("x2", cx);
+    LINIE.forEach((_, li) => {
+      const v = medianyDzienne[li][aktywny];
+      kropki[li].setAttribute("visibility", v === null ? "hidden" : "visible");
+      if (v !== null) {
+        kropki[li].setAttribute("cx", srodek(aktywny));
+        kropki[li].setAttribute("cy", y(v));
+      }
+    });
+    krzyz.setAttribute("visibility", "visible");
+    const wiersze = LINIE.map((l, li) => {
+      const v = medianyDzienne[li][aktywny];
+      const ile = wywolaniaLinii[li][aktywny];
+      return {
+        wartosc: v === null ? "—" : fKrotko.format(v),
+        nazwa: v === null ? l.nazwa : `${l.nazwa} (${ile} ${ile === 1 ? "wywołanie" : "wywołań"})`,
+        klasa: l.klasa,
+      };
+    });
+    pokazTip(tytulDnia(dni[aktywny]), wiersze, x, yEkranu);
+  }
+  const zPozycji = (zd) => {
+    const r = R.svg.getBoundingClientRect();
+    pokazDzien(Math.floor((zd.clientX - r.left - R.x0) / pasmo), zd.clientX, zd.clientY);
+  };
+  const zKlawiatury = () => {
+    const r = R.svg.getBoundingClientRect();
+    pokazDzien(aktywny, r.left + srodek(aktywny), r.top + R.y0 + 20);
+  };
+  nakladka.addEventListener("pointermove", zPozycji);
+  nakladka.addEventListener("focus", zKlawiatury);
+  nakladka.addEventListener("keydown", (zd) => {
+    if (zd.key !== "ArrowLeft" && zd.key !== "ArrowRight") return;
+    zd.preventDefault();
+    aktywny += zd.key === "ArrowLeft" ? -1 : 1;
+    aktywny = Math.max(0, Math.min(n - 1, aktywny));
+    zKlawiatury();
+  });
+  const schowaj = () => {
+    krzyz.setAttribute("visibility", "hidden");
+    ukryjTip();
+  };
+  nakladka.addEventListener("pointerleave", schowaj);
+  nakladka.addEventListener("blur", schowaj);
+}
+
+/* ---------- Page ---------- */
+
+function legenda(kontener, pozycje, ksztalt) {
+  kontener.replaceChildren();
+  for (const p of pozycje) {
+    const el = htmlEl("span", "pozycja");
+    el.append(htmlEl("span", `${ksztalt} ${p.klasa}`), document.createTextNode(p.nazwa));
+    kontener.appendChild(el);
+  }
+}
+
+function kafel(etykieta, wartosc, dopisek) {
+  const k = htmlEl("div", "kafel");
+  k.append(htmlEl("div", "etykieta", etykieta), htmlEl("div", "wartosc", wartosc));
+  if (dopisek) k.appendChild(htmlEl("div", "dopisek", dopisek));
+  return k;
+}
+
+function porownanie(teraz, wczesniej, liczbaDni) {
+  if (liczbaDni === null || teraz === null || !wczesniej) return null;
+  const zmiana = (teraz - wczesniej) / wczesniej;
+  return `${zmiana > 0 ? "+" : ""}${fProcent.format(zmiana)} wobec poprzednich ${liczbaDni} dni`;
+}
+
+function rysuj() {
+  const liczbaDni = ZAKRESY[wybranyZakres].dni;
+  const zakres = zakresDni(liczbaDni);
+  const agg = agreguj(zakres);
+  const n = zakres.dni.length;
+  // The comparison period must lie wholly inside the log; days before the log
+  // began would count as zero and inflate every change.
+  const odPoprzedniego = liczbaDni === null ? null : przesunDni(zakres.od, -liczbaDni);
+  const poprzedni =
+    odPoprzedniego !== null && dane.wywolania.length && odPoprzedniego >= poczatekDnia(dane.wywolania[0].ms)
+      ? agreguj({
+          od: odPoprzedniego,
+          do: zakres.od,
+          dni: Array.from({ length: liczbaDni }, (_, i) => przesunDni(odPoprzedniego, i)),
+        })
+      : null;
+  const iS1 = LINIE.findIndex((l) => l.krotko === "S1");
+  const iS2 = LINIE.findIndex((l) => l.krotko === "S2");
+
+  // Summary tiles.
+  const kpi = document.getElementById("kpi");
+  const wiadomosci = agg.wiadomosci.reduce((a, b) => a + b, 0);
+  const dzienneWejscie = agg.suma / n;
+  const s1 = agg.medianyZakresu[iS1];
+  const s2 = agg.medianyZakresu[iS2];
+  const maksRund = agg.pobudki.reduce((m, p) => Math.max(m, p.rundy ?? 0), 0);
+  kpi.replaceChildren(
+    kafel("Wejście dziennie", fKrotko.format(dzienneWejscie),
+      porownanie(dzienneWejscie, poprzedni && poprzedni.suma / liczbaDni, liczbaDni) ?? "średnia z zakresu"),
+    kafel("Wiadomości dziennie", fJedno.format(wiadomosci / n),
+      porownanie(wiadomosci / n, poprzedni && poprzedni.wiadomosci.reduce((a, b) => a + b, 0) / liczbaDni, liczbaDni) ?? "średnia z zakresu"),
+    kafel("Prompt S1, mediana", s1 === null ? "—" : fKrotko.format(s1),
+      porownanie(s1, poprzedni && poprzedni.medianyZakresu[iS1], liczbaDni) ?? "na jedno wywołanie"),
+    kafel("Prompt S2, mediana", s2 === null ? "—" : fKrotko.format(s2),
+      porownanie(s2, poprzedni && poprzedni.medianyZakresu[iS2], liczbaDni) ?? "na jedno wywołanie"),
+    kafel("Pobudki", fPelna.format(agg.pobudki.length),
+      agg.pobudki.length ? `najwięcej rund w jednej: ${maksRund}` : "w tym zakresie"),
+    kafel("Z cache", agg.suma ? fProcent.format(agg.zCache / agg.suma) : "—", "część wejścia czytana z cache"),
+  );
+
+  // Daily input by category.
+  const serieKategorii = KATEGORIE.map((k, i) => ({ ...k, wartosci: agg.naKategorie[i] }));
+  const obecne = serieKategorii.filter((s) => s.wartosci.some((v) => v > 0));
+  legenda(document.getElementById("leg-dzienny"), obecne, "probka");
+  const znaczniki = ZMIANY.map((z, i) => ({ ms: Date.parse(z.kiedy), nr: i + 1, opis: z.opis }))
+    .filter((z) => z.ms >= zakres.od && z.ms < zakres.do);
+  wykresSlupkowy(document.getElementById("w-dzienny"), zakres.dni, obecne, {
+    opis: "Wykres słupkowy skumulowany: tokeny wejścia dziennie według źródła",
+    formatuj: (v) => fKrotko.format(v),
+    znaczniki,
+  });
+  const listaZmian = document.getElementById("zmiany");
+  listaZmian.replaceChildren(...znaczniki.map((z) => {
+    const li = htmlEl("li");
+    li.append(htmlEl("span", "nr", String(z.nr)), htmlEl("span", "", `${czas(z.ms)} — ${z.opis}`));
+    return li;
+  }));
+  document.getElementById("t-dzienny").replaceChildren(tabela(
+    [{ tekst: "Dzień" }, ...obecne.map((s) => ({ tekst: s.nazwa, liczba: true })), { tekst: "Razem", liczba: true }],
+    zakres.dni.map((t, i) => [
+      dataKrotko(t),
+      ...obecne.map((s) => fPelna.format(s.wartosci[i])),
+      fPelna.format(obecne.reduce((a, s) => a + s.wartosci[i], 0)),
+    ]).reverse(),
+  ));
+
+  // Prompt size per call.
+  legenda(document.getElementById("leg-prompt"), LINIE, "kreska");
+  wykresPromptu(document.getElementById("w-prompt"), agg);
+  document.getElementById("t-prompt").replaceChildren(tabela(
+    [{ tekst: "Dzień" }, ...LINIE.flatMap((l) => [
+      { tekst: `${l.krotko}, mediana`, liczba: true },
+      { tekst: `${l.krotko}, wywołania`, liczba: true },
+    ])],
+    zakres.dni.map((t, i) => [
+      dataKrotko(t),
+      ...LINIE.flatMap((_, li) => [
+        agg.medianyDzienne[li][i] === null ? "—" : fPelna.format(agg.medianyDzienne[li][i]),
+        fPelna.format(agg.wywolaniaLinii[li][i]),
+      ]),
+    ]).reverse(),
+  ));
+
+  // Messages per day.
+  wykresSlupkowy(document.getElementById("w-wiadomosci"), zakres.dni,
+    [{ nazwa: "przetworzone wiadomości", klasa: "c1", wartosci: agg.wiadomosci }], {
+      opis: "Wykres słupkowy: przetworzone wiadomości dziennie",
+      formatuj: (v) => fPelna.format(v),
+    });
+  document.getElementById("t-wiadomosci").replaceChildren(tabela(
+    [{ tekst: "Dzień" }, { tekst: "Wiadomości", liczba: true }],
+    zakres.dni.map((t, i) => [dataKrotko(t), fPelna.format(agg.wiadomosci[i])]).reverse(),
+  ));
+
+  // Wake-ups.
+  const najstarsza = dane.pobudki.length ? czas(dane.pobudki[0].ms) : null;
+  document.getElementById("opis-pobudki").textContent =
+    "Tury, które Akuki zaczyna sam, bez wiadomości na Arenie. Każda runda czyta od nowa cały prompt." +
+    (najstarsza ? ` Baza trzyma pobudki od ${najstarsza}.` : "");
+  const tPobudki = document.getElementById("t-pobudki");
+  tPobudki.replaceChildren(agg.pobudki.length
+    ? tabela(
+        [{ tekst: "Kiedy" }, { tekst: "Wyzwalacz" }, { tekst: "Wynik" }, { tekst: "Rundy", liczba: true }],
+        [...agg.pobudki].reverse().map((p) => [
+          czas(p.ms),
+          WYZWALACZE[p.wyzwalacz] ?? p.wyzwalacz,
+          WYNIKI[p.wynik] ?? p.wynik ?? "—",
+          p.rundy === null || p.rundy === undefined ? "—" : String(p.rundy),
+        ]),
+      )
+    : htmlEl("p", "brak", "Brak pobudek w tym zakresie."));
+
+  // Per budget.
+  const nazwyKategorii = new Map(KATEGORIE.map((k) => [k.id, k]));
+  const wiersze = [...agg.budzety.entries()].sort((a, b) => b[1].wejscie - a[1].wejscie).map(([b, s]) => {
+    const kat = nazwyKategorii.get(dane.katBudzetu[b]);
+    const komorka = htmlEl("span", "pozycja");
+    komorka.append(htmlEl("span", `probka ${kat.klasa}`), document.createTextNode(kat.nazwa));
+    return [
+      D.budzety[b],
+      komorka,
+      nazwaModelu(D.modele[s.model]),
+      fPelna.format(s.wywolania),
+      fPelna.format(s.wejscie),
+      agg.suma ? fProcent.format(s.wejscie / agg.suma) : "—",
+      fPelna.format(s.wejscie / s.wywolania),
+      fPelna.format(s.wyjscie),
+      fPelna.format(s.cache),
+    ];
+  });
+  document.getElementById("t-budzety").replaceChildren(wiersze.length
+    ? tabela([
+        { tekst: "Miejsce wywołania" }, { tekst: "Kategoria" }, { tekst: "Model" },
+        { tekst: "Wywołania", liczba: true }, { tekst: "Wejście", liczba: true }, { tekst: "Udział", liczba: true },
+        { tekst: "Na wywołanie", liczba: true }, { tekst: "Wyjście", liczba: true }, { tekst: "Z cache", liczba: true },
+      ], wiersze)
+    : htmlEl("p", "brak", "Brak wywołań w tym zakresie."));
+}
+
+/* ---------- Controls ---------- */
+
+function zapisz(klucz, wartosc) {
+  try { localStorage.setItem(klucz, wartosc); } catch { /* private window: keep the default */ }
+}
+function odczytaj(klucz) {
+  try { return localStorage.getItem(klucz); } catch { return null; }
+}
+
+const MOTYWY = [
+  { nazwa: "system", atrybut: null },
+  { nazwa: "jasny", atrybut: "light" },
+  { nazwa: "ciemny", atrybut: "dark" },
+];
+const przyciskMotywu = document.getElementById("motyw");
+function ustawMotyw(i) {
+  const m = MOTYWY[i];
+  if (m.atrybut) document.documentElement.dataset.theme = m.atrybut;
+  else delete document.documentElement.dataset.theme;
+  przyciskMotywu.textContent = `Motyw: ${m.nazwa}`;
+  zapisz("akuki-tokeny-motyw", m.nazwa);
+}
+let motyw = Math.max(0, MOTYWY.findIndex((m) => m.nazwa === odczytaj("akuki-tokeny-motyw")));
+ustawMotyw(motyw);
+przyciskMotywu.addEventListener("click", () => {
+  motyw = (motyw + 1) % MOTYWY.length;
+  ustawMotyw(motyw);
+});
+
+let dane = null;
+let wybranyZakres = 2;
+
+if (!D) {
+  document.getElementById("pusto").hidden = false;
+} else {
+  dane = przygotuj();
+  const zapisany = ZAKRESY.findIndex((z) => z.nazwa === odczytaj("akuki-tokeny-zakres"));
+  if (zapisany >= 0) wybranyZakres = zapisany;
+
+  const pobrano = Date.parse(D.pobrano);
+  const godziny = Math.round((Date.now() - pobrano) / 36e5);
+  const wiek = godziny < 1 ? "przed chwilą" : `${godziny} godz. temu`;
+  document.getElementById("meta").textContent =
+    `Dane z VPS-a pobrane ${czas(pobrano)} (${wiek}). Odświeżenie: ./akuki-tokeny.sh` +
+    (D.pominieteLinie ? `. Pominięte uszkodzone linie logu: ${D.pominieteLinie}.` : "");
+
+  const grupa = document.getElementById("zakresy");
+  const przyciski = ZAKRESY.map((z, i) => {
+    const b = htmlEl("button", "przycisk", z.nazwa);
+    b.type = "button";
+    b.setAttribute("role", "radio");
+    b.addEventListener("click", () => {
+      wybranyZakres = i;
+      zapisz("akuki-tokeny-zakres", z.nazwa);
+      przyciski.forEach((p, j) => p.setAttribute("aria-checked", String(j === i)));
+      rysuj();
+    });
+    grupa.appendChild(b);
+    return b;
+  });
+  przyciski.forEach((p, j) => p.setAttribute("aria-checked", String(j === wybranyZakres)));
+
+  document.getElementById("tresc").hidden = false;
+  rysuj();
+
+  let czasomierz = null;
+  window.addEventListener("resize", () => {
+    clearTimeout(czasomierz);
+    czasomierz = setTimeout(rysuj, 150);
+  });
+}
+</script>
+</body>
+</html>
