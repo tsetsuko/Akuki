@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ArenaConfigError, loadArenaConfig } from "./config.js";
+import { ArenaConfigError, loadArenaConfig, loadDiscordConfig } from "./config.js";
 
 const minimal: NodeJS.ProcessEnv = {
   AKUKI_ARENA_API_BASE: "https://arena.example",
@@ -79,5 +79,33 @@ describe("loadArenaConfig", () => {
   it("trims surrounding whitespace so a copied secret still works", () => {
     const config = loadArenaConfig({ ...minimal, AKUKI_ARENA_BOT_TOKEN: "  token  " });
     expect(config.botToken).toBe("token");
+  });
+});
+
+describe("loadDiscordConfig", () => {
+  it("is off when no bot token is set", () => {
+    expect(loadDiscordConfig({})).toBeNull();
+  });
+
+  it("requires the bot id and the user id once a token is given", () => {
+    expect(() => loadDiscordConfig({ AKUKI_DISCORD_BOT_TOKEN: "t" })).toThrow(ArenaConfigError);
+    expect(() =>
+      loadDiscordConfig({ AKUKI_DISCORD_BOT_TOKEN: "t", AKUKI_DISCORD_BOT_ID: "111" }),
+    ).toThrow(/AKUKI_DISCORD_USER_ID/);
+  });
+
+  it("reads a full configuration, with its own state file by default", () => {
+    expect(
+      loadDiscordConfig({
+        AKUKI_DISCORD_BOT_TOKEN: " t ",
+        AKUKI_DISCORD_BOT_ID: "111",
+        AKUKI_DISCORD_USER_ID: "222",
+      }),
+    ).toEqual({
+      botToken: "t",
+      botId: "111",
+      userId: "222",
+      stateDbPath: "./.akuki-discord/state.db",
+    });
   });
 });

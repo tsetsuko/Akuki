@@ -212,3 +212,58 @@ describe("startArenaService outside dry run", () => {
     ).rejects.toThrow(/AKUKI_DATA_DIR/u);
   });
 });
+
+describe("startArenaService with Discord", () => {
+  it("polls the DM in the same tick as the Arena, and a Discord outage does not stop the Arena", async () => {
+    const arena = stubArena();
+    const urls: string[] = [];
+    const fetchImpl = (async (input: unknown, init?: RequestInit) => {
+      const url = String(input);
+      if (url.startsWith("https://discord.com")) {
+        urls.push(url);
+        return new Response("down", { status: 503 });
+      }
+      return arena.fetchImpl(input as string, init);
+    }) as unknown as FetchImpl;
+    const logged: string[] = [];
+
+    const service = await startArenaService({
+      config: config(),
+      discordConfig: {
+        botToken: "t",
+        botId: "111",
+        userId: "222",
+        stateDbPath: join(dir, "discord.db"),
+      },
+      dryRun: true,
+      fetchImpl,
+      log: (_level, message) => logged.push(message),
+    });
+    try {
+      await service.pollOnce();
+    } finally {
+      await service.stop();
+    }
+
+    expect(urls.some((url) => url.endsWith("/users/@me/channels"))).toBe(true);
+    expect(logged.some((line) => line.includes("[dry-run] would run a turn"))).toBe(true);
+    expect(logged.some((line) => line.startsWith("discord: poll failed"))).toBe(true);
+    expect(logged.find((line) => line.startsWith("started:"))).toContain("discord=dm with 222");
+  });
+
+  it("keeps the Arena running when the Discord configuration is incomplete", async () => {
+    const logged: string[] = [];
+
+    const service = await startArenaService({
+      config: config(),
+      env: { AKUKI_DISCORD_BOT_TOKEN: "t" },
+      dryRun: true,
+      fetchImpl: stubArena().fetchImpl,
+      log: (_level, message) => logged.push(message),
+    });
+    await service.stop();
+
+    expect(logged.some((line) => line.startsWith("discord: off, configuration rejected"))).toBe(true);
+    expect(logged.find((line) => line.startsWith("started:"))).toContain("discord=<off>");
+  });
+});

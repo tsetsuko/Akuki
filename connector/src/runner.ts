@@ -53,6 +53,9 @@ export const BOTARENA_SOURCE_TYPE = "botarena";
 /** Namespace for external principal ids, so a Bot Arena id cannot collide with another transport's. */
 const BOTARENA_ENTITY_SOURCE = "botarena";
 
+/** Routing/label key for Discord direct messages; one of borg's known source types. */
+export const DISCORD_SOURCE_TYPE = "discord";
+
 /**
  * Audience label for a thread, derived from the thread's immutable id rather than
  * its name: it survives a rename, and it cannot collide with a person or group who
@@ -62,10 +65,33 @@ export function arenaAudienceLabel(threadId: string): string {
   return `botarena_thread:${threadId}`;
 }
 
+/**
+ * What kind of conversation this runner serves.
+ *
+ * "arena": shared Bot Arena threads -- the thread is a group, the author is
+ * resolved per message from the Arena principal id. See the header.
+ *
+ * "discord_dm": Zosia's private Discord conversation with Akuki. There is no
+ * group and no per-message resolution: the only person in it is Akuki's creator,
+ * named by id from his memory. The transport guarantees the "only" part by
+ * dropping every other author (discord-client.ts).
+ *
+ * WHY THE CREATOR AND NOT THE DISCORD ID. Resolving the Discord account the way
+ * the Arena resolves its principals would create a new entity on first contact:
+ * borg adopts an existing entity by name only while no other channel has claimed
+ * it, and Zosia's is already claimed by the Arena. The result would be a second
+ * "Zosia" with her trust and history split in two -- the failure already seen once
+ * (znane-wady.md, entry 9). Naming the creator entity by id cannot split her and
+ * cannot fold anyone else into her.
+ */
+export type ConversationKind = "arena" | "discord_dm";
+
 export type ArenaAkukiRunnerOptions = {
   borg: Borg;
   state: Pick<ArenaStateStore, "getSessionId" | "putSessionId">;
   log?: ArenaLog;
+  /** Defaults to "arena". */
+  conversation?: ConversationKind;
 };
 
 export class ArenaAkukiRunner implements AkukiRunner {
@@ -147,6 +173,9 @@ export class ArenaAkukiRunner implements AkukiRunner {
 
   /** Session, audience and author for a message, created on first sight. */
   private prepare(message: IncomingArenaMessage) {
+    if (this.options.conversation === "discord_dm") {
+      return this.prepareDirect(message);
+    }
     const sessionId = this.sessionIdFor(message.threadId);
     const audienceLabel = arenaAudienceLabel(message.threadId);
     const audienceEntityId = this.ensureThreadGroup(message, audienceLabel);
@@ -165,6 +194,35 @@ export class ArenaAkukiRunner implements AkukiRunner {
     });
 
     return { sessionId, audienceLabel, senderEntityId };
+  }
+
+  /**
+   * A direct conversation with the creator. The audience label is her entity id,
+   * which borg resolves exactly by id rather than by name, and she is both the
+   * audience and the sender, so M3 and M4 credit the exchange to her.
+   */
+  private prepareDirect(message: IncomingArenaMessage) {
+    const creator = this.options.borg.entities.getCreator();
+    if (creator === null) {
+      // Thrown, not defaulted: without a creator there is nobody to credit the
+      // message to, and guessing would write it under the wrong person.
+      throw new Error("no creator entity in memory: a direct conversation has no known partner");
+    }
+    const sessionId = this.sessionIdFor(message.threadId);
+    const audienceLabel = String(creator.id);
+
+    this.options.borg.sessions.ensure({
+      session_id: sessionId,
+      source_type: DISCORD_SOURCE_TYPE,
+      source_external_id: message.threadId,
+      label: "Discord DM",
+      audience_label: audienceLabel,
+      audience_entity_id: creator.id,
+      conversation_kind: "dm",
+      last_activity_at: message.createdAtMs,
+    });
+
+    return { sessionId, audienceLabel, senderEntityId: creator.id };
   }
 
   /**

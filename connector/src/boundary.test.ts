@@ -19,6 +19,7 @@ const TRANSPORT_FILES = [
   "contract.ts",
   "state.ts",
   "botarena-client.ts",
+  "discord-client.ts",
   "directory.ts",
   "adapter.ts",
   "config.ts",

@@ -925,3 +925,22 @@ describe("dry run", () => {
     expect(store.getFloor("t1")).toBe(Date.parse("2026-09-04T10:00:00.000Z"));
   });
 });
+
+describe("a direct conversation (Discord DM)", () => {
+  it("treats every message as addressed to Akuki, mentions or not", async () => {
+    const transport = fakeTransport({
+      threads: [thread({ direct: true })],
+      // A mention of someone else would mean "addressed elsewhere" in a shared
+      // thread. In a one-to-one conversation there is nobody else.
+      messages: [message({ id: "m1", mentions: ["u-someone"] })],
+    });
+    const runner = fakeRunner(() => ({ text: "hej" }));
+    const adapter = build(transport, runner, { catchUpBacklog: true });
+
+    await adapter.pollOnce();
+
+    expect(runner.recorded).toEqual([]);
+    expect(runner.seen.map((incoming) => incoming.addressedToAkuki)).toEqual([true]);
+    expect(transport.posted).toHaveLength(1);
+  });
+});

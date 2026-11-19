@@ -208,14 +208,14 @@ export class BotArenaAdapter {
     // A message addressed to someone else is never the answered one, so an earlier
     // message that is not becomes the answer instead.
     const answered = pending
-      .filter((message) => this.getsTurn(message) && !this.addressedElsewhere(message, messages))
+      .filter((message) => this.getsTurn(message) && !this.addressedElsewhere(thread, message, messages))
       .at(-1);
 
     for (const message of pending) {
       const mode =
         message.id === answered?.id
           ? "answer"
-          : this.addressedElsewhere(message, messages)
+          : this.addressedElsewhere(thread, message, messages)
             ? "record"
             : "assess";
       await this.handle(
@@ -224,7 +224,7 @@ export class BotArenaAdapter {
         this.tsOf(message),
         newestTs,
         mode,
-        this.addressedToAkuki(message, messages),
+        this.addressedToAkuki(thread, message, messages),
       );
     }
 
@@ -252,7 +252,14 @@ export class BotArenaAdapter {
    * posts. Structural fields only. A reply whose target is not on `page` may be
    * a reply to him, so it does not count as addressed elsewhere.
    */
-  private addressedElsewhere(message: BotArenaMessage, page: readonly BotArenaMessage[]): boolean {
+  private addressedElsewhere(
+    thread: BotArenaThread,
+    message: BotArenaMessage,
+    page: readonly BotArenaMessage[],
+  ): boolean {
+    if (thread.direct === true) {
+      return false;
+    }
     if (message.mentions.length === 0 || message.mentions.includes(this.options.botId)) {
       return false;
     }
@@ -269,7 +276,15 @@ export class BotArenaAdapter {
    * his). A message that names nobody and replies to nothing is said to the room,
    * not to him. Structural fields only.
    */
-  private addressedToAkuki(message: BotArenaMessage, page: readonly BotArenaMessage[]): boolean {
+  private addressedToAkuki(
+    thread: BotArenaThread,
+    message: BotArenaMessage,
+    page: readonly BotArenaMessage[],
+  ): boolean {
+    // In a one-to-one conversation there is nobody else to address.
+    if (thread.direct === true) {
+      return true;
+    }
     if (message.mentions.includes(this.options.botId)) {
       return true;
     }

@@ -57,6 +57,11 @@ export type BotArenaThread = {
   lastMessageAt: string | null;
   participantBotIds: readonly string[];
   isArchived: boolean;
+  /**
+   * A one-to-one conversation with Akuki, where everything said is said to him.
+   * Never set by the Arena; the Discord DM transport sets it (discord-client.ts).
+   */
+  direct?: boolean;
 };
 
 export type BotArenaPrincipal = {

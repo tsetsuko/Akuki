@@ -25,8 +25,9 @@ function incoming(overrides: Partial<IncomingArenaMessage> = {}): IncomingArenaM
   };
 }
 
-function fakeBorg() {
+function fakeBorg(creator: { id: string } | null = { id: "ent_creator" }) {
   const turns: Record<string, unknown>[] = [];
+  const ensured: Record<string, unknown>[] = [];
   const appended: { input: Record<string, unknown>; options: Record<string, unknown> }[] = [];
   const borg = {
     stream: {
@@ -38,8 +39,13 @@ function fakeBorg() {
     entities: {
       resolve: () => "ent_thread",
       resolveExternal: () => "ent_author",
+      getCreator: () => creator,
     },
-    sessions: { ensure: () => undefined },
+    sessions: {
+      ensure: (input: Record<string, unknown>) => {
+        ensured.push(input);
+      },
+    },
     turn: async (input: Record<string, unknown>) => {
       turns.push(input);
       return {
@@ -51,13 +57,14 @@ function fakeBorg() {
       };
     },
   };
-  return { borg: borg as unknown as Borg, turns, appended };
+  return { borg: borg as unknown as Borg, turns, appended, ensured };
 }
 
-function runnerFor(borg: Borg) {
+function runnerFor(borg: Borg, conversation?: "arena" | "discord_dm") {
   const sessions = new Map<string, string>();
   return new ArenaAkukiRunner({
     borg,
+    ...(conversation === undefined ? {} : { conversation }),
     state: {
       getSessionId: (threadId) => sessions.get(threadId),
       putSessionId: (threadId, sessionId) => {
@@ -107,5 +114,32 @@ describe("ArenaAkukiRunner", () => {
     });
     // The same conversation the answered turn used.
     expect(appended[0]?.options).toEqual({ session: turns[0]?.sessionId });
+  });
+});
+
+describe("ArenaAkukiRunner in a Discord DM", () => {
+  it("credits the message to the creator by id, as audience and sender, in a dm session", async () => {
+    const { borg, turns, ensured } = fakeBorg();
+    const runner = runnerFor(borg, "discord_dm");
+
+    await runner.handleMessage(incoming({ threadId: "dm-1", authorId: "discord-zosia", authorKind: "person" }));
+
+    // The id, never the Discord account: resolving that would mint a second Zosia.
+    expect(turns[0]).toMatchObject({ audience: "ent_creator", senderEntityId: "ent_creator" });
+    expect(ensured[0]).toMatchObject({
+      source_type: "discord",
+      source_external_id: "dm-1",
+      audience_label: "ent_creator",
+      audience_entity_id: "ent_creator",
+      conversation_kind: "dm",
+    });
+  });
+
+  it("refuses to run a turn when memory has no creator, rather than guess a partner", async () => {
+    const { borg, turns } = fakeBorg(null);
+    const runner = runnerFor(borg, "discord_dm");
+
+    await expect(runner.handleMessage(incoming())).rejects.toThrow(/no creator entity/);
+    expect(turns).toEqual([]);
   });
 });

@@ -32,8 +32,9 @@ import { applyAkukiSeed } from "borg";
 import { buildAkukiClients } from "borg";
 import { BotArenaAdapter, type ArenaLog } from "./adapter.js";
 import { BotArenaClient, type FetchImpl } from "./botarena-client.js";
-import { loadArenaConfig, type ArenaConfig } from "./config.js";
+import { loadArenaConfig, loadDiscordConfig, type ArenaConfig, type DiscordConfig } from "./config.js";
 import type { AkukiRunner } from "./contract.js";
+import { DiscordDmTransport } from "./discord-client.js";
 import { PrincipalDirectory } from "./directory.js";
 import { ArenaAkukiRunner } from "./runner.js";
 import { ArenaStateStore } from "./state.js";
@@ -43,6 +44,11 @@ export type ArenaServiceOptions = {
   env?: NodeJS.ProcessEnv;
   /** Pre-loaded configuration; loaded from the environment when absent. */
   config?: ArenaConfig;
+  /**
+   * Discord DM configuration. Undefined means "read it from the environment";
+   * null means Discord is off.
+   */
+  discordConfig?: DiscordConfig | null;
   /** Tenant directory. Falls back to AKUKI_DATA_DIR, which must be set explicitly. */
   dataDir?: string;
   /**
@@ -153,6 +159,13 @@ export async function startArenaService(
     log,
   });
 
+  // DISCORD RIDES THE SAME LOOP, on purpose. One Borg has one writer, and two
+  // loops would run two turns on it at once. So the Discord adapter is polled right
+  // after the Arena adapter, in the same tick: a DM waits at most one Arena turn.
+  // And Discord never takes the Arena down -- every Discord failure, from a bad
+  // configuration to an unreachable API, is logged and the Arena carries on.
+  const discord = setUpDiscord(options, env, borg, dryRun, config, log);
+
   if (borg !== null) {
     if (owned) {
       startSchedulers(borg, log);
@@ -162,7 +175,26 @@ export async function startArenaService(
     // Runs either way. A reply composed by an earlier process is still pending
     // no matter who owns the instance now.
     await adapter.recoverAfterRestart();
+    if (discord !== null) {
+      await discord.adapter.recoverAfterRestart().catch((error: unknown) => {
+        log("error", `discord: recovery failed, the next poll retries: ${describe(error)}`);
+      });
+    }
   }
+
+  const pollAll = async (): Promise<void> => {
+    if (discord === null) {
+      await adapter.pollOnce();
+      return;
+    }
+    // With Discord on, an Arena outage must not silence the DM either.
+    await adapter.pollOnce().catch((error: unknown) => {
+      log("error", `poll failed: ${describe(error)}`);
+    });
+    await discord.adapter.pollOnce().catch((error: unknown) => {
+      log("error", `discord: poll failed: ${describe(error)}`);
+    });
+  };
 
   let stopping = false;
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -174,8 +206,7 @@ export async function startArenaService(
     }
     timer = setTimeoutFn(() => {
       timer = null;
-      inFlight = adapter
-        .pollOnce()
+      inFlight = pollAll()
         .catch((error) => {
           // A poll that throws past the adapter's own per-thread guard is still not
           // a reason to end the process: the next poll retries from durable state.
@@ -192,12 +223,13 @@ export async function startArenaService(
       `catchUpBacklog=${config.catchUpBacklog} ` +
       `tokenUsageLog=${tokenUsageLog.path ?? "<off>"} ` +
       `maxCatchUpAge=${config.maxCatchUpAgeMs === null ? "<none>" : `${config.maxCatchUpAgeMs}ms`} ` +
-      `state=${config.stateDbPath}`,
+      `state=${config.stateDbPath} ` +
+      `discord=${discord === null ? "<off>" : `dm with ${discord.userId}, state=${discord.stateDbPath}`}`,
   );
   scheduleNext();
 
   return {
-    pollOnce: () => adapter.pollOnce(),
+    pollOnce: pollAll,
     stop: async () => {
       stopping = true;
       if (timer !== null) {
@@ -212,9 +244,64 @@ export async function startArenaService(
         await borg.close();
       }
       state.close();
+      discord?.state.close();
       log("info", "stopped");
     },
   };
+}
+
+type DiscordSetup = {
+  adapter: BotArenaAdapter;
+  state: ArenaStateStore;
+  userId: string;
+  stateDbPath: string;
+};
+
+function setUpDiscord(
+  options: ArenaServiceOptions,
+  env: NodeJS.ProcessEnv,
+  borg: Borg | null,
+  dryRun: boolean,
+  arenaConfig: ArenaConfig,
+  log: ArenaLog,
+): DiscordSetup | null {
+  let config: DiscordConfig | null;
+  try {
+    config = options.discordConfig === undefined ? loadDiscordConfig(env) : options.discordConfig;
+  } catch (error) {
+    log("error", `discord: off, configuration rejected: ${describe(error)}`);
+    return null;
+  }
+  if (config === null) {
+    return null;
+  }
+  const discordLog: ArenaLog = (level, message) => log(level, `discord: ${message}`);
+  const state = new ArenaStateStore(config.stateDbPath);
+  const transport = new DiscordDmTransport({
+    botToken: config.botToken,
+    botId: config.botId,
+    userId: config.userId,
+    ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
+  });
+  const runner: AkukiRunner =
+    borg === null
+      ? refusingRunner
+      : new ArenaAkukiRunner({ borg, state, log: discordLog, conversation: "discord_dm" });
+  const adapter = new BotArenaAdapter({
+    transport,
+    runner,
+    state,
+    directory: transport,
+    botId: config.botId,
+    // Never replay a DM history on first contact, same reason as the Arena.
+    catchUpBacklog: false,
+    // The same window as the Arena: after a long absence, old messages are
+    // retired rather than answered one by one.
+    maxCatchUpAgeMs: arenaConfig.maxCatchUpAgeMs,
+    dryRun,
+    log: discordLog,
+  });
+  return { adapter, state, userId: config.userId, stateDbPath: config.stateDbPath };
 }
 
 async function openAkukiBorg(

@@ -114,3 +114,32 @@ export function loadArenaConfig(env: NodeJS.ProcessEnv = process.env): ArenaConf
     tokenUsageLogPath: optionalOrNull(env, "AKUKI_ARENA_TOKEN_USAGE_LOG"),
   };
 }
+
+/**
+ * Discord direct messages: one private conversation between Akuki and Zosia.
+ * Optional as a whole -- with no bot token, Discord is simply off and the Arena
+ * runs exactly as before. Once a token is given, the rest is required, because a
+ * half-configured channel is the connector that starts and talks to nothing.
+ */
+export type DiscordConfig = {
+  botToken: string;
+  /** Akuki's own Discord bot user id, for the self-skip. */
+  botId: string;
+  /** The one Discord user he hears. Every other author is dropped. */
+  userId: string;
+  /** Its own file: Discord ids and Arena ids live in separate state. */
+  stateDbPath: string;
+};
+
+export function loadDiscordConfig(env: NodeJS.ProcessEnv = process.env): DiscordConfig | null {
+  const botToken = optionalOrNull(env, "AKUKI_DISCORD_BOT_TOKEN");
+  if (botToken === null) {
+    return null;
+  }
+  return {
+    botToken,
+    botId: required(env, "AKUKI_DISCORD_BOT_ID"),
+    userId: required(env, "AKUKI_DISCORD_USER_ID"),
+    stateDbPath: optional(env, "AKUKI_DISCORD_STATE_DB", "./.akuki-discord/state.db"),
+  };
+}

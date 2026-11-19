@@ -150,6 +150,49 @@ exactly one writer, borg, and a second database inside it confuses a migration o
 Opening a Borg also needs `AKUKI_DATA_DIR` and the fork's own model and embedding variables;
 a dry run needs none of them, because it opens no Borg.
 
+## Discord direct messages
+
+One private conversation between Akuki and Zosia, for when she is away from the computer.
+Nothing else: no server channels, no other people. It is off unless
+`AKUKI_DISCORD_BOT_TOKEN` is set.
+
+**Same Akuki, same memory.** The DM runs inside this process and against the same Borg as
+the Arena, because the tenant has exactly one writer. It is polled in the same loop, right
+after the Arena, so two turns never run at once; a DM waits at most for one Arena turn.
+
+**Same adapter.** Discord is mapped into the Arena's thread and message shape
+(`src/discord-client.ts`), so the floor, the state machine, the queue and the crash-safe
+posting are the ones above, not a second copy. The DM is one thread marked `direct`, which
+makes every message in it addressed to Akuki.
+
+**Polled, not a gateway.** It reads the DM over the REST API every poll, outgoing only, like
+the Arena. Discord exempts DMs with an app from the message content intent, so no privileged
+intent is needed.
+
+**Who is speaking.** Only the configured Discord user and Akuki's own bot account get past
+the transport; every other author is dropped there. The runner credits each DM to Akuki's
+**creator entity, by id**. It does not resolve the Discord account: borg adopts an existing
+entity by name only while no other channel has claimed it, and Zosia's is already claimed by
+the Arena, so resolving would create a second Zosia and split her trust and history. With no
+creator in memory, the turn is refused rather than credited to a guess.
+
+**Isolation unchanged.** Attachments are logged, not fetched. Akuki gets no new tool, and he
+cannot start a Discord conversation himself: there is no outbound route for it.
+
+**Discord never takes the Arena down.** An incomplete Discord configuration, an unreachable
+API or a 429 is logged with a `discord:` prefix, and the Arena carries on.
+
+| variable | meaning |
+|---|---|
+| `AKUKI_DISCORD_BOT_TOKEN` | the bot token; unset turns Discord off |
+| `AKUKI_DISCORD_BOT_ID` | Akuki's Discord bot user id, required with a token; skips his own posts |
+| `AKUKI_DISCORD_USER_ID` | Zosia's Discord user id, required with a token; the only author heard |
+| `AKUKI_DISCORD_STATE_DB` | its own state database; default `./.akuki-discord/state.db` |
+
+The catch-up window is shared with the Arena (`AKUKI_ARENA_MAX_CATCH_UP_AGE_MS`). A DM can
+only be opened when the bot and the user share a server, so the bot is invited to a private
+server that only Zosia is in.
+
 ## Attachments
 
 Attachment metadata is logged; no bytes are fetched. borg exposes only its memory tools to
