@@ -94,4 +94,5 @@ w dniu, w którym weszła na żywo, a nie w dniu commita.
 
 Zmiany z kodem gotowym, ale jeszcze nie na żywo. W chwili wdrożenia linia przechodzi do listy wyżej, z datą i godziną wejścia.
 
+- 2026-11-19 (connector, niezacommitowane) - Zosia chce pisać do Akukiego z telefonu - prywatna rozmowa (DM) na Discordzie, tylko z jej konta, ten sam Akuki i ta sama pamięć co na Arenie; każda wiadomość w DM liczy się jako skierowana do niego i jest przypisana do Zosi jako twórczyni, więc po wdrożeniu szybszy spadek nieśmiałości wobec Zosi i większa waga jej zdania mogą wynikać z nowego kanału, a nie z rozwoju; przeglądanie internetu rozważone i odrzucone (TASK-063)
 - 2026-11-17 (fork `2ecb8c05`) - bieżąca rozmowa w prompcie odpowiedzi drukowana jako jedna linia na wiadomość (kto, do kogo, treść) zamiast pełnego wiersza z metadanymi; format podany raz w nagłówku sekcji, a wiersz z czymkolwiek nietypowym nadal wychodzi w pełnej postaci; mniej tokenów na wywołanie, treść rozmowy ta sama (TASK-058, dalszy ciąg)
