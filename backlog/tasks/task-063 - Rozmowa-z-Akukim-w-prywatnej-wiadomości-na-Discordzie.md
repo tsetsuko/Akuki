@@ -4,7 +4,7 @@ title: Rozmowa z Akukim w prywatnej wiadomości na Discordzie
 status: In Progress
 assignee: []
 created_date: '2026-11-19 10:36'
-updated_date: '2026-11-19 10:36'
+updated_date: '2026-11-19 11:29'
 labels:
   - connector
   - discord
@@ -70,4 +70,6 @@ Kod gotowy 2026-11-19: testy connectora 157/157 i typecheck przechodzą. Kryteri
 Ryzyko niesprawdzone: starsze źródła (API v6) mówią, że bot musi raz połączyć się z gatewayem, zanim wyśle wiadomość przez REST. Aktualna dokumentacja Discorda tego nie wspomina. Jeśli pierwszy POST padnie z kodem 40001, obejściem jest jednorazowe połączenie z gatewayem.
 
 Encja twórczyni w snapshocie z 2026-11-02 to ent_ry4lo3ia73wug8pz (80 interakcji, zaufanie 0,917). Snapshot nie zawiera nazwy, więc przed pierwszą wiadomością trzeba na kopii bazy potwierdzić, że to Zosia.
+
+2026-11-19 12:27 (czas polski): wdrożone i na żywo. Przed restartem skrypt akuki-tworczyni-check.sh potwierdził jedną twórczynię, ent_ry4lo3ia73wug8pz o nazwie Zosia, a Discord nie miał jeszcze żadnych powiązań. Pierwszy restart (12:26:56) skończył się tym, że connector nie wstał, bo domyślna ścieżka stanu Discorda jest względna, a katalog roboczy usługi to /opt/akuki/app/demo/server. Arena nic nie słyszała przez około 35 s. Naprawione ustawieniem AKUKI_DISCORD_STATE_DB=/var/lib/akuki/discord/state.db (kopia env: /etc/akuki/akuki.env.bak-20261119) i poprawką kodu 6783b96: błąd przy otwieraniu stanu Discorda wyłącza teraz tylko Discorda. Poprawka jest wgrana, ale działa dopiero od następnego restartu. Ten sam restart włączył zmianę z forka 2ecb8c05 (jedna linia na wiadomość w transkrypcie). Kryteria 1 i 7 czekają na pierwszą prawdziwą wiadomość z DM.
 <!-- SECTION:NOTES:END -->
