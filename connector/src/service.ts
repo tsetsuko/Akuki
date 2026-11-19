@@ -276,7 +276,16 @@ function setUpDiscord(
     return null;
   }
   const discordLog: ArenaLog = (level, message) => log(level, `discord: ${message}`);
-  const state = new ArenaStateStore(config.stateDbPath);
+  let state: ArenaStateStore;
+  try {
+    // Opening the state file can fail on its own -- a relative default path under a
+    // working directory the service cannot write took the whole connector down on
+    // 2026-11-19, Arena included. Caught here for the same reason as the config.
+    state = new ArenaStateStore(config.stateDbPath);
+  } catch (error) {
+    log("error", `discord: off, state database ${config.stateDbPath} could not be opened: ${describe(error)}`);
+    return null;
+  }
   const transport = new DiscordDmTransport({
     botToken: config.botToken,
     botId: config.botId,

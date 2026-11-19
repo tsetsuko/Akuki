@@ -266,4 +266,30 @@ describe("startArenaService with Discord", () => {
     expect(logged.some((line) => line.startsWith("discord: off, configuration rejected"))).toBe(true);
     expect(logged.find((line) => line.startsWith("started:"))).toContain("discord=<off>");
   });
+
+  it("keeps the Arena running when the Discord state database cannot be opened", async () => {
+    const logged: string[] = [];
+
+    const service = await startArenaService({
+      config: config(),
+      discordConfig: {
+        botToken: "t",
+        botId: "111",
+        userId: "222",
+        // A directory under a regular file can never be created.
+        stateDbPath: join(statePath, "discord", "state.db"),
+      },
+      dryRun: true,
+      fetchImpl: stubArena().fetchImpl,
+      log: (_level, message) => logged.push(message),
+    });
+    try {
+      await service.pollOnce();
+    } finally {
+      await service.stop();
+    }
+
+    expect(logged.some((line) => line.startsWith("discord: off, state database"))).toBe(true);
+    expect(logged.some((line) => line.includes("[dry-run] would run a turn"))).toBe(true);
+  });
 });

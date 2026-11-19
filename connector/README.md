@@ -187,7 +187,7 @@ API or a 429 is logged with a `discord:` prefix, and the Arena carries on.
 | `AKUKI_DISCORD_BOT_TOKEN` | the bot token; unset turns Discord off |
 | `AKUKI_DISCORD_BOT_ID` | Akuki's Discord bot user id, required with a token; skips his own posts |
 | `AKUKI_DISCORD_USER_ID` | Zosia's Discord user id, required with a token; the only author heard |
-| `AKUKI_DISCORD_STATE_DB` | its own state database; default `./.akuki-discord/state.db` |
+| `AKUKI_DISCORD_STATE_DB` | its own state database; default `./.akuki-discord/state.db`. Set an absolute path in a deployment: the default is relative to the working directory, which the demo server's service cannot write |
 
 The catch-up window is shared with the Arena (`AKUKI_ARENA_MAX_CATCH_UP_AGE_MS`). A DM can
 only be opened when the bot and the user share a server, so the bot is invited to a private
